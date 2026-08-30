@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cf9bacf92e9ffd4096f171badc89762, type: 3}
+  m_Name: A_Bombastic Cat Eyes
+  m_EditorClassIdentifier: Assembly-CSharp::ClowderStudio.EvasiveWhisker.Card
+  cardName: Bombastic Cat Eyes
+  type: 2
+  size: 1
+  effectText: Select an opponent and look at 2 of their cards you choose. Discard
+    after use.
+  flavorText: 
