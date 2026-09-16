@@ -10,10 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5cf9bacf92e9ffd4096f171badc89762, type: 3}
-  m_Name: A_Scatter
+  m_Name: SO_Card_WhiskerBlower
   m_EditorClassIdentifier: Assembly-CSharp::ClowderStudio.EvasiveWhisker.Card
-  cardName: 
-  type: 0
-  size: 1
-  effectText: 
-  flavorText: 
+  cardID: 
+  cardName: The Whisker-Blower
+  cardType: 3
+  cardIllustration: {fileID: 0}
+  cardFrame: {fileID: 0}
+  cardUseCase: 
+  effectDescription: 
+  canBeDiscarded: 0
+  occupiesAbilitySlot: 0
+  trapEffect: 0
+  isOddRoundOnly: 0
+  isEvenRoundOnly: 0
+  traitCooldownRounds: 0

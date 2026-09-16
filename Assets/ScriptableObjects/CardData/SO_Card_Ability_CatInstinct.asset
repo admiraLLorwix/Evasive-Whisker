@@ -10,10 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5cf9bacf92e9ffd4096f171badc89762, type: 3}
-  m_Name: A_Purr-suasion
+  m_Name: SO_Card_Ability_CatInstinct
   m_EditorClassIdentifier: Assembly-CSharp::ClowderStudio.EvasiveWhisker.Card
-  cardName: 
+  cardName: Cat Instinct
   type: 0
   size: 1
-  effectText: 
+  effectText: The PLAYER asks if the VICTIM has the WHISKER-BLOWER CAT, the VICTIM
+    must answer truthfully. Discard after use.
   flavorText: 

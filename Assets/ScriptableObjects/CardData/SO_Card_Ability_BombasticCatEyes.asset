@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5cf9bacf92e9ffd4096f171badc89762, type: 3}
-  m_Name: A_Declaw
+  m_Name: SO_Card_Ability_BombasticCatEyes
   m_EditorClassIdentifier: Assembly-CSharp::ClowderStudio.EvasiveWhisker.Card
-  cardName: Declaw
-  type: 0
+  cardName: Bombastic Cat Eyes
+  type: 2
   size: 1
-  effectText: DISARM the ABILITY CARD on the ABILITY SLOT of an OPPONENT. Discard
+  effectText: Select an opponent and look at 2 of their cards you choose. Discard
     after use.
   flavorText: 

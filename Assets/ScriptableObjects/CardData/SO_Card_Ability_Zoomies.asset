@@ -10,11 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5cf9bacf92e9ffd4096f171badc89762, type: 3}
-  m_Name: A_Bombastic Cat Eyes
+  m_Name: SO_Card_Ability_Zoomies
   m_EditorClassIdentifier: Assembly-CSharp::ClowderStudio.EvasiveWhisker.Card
-  cardName: Bombastic Cat Eyes
-  type: 2
-  size: 1
-  effectText: Select an opponent and look at 2 of their cards you choose. Discard
-    after use.
-  flavorText: 
+  cardID: 
+  cardName: 
+  cardType: 0
+  cardIllustration: {fileID: 0}
+  cardFrame: {fileID: 0}
+  cardUseCase: 
+  effectDescription: 
+  canBeDiscarded: 1
+  occupiesAbilitySlot: 1
+  trapEffect: 0
+  isOddRoundOnly: 0
+  isEvenRoundOnly: 0
+  traitCooldownRounds: 0

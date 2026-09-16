@@ -10,10 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5cf9bacf92e9ffd4096f171badc89762, type: 3}
-  m_Name: Custody Card
+  m_Name: SO_Card_Ability_NineLives
   m_EditorClassIdentifier: Assembly-CSharp::ClowderStudio.EvasiveWhisker.Card
-  cardName: Custody Card
-  type: 1
-  size: 1
-  effectText: 
-  flavorText: 
+  cardID: 
+  cardName: Nine Lives
+  cardType: 0
+  cardIllustration: {fileID: 0}
+  cardFrame: {fileID: 0}
+  cardUseCase: 
+  effectDescription: 
+  canBeDiscarded: 1
+  occupiesAbilitySlot: 1
+  trapEffect: 0
+  isOddRoundOnly: 0
+  isEvenRoundOnly: 0
+  traitCooldownRounds: 0
