@@ -1,9 +1,34 @@
 fileFormatVersion: 2
-guid: 58d87dee27c7516499a260ce0e9f6ad6
+guid: 5e9ad4160d47c154584d3f60cdf4dd3c
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_CardBackface
+    second: {fileID: 2100000, guid: 0a91013dc0923c4468d389f2572a85ca, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_CardBackfaceFrame
+    second: {fileID: 2100000, guid: 5ddb9e49a8fa42e4ba03aad4dba94ebe, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_CardBody
+    second: {fileID: 2100000, guid: 01ade88eb00f3eb408a3502b2befef4d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_CardFrontface
+    second: {fileID: 2100000, guid: a0111d17fd99d1b47aa062a1d8fac074, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: T_card_backface_logo
+    second: {fileID: 2100000, guid: 25be7ca53486b424bb926ad9b0172cd5, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
