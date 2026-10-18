@@ -32,8 +32,8 @@ namespace EvasiveWhisker.Cards
 
 
         [Header("Card Art")]
-        public Sprite cardIllustration;
-        public Sprite cardFrame;
+        public Texture2D frontFace;
+        public Texture2D backFace;
 
 
 
