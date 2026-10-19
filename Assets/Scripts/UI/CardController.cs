@@ -6,14 +6,30 @@ public class CardController : MonoBehaviour
     [Header("Data Source")]
     [SerializeField] private Card cardData;
     [SerializeField] private MeshRenderer frontFaceRenderer;
+    [SerializeField] private MeshRenderer backFaceRenderer;
+    [SerializeField] private MeshRenderer cardBodyRenderer;
 
-    private static readonly int BaseMapPropId = Shader.PropertyToID("_BaseMap");
+    [Header("Visual Settings")]
+    [SerializeField] private Texture2D frameMask;
+    [SerializeField] private Color glintColor;
+    [SerializeField] private float moveSpeedX;
+    [SerializeField] private float moveSpeedY;
 
-    private MaterialPropertyBlock _propBlock;
+	// int hash calculated once for pointing to specific _BaseMap var in memory
+	private static readonly int BaseMapPropId = Shader.PropertyToID("_BaseMap");
+	private static readonly int FrameMaskPropId = Shader.PropertyToID("_FrameMask");
+    private static readonly int GlintColorPropId = Shader.PropertyToID("_GlintColor");
+	private static readonly int MoveSpeedXPropId = Shader.PropertyToID("_MoveSpeedX");
+	private static readonly int MoveSpeedYPropId = Shader.PropertyToID("_MoveSpeedY");
+    private MaterialPropertyBlock _frontFacePropBlock;
+    //private MaterialPropertyBlock _frameMaskPropBlock;
+    //private MaterialPropertyBlock _glintColorPropBlock;
+    private MaterialPropertyBlock _backFacePropBlock;
 
     void Awake()
     {
-        _propBlock = new MaterialPropertyBlock();
+        _frontFacePropBlock = new MaterialPropertyBlock();
+        _backFacePropBlock = new MaterialPropertyBlock();
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -32,21 +48,34 @@ public class CardController : MonoBehaviour
     {
         // visuals related code here
         // whatever visuals that depend on the properties of the current card
-        if (frontFaceRenderer == null) return;
+        if (frontFaceRenderer == null || backFaceRenderer == null || cardBodyRenderer == null) return;
 
-        frontFaceRenderer.GetPropertyBlock(_propBlock);
-        _propBlock.SetTexture(BaseMapPropId, cardData.frontFace);
-        frontFaceRenderer.SetPropertyBlock(_propBlock);
+        frontFaceRenderer.GetPropertyBlock(_frontFacePropBlock);
+        _frontFacePropBlock.SetTexture(BaseMapPropId, cardData.frontFace);
+        _frontFacePropBlock.SetTexture(FrameMaskPropId, frameMask);
+        _frontFacePropBlock.SetColor(GlintColorPropId, glintColor);
+        _frontFacePropBlock.SetFloat(MoveSpeedXPropId, moveSpeedX);
+        _frontFacePropBlock.SetFloat(MoveSpeedYPropId, moveSpeedY);
+        frontFaceRenderer.SetPropertyBlock(_frontFacePropBlock);
+
+        backFaceRenderer.GetPropertyBlock(_backFacePropBlock);
+        _backFacePropBlock.SetTexture(BaseMapPropId, cardData.backFace);
+        backFaceRenderer.SetPropertyBlock(_backFacePropBlock);
+
     }
 
 	private void OnValidate()
 	{
-		if (frontFaceRenderer != null)
+		if (frontFaceRenderer != null && backFaceRenderer != null && cardBodyRenderer != null)
 		{
-			if (_propBlock == null)
+			if (_frontFacePropBlock == null)
 			{
-				_propBlock = new MaterialPropertyBlock();
+				_frontFacePropBlock = new MaterialPropertyBlock();
 			}
+            if (_backFacePropBlock == null)
+            {
+                _backFacePropBlock = new MaterialPropertyBlock();
+            }
 			InitializeCard(cardData);
 		}
 	}
