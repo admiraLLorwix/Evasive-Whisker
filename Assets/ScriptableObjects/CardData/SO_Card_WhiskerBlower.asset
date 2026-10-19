@@ -15,8 +15,8 @@ MonoBehaviour:
   cardID: 
   cardName: The Whisker-Blower
   cardType: 3
-  cardIllustration: {fileID: 0}
-  cardFrame: {fileID: 0}
+  frontFace: {fileID: 2800000, guid: a192e4d70333ba94b9413f630d1f96d9, type: 3}
+  backFace: {fileID: 2800000, guid: a46bc39599a5a18468c9e759e6753eb2, type: 3}
   cardUseCase: 
   effectDescription: 
   canBeDiscarded: 0

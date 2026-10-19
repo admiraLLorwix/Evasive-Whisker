@@ -12,16 +12,20 @@ public class CardController : MonoBehaviour
     [Header("Visual Settings")]
     [SerializeField] private Texture2D frameMask;
     [SerializeField] private Color glintColor;
+    [SerializeField] private float glintStrength;
     [SerializeField] private float moveSpeedX;
     [SerializeField] private float moveSpeedY;
+    [SerializeField] private float scale;
 
 	// int hash calculated once for pointing to specific _BaseMap var in memory
 	private static readonly int BaseMapPropId = Shader.PropertyToID("_BaseMap");
 	private static readonly int FrameMaskPropId = Shader.PropertyToID("_FrameMask");
     private static readonly int GlintColorPropId = Shader.PropertyToID("_GlintColor");
+	private static readonly int GlintStrengthPropId = Shader.PropertyToID("_GlintStrength");
 	private static readonly int MoveSpeedXPropId = Shader.PropertyToID("_MoveSpeedX");
 	private static readonly int MoveSpeedYPropId = Shader.PropertyToID("_MoveSpeedY");
-    private MaterialPropertyBlock _frontFacePropBlock;
+	private static readonly int ScalePropId = Shader.PropertyToID("_Scale");
+	private MaterialPropertyBlock _frontFacePropBlock;
     //private MaterialPropertyBlock _frameMaskPropBlock;
     //private MaterialPropertyBlock _glintColorPropBlock;
     private MaterialPropertyBlock _backFacePropBlock;
@@ -54,8 +58,10 @@ public class CardController : MonoBehaviour
         _frontFacePropBlock.SetTexture(BaseMapPropId, cardData.frontFace);
         _frontFacePropBlock.SetTexture(FrameMaskPropId, frameMask);
         _frontFacePropBlock.SetColor(GlintColorPropId, glintColor);
+        _frontFacePropBlock.SetFloat(GlintStrengthPropId, glintStrength);
         _frontFacePropBlock.SetFloat(MoveSpeedXPropId, moveSpeedX);
         _frontFacePropBlock.SetFloat(MoveSpeedYPropId, moveSpeedY);
+        _frontFacePropBlock.SetFloat(ScalePropId, scale);
         frontFaceRenderer.SetPropertyBlock(_frontFacePropBlock);
 
         backFaceRenderer.GetPropertyBlock(_backFacePropBlock);

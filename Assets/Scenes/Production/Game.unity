@@ -20,12 +20,12 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
   m_AmbientMode: 3
-  m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
+  m_SubtractiveShadowColor: {r: 0, g: 0, b: 0, a: 1}
   m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
@@ -35,9 +35,9 @@ RenderSettings:
   m_DefaultReflectionMode: 0
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
-  m_ReflectionIntensity: 1
+  m_ReflectionIntensity: 0
   m_CustomReflection: {fileID: 0}
-  m_Sun: {fileID: 0}
+  m_Sun: {fileID: 1410216896}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -172,32 +172,40 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
+      propertyPath: scale
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
       propertyPath: cardData
       value: 
-      objectReference: {fileID: 11400000, guid: 4b78421d74b19f949be99785ce7ee002, type: 2}
+      objectReference: {fileID: 11400000, guid: 77c6805f7a870834fa8ced3f92f0e0ed, type: 2}
     - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
       propertyPath: frameMask
       value: 
       objectReference: {fileID: 2800000, guid: 2e3d7bf1cd7d7b444909f3aa3cc17949, type: 3}
     - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
       propertyPath: moveSpeedX
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
-      propertyPath: moveSpeedY
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
-      propertyPath: glintColor.b
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
+      propertyPath: moveSpeedY
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
+      propertyPath: glintColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
       propertyPath: glintColor.g
-      value: 0.2971698
+      value: 0.8612033
       objectReference: {fileID: 0}
     - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
       propertyPath: glintColor.r
-      value: 0.63820684
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
+      propertyPath: glintStrength
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6235949188213844947, guid: 4c6a949abc9e0194c818f4adbd674b9e, type: 3}
       propertyPath: backFaceRenderer
@@ -348,7 +356,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 1
-  m_Lightmapping: 4
+  m_Lightmapping: 1
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -371,13 +379,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1410216895}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.96275526, y: -0.020953218, z: 0.25796944, w: 0.07819848}
-  m_LocalPosition: {x: 0, y: 3, z: 0}
+  m_LocalRotation: {x: 0.92387956, y: 0, z: 0, w: 0.38268343}
+  m_LocalPosition: {x: 0, y: 1.28, z: 1.72}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 170.713, y: -30, z: 0}
+  m_LocalEulerAnglesHint: {x: 135, y: 0, z: 0}
 --- !u!114 &1410216898
 MonoBehaviour:
   m_ObjectHideFlags: 0
