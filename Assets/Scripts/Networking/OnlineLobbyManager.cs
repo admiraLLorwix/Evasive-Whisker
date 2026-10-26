@@ -10,6 +10,7 @@ using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
+using EvasiveWhisker.UI;
 
 public class OnlineLobbyManager : MonoBehaviour
 {
@@ -274,16 +275,26 @@ public class OnlineLobbyManager : MonoBehaviour
 
         try
         {
-            string playerId = AuthenticationService.Instance.PlayerId;
+            string myPlayerId = AuthenticationService.Instance.PlayerId;
 
 
-            if (IsHost())
+            if (IsHost() && CurrentLobby.Players.Count > 1)
             {
-                await LobbyService.Instance.DeleteLobbyAsync(CurrentLobby.Id);
+                Player nextHost = CurrentLobby.Players[1];
+                Debug.Log($"[Lobby] Migrating host to: {nextHost.Id}");
+                await LobbyService.Instance.UpdateLobbyAsync(CurrentLobby.Id, new UpdateLobbyOptions
+                {
+                    HostId = nextHost.Id
+                });
+                await LobbyService.Instance.RemovePlayerAsync(CurrentLobby.Id, myPlayerId);
             }
             else
             {
-                await LobbyService.Instance.RemovePlayerAsync(CurrentLobby.Id, playerId);
+                if (IsHost()) { await LobbyService.Instance.DeleteLobbyAsync(CurrentLobby.Id); }
+                else
+                {
+                    await LobbyService.Instance.RemovePlayerAsync(CurrentLobby.Id, myPlayerId);
+                }
             }
         }
         catch (Exception e)
@@ -301,13 +312,23 @@ public class OnlineLobbyManager : MonoBehaviour
         }
     }
 
-    public async void KickPlayer(string playerId)
+    public async Task KickPlayer(string ugsPlayerId)
     {
         if (!IsHost() || CurrentLobby == null) return;
 
+        if (ugsPlayerId == AuthenticationService.Instance.PlayerId)
+        {
+            Debug.LogWarning("[Lobby] Host cannot kick themselves");
+            return;
+        }
+
         try
         {
-            await LobbyService.Instance.RemovePlayerAsync(CurrentLobby.Id, playerId);
+            await LobbyService.Instance.RemovePlayerAsync(CurrentLobby.Id, ugsPlayerId);
+            Debug.Log($"[Lobby] Kicked player ({ugsPlayerId})");
+
+            CurrentLobby = await LobbyService.Instance.GetLobbyAsync(CurrentLobby.Id);
+            OnLobbyUpdated?.Invoke(CurrentLobby);
         }
         catch (Exception e)
         {
@@ -373,15 +394,25 @@ public class OnlineLobbyManager : MonoBehaviour
                     CurrentLobby = await LobbyService.Instance.GetLobbyAsync(CurrentLobby.Id);
                     OnLobbyUpdated?.Invoke(CurrentLobby);
 
-                    bool stillInLobby = CurrentLobby.Players.Exists(p => p.Id == AuthenticationService.Instance.PlayerId);
+                    string myId = AuthenticationService.Instance.PlayerId;
+
+                    bool stillInLobby = CurrentLobby.Players.Exists(p => p.Id == myId);
                     if (!stillInLobby)
                     {
-                        LeaveLobby();
+                        HandleKickedOrHostClosed();
+                        return;
+                    }
+
+                    if(CurrentLobby.HostId == myId && !NetworkManager.Singleton.IsHost)
+                    {
+                        Debug.Log("[Lobby] You're the new host");
+                        await TakeOverAsHostAsync();
                     }
                 }
                 catch (LobbyServiceException ex) when (ex.Reason == LobbyExceptionReason.LobbyNotFound)
                 {
-                    LeaveLobby();
+                    //LeaveLobby();
+                    HandleKickedOrHostClosed();
                 }
                 catch (Exception e)
                 {
@@ -395,4 +426,56 @@ public class OnlineLobbyManager : MonoBehaviour
         }
     }
 
+    private async Task TakeOverAsHostAsync()
+    {
+        try
+        {
+            if (NetworkManager.Singleton.IsClient)
+            {
+                NetworkManager.Singleton.Shutdown();
+            }
+
+            Allocation allocation = await RelayService.Instance.CreateAllocationAsync(CurrentLobby.MaxPlayers - 1);
+            RelayJoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+
+            var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+            transport.SetHostRelayData(
+                allocation.RelayServer.IpV4,
+                (ushort)allocation.RelayServer.Port,
+                allocation.AllocationIdBytes,
+                allocation.Key,
+                allocation.ConnectionData,
+                false);
+
+            await LobbyService.Instance.UpdateLobbyAsync(CurrentLobby.Id, new UpdateLobbyOptions
+            {
+                Data = new Dictionary<string, DataObject>
+                {
+                    {"RelayCode", new DataObject(DataObject.VisibilityOptions.Public, RelayJoinCode) }
+                }
+            });
+
+            NetworkManager.Singleton.StartHost();
+            Debug.Log($"[Lobby] Took over lobby. New Relay Code: {RelayJoinCode}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[Lobby] Failed to takeover: {e.Message}");
+        }
+    }
+
+    private void HandleKickedOrHostClosed()
+    {
+        if(NetworkManager.Singleton != null && (NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsServer))
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
+        CurrentLobby = null;
+        OnLobbyLeft?.Invoke();
+
+        if(UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowPlayScreen();
+        }
+    }
 }
