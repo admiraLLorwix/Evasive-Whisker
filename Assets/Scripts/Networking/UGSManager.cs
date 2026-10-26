@@ -19,7 +19,17 @@ public class UGSManager : MonoBehaviour
 
         try
         {
-            await UnityServices.InitializeAsync();
+            if (UnityServices.State != ServicesInitializationState.Initialized)
+            {
+                InitializationOptions options = new InitializationOptions();
+
+#if UNITY_EDITOR
+                string uniqueProfile = $"Player_{System.Diagnostics.Process.GetCurrentProcess().Id}_{UnityEngine.Random.Range(1000, 9999)}";
+                options.SetProfile(uniqueProfile);
+#endif
+                await UnityServices.InitializeAsync();
+            }
+
             if (!AuthenticationService.Instance.IsSignedIn)
             {
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();

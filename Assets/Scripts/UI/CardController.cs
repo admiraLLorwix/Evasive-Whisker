@@ -53,6 +53,9 @@ public class CardController : MonoBehaviour
 
     public void InitializeCard(Card card)
     {
+        if (card == null) return;
+        cardData = card;
+
         // visuals related code here
         // whatever visuals that depend on the properties of the current card
         if (frontFaceRenderer == null
