@@ -87,20 +87,35 @@ public class PlayerIslandUI : MonoBehaviour
     {
         if (activeAbilityCardSlot == null) return;
 
-        if (abilityCard != null && abilityCard.frontFace != null)
+        if (abilityCard != null)
         {
-            Sprite abilitySprite = Sprite.Create(
-                abilityCard.frontFace,
-                new Rect(0, 0, abilityCard.frontFace.width, abilityCard.frontFace.height),
-                new Vector2(0.5f, 0.5f)
-            );
-            activeAbilityCardSlot.sprite = abilitySprite;
-            activeAbilityCardSlot.gameObject.SetActive(true);
+            //Sprite abilitySprite = Sprite.Create(
+            //    abilityCard.frontFace,
+            //    new Rect(0, 0, abilityCard.frontFace.width, abilityCard.frontFace.height),
+            //    new Vector2(0.5f, 0.5f)
+            //);
+
+            Sprite abilitySprite = CardDatabase.Instance != null
+                ? CardDatabase.Instance.GetCardSprite(abilityCard.cardID)
+                : null;
+
+            if (abilitySprite == null && abilityCard.frontFaceFrame != null)
+            {
+                abilitySprite = Sprite.Create(
+                    abilityCard.frontFaceFrame,
+                    new Rect(0, 0, abilityCard.frontFaceFrame.width, abilityCard.frontFaceFrame.height),
+                    new Vector2(0.5f, 0.5f)
+                );
+            }
+
+            if (abilitySprite != null)
+            {
+                activeAbilityCardSlot.sprite = abilitySprite;
+                activeAbilityCardSlot.gameObject.SetActive(true);
+                return;
+            }
         }
-        else
-        {
-            ClearActiveAbility();
-        }
+        ClearActiveAbility();
     }
 
     public void ClearActiveAbility()

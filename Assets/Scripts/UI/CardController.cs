@@ -51,12 +51,27 @@ public class CardController : MonoBehaviour
 
     public void InitializeCard(Card card)
     {
+        if (card == null) return;
+        cardData = card;
+
         // visuals related code here
         // whatever visuals that depend on the properties of the current card
-        if (frontFaceRenderer == null
-            || backFaceRenderer == null
-            || cardBodyRenderer == null
-            || characterArtRenderer == null) return;
+
+        if (_frontFacePropBlock == null)
+        {
+            _frontFacePropBlock = new MaterialPropertyBlock();
+        }
+
+        frontFaceRenderer.GetPropertyBlock(_frontFacePropBlock);
+
+        if (cardData.frontFaceFrame != null)
+        {
+            _frontFacePropBlock.SetTexture(BaseMapPropId, cardData.frontFaceFrame);
+        }
+        //if (frontFaceRenderer == null
+        //    || backFaceRenderer == null
+        //    || cardBodyRenderer == null
+        //    || characterArtRenderer == null) return;
 
 		frontFaceRenderer.GetPropertyBlock(_frontFacePropBlock);
         _frontFacePropBlock.SetTexture(BaseMapPropId, cardData.frontFaceFrame);
