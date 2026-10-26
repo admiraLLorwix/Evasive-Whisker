@@ -15,8 +15,9 @@ MonoBehaviour:
   cardID: 
   cardName: Bombastic Cat Eyes
   cardType: 0
-  frontFace: {fileID: 2800000, guid: c6adf592347f42f409aaf491935c94ff, type: 3}
-  backFace: {fileID: 2800000, guid: d1498c5fe9ee9a045ba61de4b33dca51, type: 3}
+  frontFaceFrame: {fileID: 2800000, guid: c929005b7a97b684bb5bef439ea31477, type: 3}
+  backFace: {fileID: 2800000, guid: 15123414dcd60e24ba0dadc9176c5407, type: 3}
+  characterArt: {fileID: 2800000, guid: 6d2a4547303711941ac301547bfcf5cd, type: 3}
   cardUseCase: 
   effectDescription: 
   canBeDiscarded: 1

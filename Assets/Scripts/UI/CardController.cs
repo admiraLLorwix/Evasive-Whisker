@@ -8,6 +8,7 @@ public class CardController : MonoBehaviour
     [SerializeField] private MeshRenderer frontFaceRenderer;
     [SerializeField] private MeshRenderer backFaceRenderer;
     [SerializeField] private MeshRenderer cardBodyRenderer;
+    [SerializeField] private MeshRenderer characterArtRenderer;
 
     [Header("Visual Settings")]
     [SerializeField] private Texture2D frameMask;
@@ -26,13 +27,13 @@ public class CardController : MonoBehaviour
 	private static readonly int MoveSpeedYPropId = Shader.PropertyToID("_MoveSpeedY");
 	private static readonly int ScalePropId = Shader.PropertyToID("_Scale");
 	private MaterialPropertyBlock _frontFacePropBlock;
-    //private MaterialPropertyBlock _frameMaskPropBlock;
-    //private MaterialPropertyBlock _glintColorPropBlock;
+	private MaterialPropertyBlock _characterArtPropBlock;
     private MaterialPropertyBlock _backFacePropBlock;
 
     void Awake()
     {
         _frontFacePropBlock = new MaterialPropertyBlock();
+        _characterArtPropBlock = new MaterialPropertyBlock();
         _backFacePropBlock = new MaterialPropertyBlock();
     }
 
@@ -52,10 +53,13 @@ public class CardController : MonoBehaviour
     {
         // visuals related code here
         // whatever visuals that depend on the properties of the current card
-        if (frontFaceRenderer == null || backFaceRenderer == null || cardBodyRenderer == null) return;
+        if (frontFaceRenderer == null
+            || backFaceRenderer == null
+            || cardBodyRenderer == null
+            || characterArtRenderer == null) return;
 
-        frontFaceRenderer.GetPropertyBlock(_frontFacePropBlock);
-        _frontFacePropBlock.SetTexture(BaseMapPropId, cardData.frontFace);
+		frontFaceRenderer.GetPropertyBlock(_frontFacePropBlock);
+        _frontFacePropBlock.SetTexture(BaseMapPropId, cardData.frontFaceFrame);
         _frontFacePropBlock.SetTexture(FrameMaskPropId, frameMask);
         _frontFacePropBlock.SetColor(GlintColorPropId, glintColor);
         _frontFacePropBlock.SetFloat(GlintStrengthPropId, glintStrength);
@@ -64,7 +68,10 @@ public class CardController : MonoBehaviour
         _frontFacePropBlock.SetFloat(ScalePropId, scale);
         frontFaceRenderer.SetPropertyBlock(_frontFacePropBlock);
 
-        backFaceRenderer.GetPropertyBlock(_backFacePropBlock);
+		characterArtRenderer.GetPropertyBlock(_characterArtPropBlock);
+		_characterArtPropBlock.SetTexture(BaseMapPropId, cardData.characterArt);
+
+		backFaceRenderer.GetPropertyBlock(_backFacePropBlock);
         _backFacePropBlock.SetTexture(BaseMapPropId, cardData.backFace);
         backFaceRenderer.SetPropertyBlock(_backFacePropBlock);
 
@@ -78,7 +85,11 @@ public class CardController : MonoBehaviour
 			{
 				_frontFacePropBlock = new MaterialPropertyBlock();
 			}
-            if (_backFacePropBlock == null)
+			if (_frontFacePropBlock == null)
+			{
+				_characterArtPropBlock = new MaterialPropertyBlock();
+			}
+			if (_backFacePropBlock == null)
             {
                 _backFacePropBlock = new MaterialPropertyBlock();
             }

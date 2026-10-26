@@ -15,8 +15,9 @@ MonoBehaviour:
   cardID: 
   cardName: Decoy Mokang
   cardType: 5
-  cardIllustration: {fileID: 0}
-  cardFrame: {fileID: 0}
+  frontFaceFrame: {fileID: 0}
+  backFace: {fileID: 2800000, guid: 15123414dcd60e24ba0dadc9176c5407, type: 3}
+  characterArt: {fileID: 2800000, guid: 6d2a4547303711941ac301547bfcf5cd, type: 3}
   cardUseCase: 
   effectDescription: 
   canBeDiscarded: 1
