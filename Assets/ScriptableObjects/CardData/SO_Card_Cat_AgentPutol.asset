@@ -15,8 +15,8 @@ MonoBehaviour:
   cardID: 
   cardName: Agent Putol
   cardType: 5
-  frontFaceFrame: {fileID: 2800000, guid: 835ac89a17fcce04888475d280d0e603, type: 3}
-  backFace: {fileID: 2800000, guid: 15123414dcd60e24ba0dadc9176c5407, type: 3}
+  frontfaceFrame: {fileID: 2800000, guid: 835ac89a17fcce04888475d280d0e603, type: 3}
+  backfaceForeground: {fileID: 2800000, guid: bd9920eafd0ea3b47b4ddda1fdf12832, type: 3}
   characterArt: {fileID: 2800000, guid: 6e2da13b74aaad9488fe40e6862df5ce, type: 3}
   cardUseCase: 
   effectDescription: 

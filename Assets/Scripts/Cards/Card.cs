@@ -32,8 +32,8 @@ namespace EvasiveWhisker.Cards
 
 
         [Header("Assets")]
-        public Texture2D frontFaceFrame;
-        public Texture2D backFace;
+        public Texture2D frontfaceFrame;
+        //public Texture2D backfaceForeground;
         public Texture2D characterArt;
 
 

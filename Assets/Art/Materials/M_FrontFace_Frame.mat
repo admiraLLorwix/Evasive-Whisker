@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: M_FrontFace_Frame
+  m_Name: M_Frontface_Frame
   m_Shader: {fileID: -6465566751694194690, guid: f6a4e16b58d97194182cd2815be165bd, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -25,7 +25,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: a324f538c860d074486a9d2954b4c892, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
@@ -49,7 +49,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FrameMask:
-        m_Texture: {fileID: 2800000, guid: 2e3d7bf1cd7d7b444909f3aa3cc17949, type: 3}
+        m_Texture: {fileID: 2800000, guid: f229a274632d16444af11e538f9774d1, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Frame_Mask:
@@ -137,7 +137,7 @@ Material:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _GlintColor: {r: 0.563876, g: 0.18396229, b: 1, a: 0}
+    - _GlintColor: {r: 2.2047896, g: 0, b: 5.992157, a: 0}
     - _Glint_Color: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []

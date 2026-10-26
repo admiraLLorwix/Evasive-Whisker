@@ -97,13 +97,15 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
-    - _AlphaStrength: 1.42
+    - _AlphaStrength: -5.33
     - _AlphaToMask: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
+    - _CloudColorMoveX: 0.1
+    - _CloudColorMoveY: 0
     - _CloudsFactor: 3
     - _ColorMoveX: 0
     - _ColorMoveY: 0
@@ -114,24 +116,27 @@ Material:
     - _DstBlend: 0
     - _DstBlendAlpha: 0
     - _EnvironmentReflections: 1
+    - _Factor: 3
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
+    - _HeavenSize: 0.6
     - _Metallic: 0
-    - _MorphSpeed: 2.5
+    - _MorphSpeed: 3
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _Power: 1
     - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _Scale: 50
+    - _Scale: 25
     - _Scale_1: 75
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
+    - _StarfieldScale: 100
     - _Strength: 5
     - _Surface: 0
     - _WorkflowMode: 1
