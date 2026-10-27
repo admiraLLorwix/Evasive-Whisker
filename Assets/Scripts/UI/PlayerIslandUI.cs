@@ -99,11 +99,11 @@ public class PlayerIslandUI : MonoBehaviour
                 ? CardDatabase.Instance.GetCardSprite(abilityCard.cardID)
                 : null;
 
-            if (abilitySprite == null && abilityCard.frontFaceFrame != null)
+            if (abilitySprite == null && abilityCard.frontfaceFrame != null)
             {
                 abilitySprite = Sprite.Create(
-                    abilityCard.frontFaceFrame,
-                    new Rect(0, 0, abilityCard.frontFaceFrame.width, abilityCard.frontFaceFrame.height),
+                    abilityCard.frontfaceFrame,
+                    new Rect(0, 0, abilityCard.frontfaceFrame.width, abilityCard.frontfaceFrame.height),
                     new Vector2(0.5f, 0.5f)
                 );
             }
