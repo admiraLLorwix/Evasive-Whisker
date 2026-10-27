@@ -5,10 +5,11 @@ using EvasiveWhisker.Cards;
 
 public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    public NetworkCard CardData { get; private set; }
+    public NetworkCard NetworkCard { get; private set; }
     public bool IsDraggable { get; set; } = false;
 
-    private RectTransform rectTransform;
+    private Transform parent;
+    private RectTransform rectTransform;  // originally `rectTransform`
     private Canvas canvas;
     private CanvasGroup canvasGroup;
     private Vector2 originalPosition;
@@ -17,6 +18,7 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     private void Awake()
     {
+        parent = GetComponent<Transform>();
         rectTransform = GetComponent<RectTransform>();
         canvas = GetComponentInParent<Canvas>();
         canvasGroup = gameObject.AddComponent<CanvasGroup>();
@@ -24,7 +26,7 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     public void Initialize(NetworkCard card)
     {
-        CardData = card;
+        NetworkCard = card;
         IsDraggable = (card.Type == CardType.Ability);
     }
 
@@ -78,16 +80,16 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
         if (transform.position.y > handYThreshold)
         {
-            Debug.Log($"<color=green>[Card Play Success] Dropped {CardData.CardId}</color>");
+            Debug.Log($"<color=green>[Card Play Success] Dropped {NetworkCard.CardId}</color>");
 
-            PlayerHandController.Instance.RemoveCard(CardData);
+            PlayerHandController.Instance.RemoveCard(NetworkCard);
 
             if (TurnActionUI.Instance != null)
             {
                 TurnActionUI.Instance.HideAllActions();
             }
 
-            GameManager.Instance.SubmitPlayAbilityCardServerRpc(CardData);
+            GameManager.Instance.SubmitPlayAbilityCardServerRpc(NetworkCard);
 
             Destroy(gameObject);
         }

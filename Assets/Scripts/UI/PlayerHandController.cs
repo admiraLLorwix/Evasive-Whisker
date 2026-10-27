@@ -14,9 +14,9 @@ public class PlayerHandController : MonoBehaviour
     [SerializeField] private GameObject handCardPrefab;
 
     [Header("detective slots")]
-    [SerializeField] private Image myDetectiveSlot;
+    [SerializeField] private Transform detectiveSlotContainer;  // originally `myDetectiveSlot`; empty containing the prefab
     [SerializeField] private TMP_Text myDetectiveNameText;
-    [SerializeField] private Image myActiveAbilitySlot;
+    [SerializeField] private Transform abilitySlotContainer;  // originally `myActiveAbilitySlot`; empty container for ability slot
 
     private bool isPlayAbilityActive = false;
     private List<NetworkCard> currentCards = new List<NetworkCard>();
@@ -24,9 +24,9 @@ public class PlayerHandController : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        if (myActiveAbilitySlot != null)
+        if (abilitySlotContainer != null)
         {
-            myActiveAbilitySlot.gameObject.SetActive(false);
+            abilitySlotContainer.gameObject.SetActive(false);
         }
     }
 
@@ -36,10 +36,15 @@ public class PlayerHandController : MonoBehaviour
             ? CardDatabase.Instance.GetLocalHandCardSprite(catType)
             : null;
 
-        if (sprite != null && myDetectiveSlot != null)
+        if (sprite != null && detectiveSlotContainer != null)
         {
-            myDetectiveSlot.sprite = sprite;
-            myDetectiveSlot.gameObject.SetActive(true);
+            GameObject cardPrefab = detectiveSlotContainer.GetComponent<GameObject>();
+            CardController prefabController = cardPrefab.GetComponent<CardController>();
+
+            // TODO: dapat Card object yung mapapasa sa InitializeCard instead of enum nung detectivecattype
+            //prefabController.InitializeCard(catType);
+            //detectiveSlotContainer.sprite = sprite;
+            detectiveSlotContainer.gameObject.SetActive(true);
         }
 
         if (myDetectiveNameText != null)
@@ -58,51 +63,17 @@ public class PlayerHandController : MonoBehaviour
     {
         if (handCardContainer == null || handCardPrefab == null) yield break;
 
+        // clean reset of hand card container
         foreach (Transform child in handCardContainer)
         {
             Destroy(child.gameObject);
         }
 
+        // assignment of cards
         for (int i = 0; i < cards.Length; i++)
         {
             NetworkCard netCard = cards[i];
-            GameObject cardObj = Instantiate(handCardPrefab, handCardContainer);
-
-            Sprite cardSprite = CardDatabase.Instance != null
-                ? CardDatabase.Instance.GetCardSprite(netCard.CardId)
-                : null;
-
-            Image img = cardObj.GetComponentInChildren<Image>();
-            if (img != null)
-            {
-                if (cardSprite != null)
-                {
-                    img.sprite = cardSprite;
-                    img.color = Color.white;
-                }
-                else
-                {
-                    img.color = (netCard.Type == CardType.WhiskerBlower) ? Color.yellow : Color.cyan;
-                }
-            }
-
-            TMP_Text label = cardObj.GetComponentInChildren<TMP_Text>();
-            if (label != null)
-            {
-                label.text = $"{netCard.CardId}\n({netCard.Type})";
-            }
-
-            Button btn = cardObj.GetComponentInChildren<Button>();
-            if (btn != null)
-            {
-                btn.onClick.RemoveAllListeners();
-                btn.onClick.AddListener(() => OnCardClicked(netCard));
-            }
-
-            var dragHandler = cardObj.GetComponent<CardDragHandler>();
-            if (dragHandler == null) dragHandler = cardObj.AddComponent<CardDragHandler>();
-            dragHandler.Initialize(netCard);
-
+            AddCard(netCard);
             UpdateHandFanLayout();
 
             yield return new WaitForSeconds(0.2f);
@@ -114,32 +85,38 @@ public class PlayerHandController : MonoBehaviour
         currentCards.Add(card);
 
         GameObject cardObj = Instantiate(handCardPrefab, handCardContainer);
+		Card cardData = CardDatabase.Instance != null
+				? CardDatabase.Instance.GetCard(card.CardId)
+				: null;
+		CardController controller = cardObj.GetComponent<CardController>();
 
-        Sprite cardSprite = CardDatabase.Instance != null
-            ? CardDatabase.Instance.GetCardSprite(card.CardId)
-            : null;
+		if (cardData != null) controller.InitializeCard(cardData);
 
-        Image img = cardObj.GetComponentInChildren<Image>();
-        if (img != null)
-        {
-            if (cardSprite != null)
-            {
-                img.sprite = cardSprite;
-                img.color = Color.white;
-            }
-            else
-            {
-                img.color = (card.Type == CardType.WhiskerBlower) ? Color.yellow : Color.cyan;
-            }
-        }
+		//Sprite cardSprite = CardDatabase.Instance != null
+		//    ? CardDatabase.Instance.GetCardSprite(card.CardId)
+		//    : null;
 
-        TMP_Text label = cardObj.GetComponentInChildren<TMP_Text>();
-        if (label != null)
-        {
-            label.text = $"{card.CardId}\n({card.Type})";
-        }
+		//Image img = cardObj.GetComponentInChildren<Image>();
+		//if (img != null)
+		//{
+		//    if (cardSprite != null)
+		//    {
+		//        img.sprite = cardSprite;
+		//        img.color = Color.white;
+		//    }
+		//    else
+		//    {
+		//        img.color = (card.Type == CardType.WhiskerBlower) ? Color.yellow : Color.cyan;
+		//    }
+		//}
 
-        Button btn = cardObj.GetComponentInChildren<Button>();
+		//TMP_Text label = cardObj.GetComponentInChildren<TMP_Text>();
+		//if (label != null)
+		//{
+		//    label.text = $"{card.CardId}\n({card.Type})";
+		//}
+
+		Button btn = cardObj.GetComponentInChildren<Button>();
         if (btn != null)
         {
             btn.onClick.RemoveAllListeners();
@@ -149,8 +126,6 @@ public class PlayerHandController : MonoBehaviour
         var dragHandler = cardObj.GetComponent<CardDragHandler>();
         if (dragHandler == null) dragHandler = cardObj.AddComponent<CardDragHandler>();
         dragHandler.Initialize(card);
-
-        UpdateHandFanLayout();
     }
 
     public void RemoveCard(NetworkCard card)
@@ -160,7 +135,7 @@ public class PlayerHandController : MonoBehaviour
         for (int i = 0; i < handCardContainer.childCount; i++)
         {
             var dragHandler = handCardContainer.GetChild(i).GetComponent<CardDragHandler>();
-            if (dragHandler != null && dragHandler.CardData.Equals(card))
+            if (dragHandler != null && dragHandler.NetworkCard.Equals(card))
             {
                 Destroy(handCardContainer.GetChild(i).gameObject);
                 break;

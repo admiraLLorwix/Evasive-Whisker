@@ -12,12 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5cf9bacf92e9ffd4096f171badc89762, type: 3}
   m_Name: SO_Card_Ability_NineLives
   m_EditorClassIdentifier: Assembly-CSharp::ClowderStudio.EvasiveWhisker.Card
-  cardID: 
+  cardID: NineLives
   cardName: Nine Lives
   cardType: 0
-  frontFaceFrame: {fileID: 0}
-  backFace: {fileID: 2800000, guid: 15123414dcd60e24ba0dadc9176c5407, type: 3}
-  characterArt: {fileID: 2800000, guid: 6d2a4547303711941ac301547bfcf5cd, type: 3}
+  frontfaceFrame: {fileID: 2800000, guid: 835ac89a17fcce04888475d280d0e603, type: 3}
+  characterArt: {fileID: 2800000, guid: 6e2da13b74aaad9488fe40e6862df5ce, type: 3}
   cardUseCase: 
   effectDescription: 
   canBeDiscarded: 1

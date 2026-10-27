@@ -8,14 +8,14 @@ public class BoardLayoutManager : MonoBehaviour
 
     [Header("pos")]
     [SerializeField] private Transform centerIsland;
-    [SerializeField] private Transform localPlayerSlot;
+    [SerializeField] private Transform localPlayerZone;
     [SerializeField] private Transform[] opponentIslandAnchorPoints;
 
-    [Header("assets")]
+    [Header("Assets")]
     [SerializeField] private GameObject opponentIslandPrefab;
-    [SerializeField] private Sprite[] islandSprites;
+    [SerializeField] private Texture2D[] islandImages;
 
-    private Dictionary<ulong, PlayerIslandUI> spawnedOpponentIslands = new Dictionary<ulong, PlayerIslandUI>();
+    private Dictionary<ulong, OpponentController> spawnedOpponentIslands = new Dictionary<ulong, OpponentController>();
 
     private void Awake()
     {
@@ -43,34 +43,34 @@ public class BoardLayoutManager : MonoBehaviour
 
         for (int i = 0; i < orderedOpponents.Count; i++)
         {
-            if (opponentIslandAnchorPoints == null || i >= opponentIslandAnchorPoints.Length || opponentIslandAnchorPoints[i] == null)
-            {
-                continue;
-            }
+            if (opponentIslandAnchorPoints == null
+                || i >= opponentIslandAnchorPoints.Length
+                || opponentIslandAnchorPoints[i] == null) continue;
 
             ulong opponentId = orderedOpponents[i];
             Transform anchor = opponentIslandAnchorPoints[i];
 
+            // instantiates prefab based on opponentIslandPrefab specified in board manager
             GameObject islandObj = Instantiate(opponentIslandPrefab, anchor.position, anchor.rotation, anchor);
-            PlayerIslandUI islandUI = islandObj.GetComponent<PlayerIslandUI>();
+            OpponentController islandUI = islandObj.GetComponent<OpponentController>();
 
             if (islandUI == null) continue;
 
             spawnedOpponentIslands[opponentId] = islandUI;
 
-            Sprite islandSprite = (islandSprites != null && islandSprites.Length > 0)
-                ? islandSprites[i % islandSprites.Length]
+            Texture2D islandImage = (islandImages != null && islandImages.Length > 0)
+                ? islandImages[i % islandImages.Length]
                 : null;
 
-            string realName = (playerNamesMap != null && playerNamesMap.ContainsKey(opponentId))
+            string playerName = (playerNamesMap != null && playerNamesMap.ContainsKey(opponentId))
                 ? playerNamesMap[opponentId]
                 : $"Detective #{opponentId}";
 
-            islandUI.Initialize(opponentId, realName, islandSprite);
+            islandUI.Initialize(opponentId, playerName, islandImage);
         }
     }
 
-    public PlayerIslandUI GetOpponentIsland(ulong clientId)
+    public OpponentController GetOpponentIsland(ulong clientId)
     {
         return spawnedOpponentIslands.TryGetValue(clientId, out var island) ? island : null;
     }

@@ -12,11 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5cf9bacf92e9ffd4096f171badc89762, type: 3}
   m_Name: SO_Card_Cat_AgentPutol
   m_EditorClassIdentifier: Assembly-CSharp::EvasiveWhisker.Cards.Card
-  cardID: 
+  cardID: AgentPutol
   cardName: Agent Putol
   cardType: 5
   frontfaceFrame: {fileID: 2800000, guid: 835ac89a17fcce04888475d280d0e603, type: 3}
-  backfaceForeground: {fileID: 2800000, guid: bd9920eafd0ea3b47b4ddda1fdf12832, type: 3}
   characterArt: {fileID: 2800000, guid: 6e2da13b74aaad9488fe40e6862df5ce, type: 3}
   cardUseCase: 
   effectDescription: 

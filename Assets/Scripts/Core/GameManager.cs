@@ -26,7 +26,6 @@ public class GameManager : NetworkBehaviour
     public NetworkVariable<int> ActiveDraftIndex = new NetworkVariable<int>(0);
 
 
-
     private List<ulong> turnOrder = new List<ulong>();
 
     private List<ulong> draftOrder = new List<ulong>(); 
@@ -126,6 +125,7 @@ public class GameManager : NetworkBehaviour
             //namesDict[orderedPlayers[i]] = playerNames[i];
         }
 
+        // Visuals-related (setup islands)
         BoardLayoutManager.Instance.SetupPlayerIslands(new List<ulong>(orderedPlayers), namesDict);
     }
 
@@ -384,6 +384,7 @@ public class GameManager : NetworkBehaviour
         if (PlayerHandController.Instance != null)
         {
             PlayerHandController.Instance.AddCard(card);
+            PlayerHandController.Instance.UpdateHandFanLayout();
         }
     }
 
