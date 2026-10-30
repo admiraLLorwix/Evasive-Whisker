@@ -29,12 +29,6 @@ public struct NetworkCard : INetworkSerializable, IEquatable<NetworkCard>
         Type = type;
     }
 
-    public NetworkCard(int cardId, CardType type)
-    {
-        CardID = new FixedString32Bytes(cardId.ToString());
-        Type = type;
-    }
-
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
         serializer.SerializeValue(ref CardID);
@@ -45,6 +39,6 @@ public struct NetworkCard : INetworkSerializable, IEquatable<NetworkCard>
 
     public Card GetScriptableObject()
     {
-        return CardDatabase.Instance != null ? CardDatabase.Instance.GetCard(CardID.ToString()) : null;
+        return CardDatabase.Instance != null ? CardDatabase.Instance.GetCard(CardId) : null;
     }
 }

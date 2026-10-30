@@ -25,16 +25,13 @@ public class GameManager : NetworkBehaviour
     public NetworkVariable<ulong> ActiveTurnPlayerId = new NetworkVariable<ulong>();
     public NetworkVariable<int> ActiveDraftIndex = new NetworkVariable<int>(0);
 
-
-
     private List<ulong> turnOrder = new List<ulong>();
-
-    private List<ulong> draftOrder = new List<ulong>(); 
-
-
+    private List<ulong> draftOrder = new List<ulong>();
+    private Dictionary<ulong, string> playerNamesMap = new Dictionary<ulong, string>();
 
     private Dictionary<ulong, List<NetworkCard>> playerHands = new Dictionary<ulong, List<NetworkCard>>();
     private Dictionary<ulong, DetectiveCatType> chosenDetectives = new Dictionary<ulong, DetectiveCatType>();
+
     private List<DetectiveCatType> availableCatPool = new List<DetectiveCatType>
     {
         DetectiveCatType.HoarderMolly,
@@ -47,6 +44,12 @@ public class GameManager : NetworkBehaviour
         DetectiveCatType.DumpsterDiverShimo
     };
 
+    private Dictionary<ulong, NetworkCard?> activePlayerAbilities = new Dictionary<ulong, NetworkCard?>();
+    private Dictionary<ulong, int> abilityExpiryRounds = new Dictionary<ulong, int>();
+
+    private bool hasTakenActionThisTurn = false;
+
+
     private void Awake()
     {
         Instance = this;
@@ -56,7 +59,7 @@ public class GameManager : NetworkBehaviour
     {
         string myName = (OnlineLobbyManager.Instance != null && !string.IsNullOrEmpty(OnlineLobbyManager.Instance.LocalPlayerName))
             ? OnlineLobbyManager.Instance.LocalPlayerName
-            : $"Player {NetworkManager.Singleton.LocalClientId}";
+            : PlayerPrefs.GetString("PlayerName", $"Detective_{Random.Range(100, 999)}");
 
         SubmitPlayerNameServerRpc(myName);
 
@@ -65,30 +68,24 @@ public class GameManager : NetworkBehaviour
             StartCoroutine(InitializeGameRoutine());
         }
     }
-    private Dictionary<ulong, string> playerNamesMap = new Dictionary<ulong, string>();
 
     [Rpc(SendTo.Server)]
     public void SubmitPlayerNameServerRpc(string playerName, RpcParams rpcParams = default)
     {
         ulong senderId = rpcParams.Receive.SenderClientId;
+        if (string.IsNullOrWhiteSpace(playerName))
+        {
+            playerName = $"Detective_{senderId + 1}";
+        }
+
         playerNamesMap[senderId] = playerName;
+        Debug.Log($"[GameManager] Player #{senderId} as '{playerName}'");
     }
 
     private IEnumerator InitializeGameRoutine()
     {
-        //yield return new WaitForSeconds(1.0f); not returning player names, not enough time
-
-        int expectedPlayers = NetworkManager.Singleton.ConnectedClientsList.Count;
-        float timeout = 8.0f;
-
-        while (playerNamesMap.Count < expectedPlayers && timeout > 0f)
-        {
-            timeout -= 0.2f;
-            yield return new WaitForSeconds(0.2f);
-        }
-
-        Debug.Log($"[GameManager] player names received: {playerNamesMap.Count}/{expectedPlayers}");
-
+        Debug.Log("[GameManager] initializegameroutine");
+        yield return new WaitForSeconds(1.5f);
 
         turnOrder.Clear();
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
@@ -99,6 +96,8 @@ public class GameManager : NetworkBehaviour
         draftOrder = new List<ulong>(turnOrder);
         draftOrder.Reverse();
 
+        Debug.Log($"[GameManager] Connected players: {turnOrder.Count}");
+
         List<FixedString32Bytes> namesList = new List<FixedString32Bytes>();
         foreach (ulong id in turnOrder)
         {
@@ -108,25 +107,28 @@ public class GameManager : NetworkBehaviour
 
         SetupIslandsClientRpc(turnOrder.ToArray(), namesList.ToArray());
 
+        yield return new WaitForSeconds(0.5f);
+
         CurrentState.Value = GameState.DraftingDetectiveCats;
         ActiveDraftIndex.Value = 0;
+
+        Debug.Log("<color=cyan>[GameManager] starting Detective Cat Draft</color>");
         PromptNextDraftPlayer();
     }
 
-
-
-
     [ClientRpc]
-    private void SetupIslandsClientRpc(ulong[] orderedPlayers, Unity.Collections.FixedString32Bytes[] playerNames)
+    private void SetupIslandsClientRpc(ulong[] orderedPlayers, FixedString32Bytes[] playerNames)
     {
         Dictionary<ulong, string> namesDict = new Dictionary<ulong, string>();
         for (int i = 0; i < orderedPlayers.Length; i++)
         {
             namesDict[orderedPlayers[i]] = playerNames[i].ToString();
-            //namesDict[orderedPlayers[i]] = playerNames[i];
         }
 
-        BoardLayoutManager.Instance.SetupPlayerIslands(new List<ulong>(orderedPlayers), namesDict);
+        if (BoardLayoutManager.Instance != null)
+        {
+            BoardLayoutManager.Instance.SetupPlayerIslands(new List<ulong>(orderedPlayers), namesDict);
+        }
     }
 
 
@@ -135,23 +137,41 @@ public class GameManager : NetworkBehaviour
         if (ActiveDraftIndex.Value < draftOrder.Count)
         {
             ulong choosingPlayerId = draftOrder[ActiveDraftIndex.Value];
+            string chooserName = playerNamesMap.ContainsKey(choosingPlayerId) ? playerNamesMap[choosingPlayerId] : $"Player #{choosingPlayerId}";
 
-            NotifyPlayerToPickCatClientRpc(choosingPlayerId, availableCatPool.ToArray());
+            NotifyPlayerToPickCatClientRpc(choosingPlayerId, chooserName, availableCatPool.ToArray());
         }
         else
         {
+            CloseDraftPanelsClientRpc();
             StartCoroutine(DealStartingHandsRoutine());
         }
     }
 
-
     [ClientRpc]
-    private void NotifyPlayerToPickCatClientRpc(ulong targetPlayerId, DetectiveCatType[] remainingCats)
+    private void NotifyPlayerToPickCatClientRpc(ulong targetPlayerId, string chooserName, DetectiveCatType[] remainingCats)
     {
         bool isMe = NetworkManager.Singleton.LocalClientId == targetPlayerId;
-        if (isMe && DraftPanelController.Instance != null)
+
+        if (DraftPanelController.Instance != null)
         {
-            DraftPanelController.Instance.OpenDraftSelection(remainingCats);
+            if (isMe)
+            {
+                DraftPanelController.Instance.OpenDraftForChooser(remainingCats);
+            }
+            else
+            {
+                DraftPanelController.Instance.ShowWaitingForChooser(chooserName);
+            }
+        }
+    }
+
+    [ClientRpc]
+    private void CloseDraftPanelsClientRpc()
+    {
+        if (DraftPanelController.Instance != null)
+        {
+            DraftPanelController.Instance.HideAll();
         }
     }
 
@@ -160,10 +180,7 @@ public class GameManager : NetworkBehaviour
     {
         ulong senderId = rpcParams.Receive.SenderClientId;
         chosenDetectives[senderId] = catType;
-
         availableCatPool.Remove(catType);
-
-        Debug.Log($"[Draft] Player {senderId} picked {catType}. {availableCatPool.Count} cats remain");
 
         BroadcastDetectiveChosenClientRpc(senderId, catType);
 
@@ -171,6 +188,20 @@ public class GameManager : NetworkBehaviour
         PromptNextDraftPlayer();
     }
 
+    [ClientRpc]
+    public void BroadcastDetectiveChosenClientRpc(ulong playerId, DetectiveCatType catType)
+    {
+        var opponentIsland = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
+        if (opponentIsland != null)
+        {
+            opponentIsland.SetDetectiveCat(catType);
+        }
+
+        if (playerId == NetworkManager.Singleton.LocalClientId && PlayerHandController.Instance != null)
+        {
+            PlayerHandController.Instance.SetLocalDetectiveCat(catType);
+        }
+    }
 
 
     private IEnumerator DealStartingHandsRoutine()
@@ -189,24 +220,49 @@ public class GameManager : NetworkBehaviour
                 Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
             };
             ReceiveStartingHandClientRpc(cards, clientParams);
-        }
-
-        foreach (var client in turnOrder)
-        {
-            UpdateOpponentHandCountClientRpc(client, 3);
+            UpdateOpponentHandCountClientRpc(clientId, 3);
         }
 
         yield return new WaitForSeconds(1.5f);
 
         CurrentRound.Value = 1;
-        ActiveTurnPlayerId.Value = turnOrder[0];
-        StartTurn(ActiveTurnPlayerId.Value);
+        StartPlayerTurn(turnOrder[0]);
     }
 
     [ClientRpc]
     private void ReceiveStartingHandClientRpc(NetworkCard[] hand, ClientRpcParams clientRpcParams = default)
     {
-        PlayerHandController.Instance.SetHand(hand);
+        if (PlayerHandController.Instance != null)
+        {
+            PlayerHandController.Instance.SetHand(hand);
+        }
+    }
+
+
+    public void StartPlayerTurn(ulong playerId)
+    {
+        CurrentState.Value = GameState.PlayerTurn_Draw;
+        ActiveTurnPlayerId.Value = playerId;
+
+        hasTakenActionThisTurn = false;
+
+        string playerName = GetPlayerName(playerId);
+
+        if (activePlayerAbilities.ContainsKey(playerId) && activePlayerAbilities[playerId].HasValue)
+        {
+            if (abilityExpiryRounds.ContainsKey(playerId) && CurrentRound.Value >= abilityExpiryRounds[playerId])
+            {
+                NetworkCard expiredCard = activePlayerAbilities[playerId].Value;
+                activePlayerAbilities[playerId] = null;
+
+                Debug.Log($"[GameManager] {playerName}'s {expiredCard.CardId} expired and goes to discard pile.");
+
+                ClearPlayerActiveAbilityClientRpc(playerId);
+                DeckManager.Instance.Discard(expiredCard);
+            }
+        }
+
+        UpdateTurnUIClientRpc(playerId, playerName, CurrentRound.Value);
     }
 
     [ClientRpc]
@@ -218,46 +274,6 @@ public class GameManager : NetworkBehaviour
         {
             TurnActionUI.Instance.UpdateRoundDisplay(roundNumber);
             TurnActionUI.Instance.ShowDrawPrompt(isMe, activePlayerName);
-        }
-    }
-
-    private void StartTurn(ulong playerId)
-    {
-        CurrentState.Value = GameState.PlayerTurn_Draw;
-        ActiveTurnPlayerId.Value = playerId;
-
-        string playerName = playerNamesMap.ContainsKey(playerId) ? playerNamesMap[playerId] : $"Player {playerId}";
-
-        UpdateTurnUIClientRpc(playerId, playerName, CurrentRound.Value);
-
-        Debug.Log($"[Turn] Started turn for {playerName}. Waiting for Draw");
-    }
-
-    public void StartPlayerTurn(ulong playerId)
-    {
-        CurrentState.Value = GameState.PlayerTurn_Draw;
-        ActiveTurnPlayerId.Value = playerId;
-
-        string playerName = playerNamesMap.ContainsKey(playerId) ? playerNamesMap[playerId] : $"Player {playerId}";
-
-        NotifyTurnPhaseClientRpc(playerId, playerName, GameState.PlayerTurn_Draw);
-    }
-
-    [ClientRpc]
-    private void NotifyTurnPhaseClientRpc(ulong activePlayerId, string activePlayerName, GameState phase)
-    {
-        bool isMe = NetworkManager.Singleton.LocalClientId == activePlayerId;
-
-        if (TurnActionUI.Instance == null) return;
-
-        switch (phase)
-        {
-            case GameState.PlayerTurn_Draw:
-                TurnActionUI.Instance.ShowDrawPrompt(isMe, activePlayerName);
-                break;
-            case GameState.PlayerTurn_Action:
-                if (isMe) TurnActionUI.Instance.ShowActionPrompt();
-                break;
         }
     }
 
@@ -284,7 +300,18 @@ public class GameManager : NetworkBehaviour
         CheckHandLimitOrProceedToAction(senderId);
     }
 
-    private void CheckHandLimitOrProceedToAction(ulong playerId)
+    [ClientRpc]
+    private void ReceiveDrawnCardClientRpc(NetworkCard card, ClientRpcParams clientRpcParams = default)
+    {
+        if (PlayerHandController.Instance != null)
+        {
+            PlayerHandController.Instance.AddCard(card);
+        }
+    }
+
+
+
+    public void CheckHandLimitOrProceedToAction(ulong playerId)
     {
         int limit = GetMaxHandLimit(playerId);
         int handCount = playerHands[playerId].Count;
@@ -297,8 +324,16 @@ public class GameManager : NetworkBehaviour
         else
         {
             CurrentState.Value = GameState.PlayerTurn_Action;
-            string pName = playerNamesMap.ContainsKey(playerId) ? playerNamesMap[playerId] : $"Player {playerId}";
-            NotifyTurnPhaseClientRpc(playerId, pName, GameState.PlayerTurn_Action);
+            NotifyActionPhaseClientRpc(playerId);
+        }
+    }
+
+    [ClientRpc]
+    public void BroadcastDiscardCardClientRpc(NetworkCard card)
+    {
+        if (DiscardPile2D.Instance != null)
+        {
+            DiscardPile2D.Instance.AddCardToDiscard(card);
         }
     }
 
@@ -311,93 +346,50 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    [ClientRpc]
+    private void NotifyActionPhaseClientRpc(ulong activePlayerId)
+    {
+        bool isMe = NetworkManager.Singleton.LocalClientId == activePlayerId;
+        if (isMe && TurnActionUI.Instance != null)
+        {
+            TurnActionUI.Instance.ShowActionPhaseModal();
+        }
+    }
+
+
+    //todo: bug ending player turn immediately when discarding
     [Rpc(SendTo.Server)]
     public void SubmitDiscardServerRpc(NetworkCard cardToDiscard, RpcParams rpcParams = default)
     {
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (senderId != ActiveTurnPlayerId.Value) return;
 
-        if (cardToDiscard.Type == CardType.WhiskerBlower)
-        {
-            Debug.LogWarning("[GameManager] WhiskerBlower card cannot be discarded");
-            return;
-        }
+        if (cardToDiscard.Type == CardType.WhiskerBlower) return;
 
         if (playerHands[senderId].Remove(cardToDiscard))
         {
             DeckManager.Instance.Discard(cardToDiscard);
             UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
-            Debug.Log($"[GameManager] Player {senderId} discarded {cardToDiscard.CardId}.");
         }
 
-        CheckHandLimitOrProceedToAction(senderId);
-    }
+        int limit = GetMaxHandLimit(senderId);
+        int currentHandCount = playerHands[senderId].Count;
 
-    [Rpc(SendTo.Server)]
-    public void SubmitPlayAbilityCardServerRpc(NetworkCard card, RpcParams rpcParams = default)
-    {
-        ulong senderId = rpcParams.Receive.SenderClientId;
-        if (senderId != ActiveTurnPlayerId.Value) return;
-
-        Debug.Log($"[GameManager] Player #{senderId} played Ability card: {card.CardId}");
-
-        playerHands[senderId].Remove(card);
-        UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
-
-        DeckManager.Instance.Discard(card);
-
-        CheckHandLimitOrProceedToAction(senderId);
-        AdvanceToNextTurn();
-    }
-
-    public void AdvanceToNextTurn()
-    {
-        if (!IsServer) return;
-
-        int currentIndex = turnOrder.IndexOf(ActiveTurnPlayerId.Value);
-        int nextIndex = (currentIndex + 1) % turnOrder.Count;
-
-        if (nextIndex == 0)
-        {
-            CurrentRound.Value++;
-            Debug.Log($"[GameManager] Round {CurrentRound.Value} begun");
-
-            if (CurrentRound.Value > 10)
-            {
-                ResolveRound10EndGame();
-                return;
-            }
-
-            if (CurrentRound.Value == 3 || CurrentRound.Value == 6 || CurrentRound.Value == 9)
-            {
-                DeckManager.Instance.ReshuffleMilestone();
-            }
-        }
-
-        StartTurn(turnOrder[nextIndex]);
-    }
-
-    [ClientRpc]
-    private void ReceiveDrawnCardClientRpc(NetworkCard card, ClientRpcParams clientRpcParams = default)
-    {
-        Debug.Log($"[Draw] drew: {card.CardId} ({card.Type})");
-        if (PlayerHandController.Instance != null)
-        {
-            PlayerHandController.Instance.AddCard(card);
-        }
-    }
-
-    private void CheckHandLimitOrProceed(ulong playerId)
-    {
-        int maxHand = GetMaxHandLimit(playerId);
-        if (playerHands[playerId].Count > maxHand)
+        if (currentHandCount > limit)
         {
             CurrentState.Value = GameState.PlayerTurn_DiscardPrompt;
-            PromptDiscardClientRpc(playerId);
+            PromptDiscardClientRpc(senderId, currentHandCount, limit);
+            return;
+        }
+
+        if (!hasTakenActionThisTurn)
+        {
+            CurrentState.Value = GameState.PlayerTurn_Action;
+            NotifyActionPhaseClientRpc(senderId);
         }
         else
         {
-            CurrentState.Value = GameState.PlayerTurn_Action;
+            AdvanceToNextTurn();
         }
     }
 
@@ -411,70 +403,95 @@ public class GameManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void PromptDiscardClientRpc(ulong playerId)
+    private void SetPlayerActiveAbilityClientRpc(ulong playerId, string cardId)
     {
-        if (NetworkManager.Singleton.LocalClientId == playerId)
+        if (playerId == NetworkManager.Singleton.LocalClientId && PlayerHandController.Instance != null)
         {
-            Debug.LogWarning("Hand limit exceeded, Choose a card to discard");
+            PlayerHandController.Instance.SetActiveAbility(cardId);
+        }
+
+        var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
+        if (island != null)
+        {
+            island.SetActiveAbility(cardId);
         }
     }
 
-    public void EndTurn()
-    {
-        if (!IsServer) return;
-
-        int round = CurrentRound.Value;
-        if (round == 3 || round == 6 || round == 9)
-        {
-            DeckManager.Instance.ReshuffleMilestone();
-        }
-
-        int currentIndex = turnOrder.IndexOf(ActiveTurnPlayerId.Value);
-        int nextIndex = (currentIndex + 1) % turnOrder.Count;
-
-        if (nextIndex == 0)
-        {
-            CurrentRound.Value++;
-            if (CurrentRound.Value > 10)
-            {
-                ResolveRound10EndGame();
-                return;
-            }
-        }
-
-        ActiveTurnPlayerId.Value = turnOrder[nextIndex];
-        StartTurn(ActiveTurnPlayerId.Value);
-    }
 
     [Rpc(SendTo.Server)]
-    public void RequestEndTurnServerRpc(RpcParams rpcParams = default)
+    public void SubmitPlayAbilityCardServerRpc(NetworkCard card, RpcParams rpcParams = default)
     {
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (senderId != ActiveTurnPlayerId.Value) return;
 
+        Debug.Log($"<color=cyan>{GetPlayerName(senderId)} played {card.CardId}</color>");
+
+        playerHands[senderId].Remove(card);
+        UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
+
+        if (card.CardId == "NineLives" || card.CardId == "Zoomies" || card.CardId == "CatNap")
+        {
+            activePlayerAbilities[senderId] = card;
+            abilityExpiryRounds[senderId] = CurrentRound.Value + 1;
+
+            SetPlayerActiveAbilityClientRpc(senderId, card.CardId.ToString());
+        }
+        else
+        {
+            DeckManager.Instance.Discard(card);
+        }
+
+        CheckHandLimitOrProceedToAction(senderId);
         AdvanceToNextTurn();
     }
 
-    public int GetPlayerHandCount(ulong playerId)
+    [ClientRpc]
+    private void ClearPlayerActiveAbilityClientRpc(ulong playerId)
     {
-        return playerHands.ContainsKey(playerId) ? playerHands[playerId].Count : 0;
+        if (playerId == NetworkManager.Singleton.LocalClientId && PlayerHandController.Instance != null)
+        {
+            PlayerHandController.Instance.ClearActiveAbility();
+        }
+
+        var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
+        if (island != null)
+        {
+            island.ClearActiveAbility();
+        }
+    }
+
+    [ClientRpc]
+    private void RemoveStolenCardClientRpc(NetworkCard card, ClientRpcParams clientRpcParams = default)
+    {
+        Debug.Log($"<color=orange>[Stolen] An opponent stole {card.CardId} from your hand</color>");
+        if (PlayerHandController.Instance != null)
+        {
+            PlayerHandController.Instance.RemoveCard(card);
+        }
     }
 
     public void ExecuteSteal(ulong thiefId, ulong victimId, int cardIndex)
     {
+        hasTakenActionThisTurn = true;
+
         if (!playerHands.ContainsKey(victimId) || cardIndex >= playerHands[victimId].Count) return;
 
         NetworkCard stolenCard = playerHands[victimId][cardIndex];
         playerHands[victimId].RemoveAt(cardIndex);
 
+        ClientRpcParams victimParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { victimId } }
+        };
+        RemoveStolenCardClientRpc(stolenCard, victimParams);
+
         UpdateOpponentHandCountClientRpc(victimId, playerHands[victimId].Count);
 
         if (stolenCard.Type == CardType.Trap)
         {
-            Debug.Log($"<color=red>[TRAP TRIGGERED!] Thief #{thiefId} stole {stolenCard.CardId} from #{victimId}</color>");
+            Debug.Log($"[Steal] {GetPlayerName(thiefId)} stole a card from {GetPlayerName(victimId)}.");
             DeckManager.Instance.Discard(stolenCard);
-
-            ResolveTrapTrigger(thiefId, victimId, stolenCard.CardId.ToString());
+            AnnounceTrapTriggerClientRpc(thiefId, victimId, stolenCard.CardId.ToString());
         }
         else
         {
@@ -486,36 +503,80 @@ public class GameManager : NetworkBehaviour
                 Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
             };
             ReceiveDrawnCardClientRpc(stolenCard, thiefParams);
-            Debug.Log($"[Steal] Thief #{thiefId} successfully stole a {stolenCard.Type}");
         }
-        CheckHandLimitOrProceedToAction(thiefId);
-        AdvanceToNextTurn();
-    }
 
-    private void ResolveTrapTrigger(ulong thiefId, ulong victimId, string trapName)
-    {
-        AnnounceTrapTriggerClientRpc(thiefId, victimId, trapName);
-
-        switch (trapName)
+        if (stolenCard.CardId == "CatNap")
         {
-            case "CatNap":
-                //to set: Thief skips next turn
-                break;
-            case "CatFlash":
-                //to set: Thief reveals whole hand to victim
-                break;
-            case "Swipe":
-                // to set: Thief gives a card back to victim
-                break;
+            activePlayerAbilities[thiefId] = stolenCard;
+            abilityExpiryRounds[thiefId] = CurrentRound.Value + 1;
+            SetPlayerActiveAbilityClientRpc(thiefId, "CatNap");
+        }
+
+        CheckHandLimitOrProceedToAction(thiefId);
+        int limit = GetMaxHandLimit(thiefId);
+        if (playerHands[thiefId].Count > limit)
+        {
+            CurrentState.Value = GameState.PlayerTurn_DiscardPrompt;
+            PromptDiscardClientRpc(thiefId, playerHands[thiefId].Count, limit);
+        }
+        else
+        {
+            AdvanceToNextTurn();
         }
     }
 
     [ClientRpc]
     private void AnnounceTrapTriggerClientRpc(ulong thiefId, ulong victimId, string trapName)
     {
-        Debug.LogWarning($"ALERT: Player {thiefId} triggered a {trapName} TRAP set by Player {victimId}");
+        Debug.LogWarning($"ALERT: Player {thiefId} triggered {trapName} TRAP by Player {victimId}");
     }
 
+    [Rpc(SendTo.Server)]
+    public void SubmitCustodyGuessServerRpc(ulong accusedPlayerId, RpcParams rpcParams = default)
+    {
+        ulong guesserId = rpcParams.Receive.SenderClientId;
+
+        bool isCorrect = playerHands[accusedPlayerId].Exists(c => c.Type == CardType.WhiskerBlower);
+
+        if (isCorrect)
+        {
+            CurrentState.Value = GameState.GameOver;
+            string winnerName = GetPlayerName(guesserId);
+            AnnounceWinnerClientRpc(guesserId, $"{winnerName} correctly guessed the Custodian with 3 Custody cards");
+        }
+        else
+        {
+            Debug.Log($"[Guess Failed] Player #{guesserId} guessed incorrectly");
+            AdvanceToNextTurn();
+        }
+    }
+
+
+    public void AdvanceToNextTurn()
+    {
+        if (!IsServer) return;
+
+        int currentIndex = turnOrder.IndexOf(ActiveTurnPlayerId.Value);
+        int nextIndex = (currentIndex + 1) % turnOrder.Count;
+
+        if (nextIndex == 0)
+        {
+            CurrentRound.Value++;
+
+            if (CurrentRound.Value > 10)
+            {
+                ResolveRound10EndGame();
+                return;
+            }
+
+            if (CurrentRound.Value == 3 || CurrentRound.Value == 6 || CurrentRound.Value == 9)
+            {
+                DeckManager.Instance.ReshuffleMilestone();
+            }
+        }
+
+        StartPlayerTurn(turnOrder[nextIndex]);
+    }
 
     private void ResolveRound10EndGame()
     {
@@ -531,71 +592,40 @@ public class GameManager : NetworkBehaviour
             }
         }
 
-        AnnounceWinnerClientRpc(winnerId, "Held the Whisker-Blower at Round 10");
+        string winnerName = GetPlayerName(winnerId);
+        AnnounceWinnerClientRpc(winnerId, $"{winnerName} held the WhiskerBlower at Round 10");
     }
-
-    [Rpc(SendTo.Server)]
-    public void SubmitCustodyGuessServerRpc(ulong accusedPlayerId, RpcParams rpcParams = default)
-    {
-        ulong guesserId = rpcParams.Receive.SenderClientId;
-
-        bool hasWhiskerBlower = playerHands[accusedPlayerId].Exists(c => c.Type == CardType.WhiskerBlower);
-
-        if (hasWhiskerBlower)
-        {
-            CurrentState.Value = GameState.GameOver;
-            AnnounceWinnerClientRpc(guesserId, "Correctly guessed the Custodian with 3 Custody cards");
-        }
-        else
-        {
-            Debug.Log($"[Guess Failed] Player {guesserId} guessed wrong");
-        }
-    }
-
-    [ClientRpc]
-    private void AnnounceWinnerClientRpc(ulong winnerId, string reason)
-    {
-        Debug.Log($"<color=yellow>GAME OVER, Winner is Player #{winnerId} ; Win Condition: {reason}</color>");
-    }
-
-    [ClientRpc]
-    public void BroadcastDetectiveChosenClientRpc(ulong playerId, DetectiveCatType catType)
-    {
-        var opponentIsland = BoardLayoutManager.Instance.GetOpponentIsland(playerId);
-        if (opponentIsland != null)
-        {
-            opponentIsland.SetDetectiveCat(catType);
-        }
-
-        if (playerId == NetworkManager.Singleton.LocalClientId && PlayerHandController.Instance != null)
-        {
-            PlayerHandController.Instance.SetLocalDetectiveCat(catType);
-        }
-    }
-
-
 
     [ClientRpc]
     public void UpdateOpponentHandCountClientRpc(ulong playerId, int newCount)
     {
-        var island = BoardLayoutManager.Instance.GetOpponentIsland(playerId);
+        var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
         if (island != null)
         {
-            island.UpdateHandCardCount(newCount);
+            island.UpdateCardCount(newCount);
         }
     }
 
-    [ClientRpc]
-    public void UpdateOpponentActiveAbilityClientRpc(ulong playerId, string abilityCardId)
+    public int GetPlayerHandCount(ulong playerId) => playerHands.ContainsKey(playerId) ? playerHands[playerId].Count : 0;
+    public string GetPlayerName(ulong playerId)
     {
-        var island = BoardLayoutManager.Instance.GetOpponentIsland(playerId);
-        if (island != null)
+        if (playerNamesMap.TryGetValue(playerId, out string pName) && !string.IsNullOrWhiteSpace(pName))
         {
-            Card abilityCard = string.IsNullOrEmpty(abilityCardId)
-                ? null
-                : CardDatabase.Instance.GetCard(abilityCardId);
+            return pName;
+        }
+        return $"Detective_{playerId + 1}";
+    }
+    public DetectiveCatType GetPlayerDetective(ulong playerId) => chosenDetectives.ContainsKey(playerId) ? chosenDetectives[playerId] : DetectiveCatType.HoarderMolly;
 
-            island.SetActiveAbility(abilityCard);
+    [ClientRpc]
+    private void AnnounceWinnerClientRpc(ulong winnerId, string reason)
+    {
+        string winnerName = GetPlayerName(winnerId);
+        Debug.Log($"<color=yellow>GAME OVER | Winner: {winnerName} | Reason: {reason}</color>");
+
+        if (GameOverUI.Instance != null)
+        {
+            GameOverUI.Instance.ShowWinner(winnerName, reason);
         }
     }
 

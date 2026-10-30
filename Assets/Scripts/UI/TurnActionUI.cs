@@ -6,45 +6,29 @@ public class TurnActionUI : MonoBehaviour
 {
     public static TurnActionUI Instance { get; private set; }
 
-    [Header("turn visuals")]
-    [SerializeField] private TMP_Text turnStatusText;
+    [Header("hud")]
     [SerializeField] private TMP_Text instructionText;
     [SerializeField] private TMP_Text roundText;
+    [SerializeField] private TMP_Text turnText;
 
-    [Header("center island")]
-    [SerializeField] private Button drawDeckButton;
-    //discard pile deck
-
-    [Header("action phase btns")]
-    [SerializeField] private GameObject actionButtonsContainer;
-    [SerializeField] private Button playAbilityButton;
-    [SerializeField] private Button stealButton;
-    [SerializeField] private Button guessCustodianButton;
+    [Header("action btns")]
+    [SerializeField] private GameObject actionChoiceModal;
+    [SerializeField] private Button playAbilityChoiceCard;
+    [SerializeField] private Button stealChoiceCard;
+    [SerializeField] private Button guessCustodianChoiceCard;
     [SerializeField] private Button cancelActionButton;
 
     private void Awake()
     {
         Instance = this;
 
-        if (drawDeckButton != null)
-        {
-            drawDeckButton.onClick.AddListener(OnDrawDeckClicked);
-            drawDeckButton.interactable = false;
-        }
+        if (playAbilityChoiceCard != null) playAbilityChoiceCard.onClick.AddListener(OnPlayAbilitySelected);
+        if (stealChoiceCard != null) stealChoiceCard.onClick.AddListener(OnStealSelected);
+        if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.onClick.AddListener(OnGuessCustodianSelected);
 
-        if (playAbilityButton != null) playAbilityButton.onClick.AddListener(OnPlayAbilityClicked);
-        if (stealButton != null) stealButton.onClick.AddListener(OnStealClicked);
-        if (guessCustodianButton != null) guessCustodianButton.onClick.AddListener(OnGuessCustodianClicked);
+        if (cancelActionButton != null) cancelActionButton.onClick.AddListener(OnCancelClicked);
 
-        if (cancelActionButton != null) cancelActionButton.onClick.AddListener(OnCancelActionClicked);
-
-        HideAllActions();
-    }
-
-    private void OnDrawDeckClicked()
-    {
-        if (drawDeckButton != null) drawDeckButton.interactable = false;
-        GameManager.Instance.RequestDrawCardServerRpc();
+        HideAllActionPanels();
     }
 
     public void UpdateRoundDisplay(int roundNumber)
@@ -54,100 +38,93 @@ public class TurnActionUI : MonoBehaviour
 
     public void ShowDrawPrompt(bool isMyTurn, string activePlayerName)
     {
-        HideAllActions();
+        HideAllActionPanels();
+
         if (isMyTurn)
         {
-            if (turnStatusText != null) turnStatusText.text = "<color=green>YOUR TURN</color>";
+            if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
             if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card";
-            if (drawDeckButton != null) drawDeckButton.interactable = true;
+
+            DrawDeckClick.Instance?.SetGlow(true);
         }
         else
         {
-            if (turnStatusText != null) turnStatusText.text = $"{activePlayerName}'s Turn";
+            if (turnText != null) turnText.text = $"{activePlayerName}'s Turn";
             if (instructionText != null) instructionText.text = $"Waiting for {activePlayerName} to draw...";
-            if (drawDeckButton != null) drawDeckButton.interactable = false;
+            DrawDeckClick.Instance?.SetGlow(false);
         }
     }
 
     public void ShowDiscardPrompt(int currentCount, int maxLimit)
     {
-        HideAllActions();
-        if (turnStatusText != null) turnStatusText.text = "<color=red>HAND LIMIT EXCEEDED</color>";
-        if (instructionText != null) instructionText.text = $"You have {currentCount}/{maxLimit} cards, Click a card in your hand to DISCARD it";
+        HideAllActionPanels();
+        DrawDeckClick.Instance?.SetGlow(false);
+
+        if (turnText != null)
+            turnText.text = "<color=red><b>DISCARD REQUIRED</b></color>";
+
+        if (instructionText != null)
+            instructionText.text = $"<color=red>HAND LIMIT EXCEEDED ({currentCount}/{maxLimit}) DRAG A CARD UP TO DISCARD IT</color>";
     }
 
-    public void ShowActionPrompt()
+    public void ShowActionPhaseModal()
     {
-        if (turnStatusText != null) turnStatusText.text = "<color=green>ACTION PHASE</color>";
-        if (instructionText != null) instructionText.text = "Choose an Action: Play Ability or Steal from an Opponent";
+        DrawDeckClick.Instance?.SetGlow(false);
 
-        if (drawDeckButton != null) drawDeckButton.interactable = false;
-        if (actionButtonsContainer != null) actionButtonsContainer.SetActive(true);
+        if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
+        if (instructionText != null) instructionText.text = "Choose your action for this turn";
+
+        if (actionChoiceModal != null) actionChoiceModal.SetActive(true);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
 
         int custodyCount = PlayerHandController.Instance != null ? PlayerHandController.Instance.GetCustodyCardCount() : 0;
         bool hasAbilities = PlayerHandController.Instance != null && PlayerHandController.Instance.HasAbilityCards();
 
-        if (playAbilityButton != null) playAbilityButton.interactable = hasAbilities;
-        if (stealButton != null) stealButton.interactable = true;
-        if (guessCustodianButton != null) guessCustodianButton.interactable = (custodyCount >= 3);
+        if (playAbilityChoiceCard != null) playAbilityChoiceCard.interactable = hasAbilities;
+        if (stealChoiceCard != null) stealChoiceCard.interactable = true;
+        if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.interactable = (custodyCount >= 3);
     }
 
-    private void OnPlayAbilityClicked()
+    private void OnPlayAbilitySelected()
     {
-        actionButtonsContainer.SetActive(false);
+        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
-        if (instructionText != null) instructionText.text = "<color=yellow>Drag an Ability Card to play it</color>";
+        if (instructionText != null) instructionText.text = "Drag an Ability Card or Detective Cat up to play it";
 
-        if (PlayerHandController.Instance != null)
-        {
-            PlayerHandController.Instance.SetAbilityCardsPlayable(true);
-        }
+        PlayerHandController.Instance?.SetAbilityCardsPlayable(true);
     }
 
-    private void OnStealClicked()
+    private void OnStealSelected()
     {
-        actionButtonsContainer.SetActive(false);
+        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
-        if (instructionText != null) instructionText.text = "<color=yellow>Click an Opponent's Island to steal a card from</color>";
+        if (instructionText != null) instructionText.text = "Click an Opponent's Island to steal from";
 
-        if (StealManager.Instance != null)
-        {
-            StealManager.Instance.EnableOpponentSelection();
-        }
+        StealManager.Instance?.EnableOpponentSelection();
     }
 
-    private void OnGuessCustodianClicked()
+    private void OnGuessCustodianSelected()
     {
-        actionButtonsContainer.SetActive(false);
+        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
-        if (instructionText != null) instructionText.text = "<color=yellow>Click the Opponent you accuse of holding the WhiskerBlower</color>";
+        if (instructionText != null) instructionText.text = "Click the Opponent you accuse of holding the WhiskerBlower";
 
-        if (StealManager.Instance != null)
-        {
-            StealManager.Instance.EnableCustodianAccusationSelection();
-        }
+        StealManager.Instance?.EnableCustodianAccusationSelection();
     }
 
-    private void OnCancelActionClicked()
+    private void OnCancelClicked()
     {
-        if (PlayerHandController.Instance != null)
-        {
-            PlayerHandController.Instance.SetAbilityCardsPlayable(false);
-        }
-
-        if (StealManager.Instance != null)
-        {
-            StealManager.Instance.CancelSelection();
-        }
-
-        ShowActionPrompt();
+        PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
+        StealManager.Instance?.CancelSelection();
+        ShowActionPhaseModal();
     }
 
-    public void HideAllActions()
+    public void HideAllActionPanels()
     {
-        if (drawDeckButton != null) drawDeckButton.interactable = false;
-        if (actionButtonsContainer != null) actionButtonsContainer.SetActive(false);
+        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
     }
+
+    public void ShowActionPrompt() => ShowActionPhaseModal();
+    public void HideAllActions() => HideAllActionPanels();
 }

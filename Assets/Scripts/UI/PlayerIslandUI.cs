@@ -6,15 +6,12 @@ using EvasiveWhisker.Cards;
 
 public class PlayerIslandUI : MonoBehaviour
 {
-    [Header("island visuals")]
+    [Header("vis")]
     [SerializeField] private Image islandBackgroundImage;
     [SerializeField] private TMP_Text opponentNameText;
-
-    [Header("center slots")]
     [SerializeField] private Image detectiveProfileImage;
     [SerializeField] private Image activeAbilityCardSlot;
 
-    [Header("hand cards")]
     [SerializeField] private Transform handCardsContainer;
     [SerializeField] private GameObject cardBackPrefab;
     [SerializeField] private TMP_Text cardCountText;
@@ -22,51 +19,16 @@ public class PlayerIslandUI : MonoBehaviour
     public ulong OwnerClientId { get; private set; }
     private List<GameObject> spawnedCardBacks = new List<GameObject>();
 
-    [Header("island highlights")]
-    [SerializeField] private GameObject islandGlowObject;
-    public void SetIslandGlow(bool enable, Color glowColor)
-    {
-        if (islandGlowObject != null)
-        {
-            islandGlowObject.SetActive(enable);
-            Image glowImg = islandGlowObject.GetComponent<Image>();
-            if (glowImg != null) glowImg.color = glowColor;
-            return;
-        }
-
-        if (islandBackgroundImage != null)
-        {
-            Outline outline = islandBackgroundImage.GetComponent<Outline>();
-            if (outline == null)
-            {
-                outline = islandBackgroundImage.gameObject.AddComponent<Outline>();
-                outline.effectDistance = new Vector2(8f, -8f);
-            }
-
-            outline.effectColor = glowColor;
-            outline.enabled = enable;
-        }
-    }
-
     public void Initialize(ulong clientId, string playerName, Sprite islandSprite)
     {
         OwnerClientId = clientId;
 
-        if (opponentNameText != null)
-        {
-            opponentNameText.text = string.IsNullOrEmpty(playerName) ? $"Detective #{clientId}" : playerName;
-        }
-
-        if (islandBackgroundImage != null && islandSprite != null)
-        {
-            islandBackgroundImage.sprite = islandSprite;
-        }
+        if (opponentNameText != null) opponentNameText.text = playerName;
+        if (islandBackgroundImage != null && islandSprite != null) islandBackgroundImage.sprite = islandSprite;
 
         ClearActiveAbility();
-        UpdateHandCardCount(3);
+        UpdateCardCount(3);
     }
-
-
 
     public void SetDetectiveCat(DetectiveCatType catType)
     {
@@ -83,39 +45,24 @@ public class PlayerIslandUI : MonoBehaviour
         }
     }
 
-    public void SetActiveAbility(Card abilityCard)
+    public void SetActiveAbility(string cardId)
     {
         if (activeAbilityCardSlot == null) return;
 
-        if (abilityCard != null)
+        Sprite sprite = CardDatabase.Instance != null
+            ? CardDatabase.Instance.GetCardSprite(cardId)
+            : null;
+
+        if (sprite != null)
         {
-            //Sprite abilitySprite = Sprite.Create(
-            //    abilityCard.frontFace,
-            //    new Rect(0, 0, abilityCard.frontFace.width, abilityCard.frontFace.height),
-            //    new Vector2(0.5f, 0.5f)
-            //);
-
-            Sprite abilitySprite = CardDatabase.Instance != null
-                ? CardDatabase.Instance.GetCardSprite(abilityCard.cardID)
-                : null;
-
-            if (abilitySprite == null && abilityCard.frontfaceFrame != null)
-            {
-                abilitySprite = Sprite.Create(
-                    abilityCard.frontfaceFrame,
-                    new Rect(0, 0, abilityCard.frontfaceFrame.width, abilityCard.frontfaceFrame.height),
-                    new Vector2(0.5f, 0.5f)
-                );
-            }
-
-            if (abilitySprite != null)
-            {
-                activeAbilityCardSlot.sprite = abilitySprite;
-                activeAbilityCardSlot.gameObject.SetActive(true);
-                return;
-            }
+            activeAbilityCardSlot.sprite = sprite;
+            activeAbilityCardSlot.color = Color.white;
+            activeAbilityCardSlot.gameObject.SetActive(true);
         }
-        ClearActiveAbility();
+        else
+        {
+            ClearActiveAbility();
+        }
     }
 
     public void ClearActiveAbility()
@@ -127,26 +74,30 @@ public class PlayerIslandUI : MonoBehaviour
         }
     }
 
-    public void UpdateHandCardCount(int cardCount)
+    public void UpdateCardCount(int count)
     {
-        if (cardCountText != null)
-        {
-            cardCountText.text = $"{cardCount}";
-        }
+        if (cardCountText != null) cardCountText.text = $"{count}";
 
         if (handCardsContainer != null && cardBackPrefab != null)
         {
-            foreach (var card in spawnedCardBacks)
-            {
-                Destroy(card);
-            }
+            foreach (var card in spawnedCardBacks) if (card != null) Destroy(card);
             spawnedCardBacks.Clear();
 
-            for (int i = 0; i < cardCount; i++)
+            for (int i = 0; i < count; i++)
             {
                 GameObject cardBack = Instantiate(cardBackPrefab, handCardsContainer);
                 spawnedCardBacks.Add(cardBack);
             }
+        }
+    }
+
+    public void SetIslandGlow(bool enable, Color glowColor = default)
+    {
+        Outline outline = GetComponent<Outline>();
+        if (outline != null)
+        {
+            outline.effectColor = glowColor;
+            outline.enabled = enable;
         }
     }
 }

@@ -6,9 +6,7 @@ public class BoardLayoutManager : MonoBehaviour
 {
     public static BoardLayoutManager Instance { get; private set; }
 
-    [Header("pos")]
-    [SerializeField] private Transform centerIsland;
-    [SerializeField] private Transform localPlayerSlot;
+    [Header("anchors")]
     [SerializeField] private Transform[] opponentIslandAnchorPoints;
 
     [Header("assets")]
@@ -35,11 +33,13 @@ public class BoardLayoutManager : MonoBehaviour
             orderedOpponents.Add(allPlayerClientIds[nextIndex]);
         }
 
-        if (opponentIslandPrefab == null)
+        if (opponentIslandPrefab == null) return;
+
+        foreach (var pair in spawnedOpponentIslands)
         {
-            Debug.LogError("[BoardLayoutManager] !OpponentIslandPrefab");
-            return;
+            if (pair.Value != null) Destroy(pair.Value.gameObject);
         }
+        spawnedOpponentIslands.Clear();
 
         for (int i = 0; i < orderedOpponents.Count; i++)
         {
@@ -51,9 +51,10 @@ public class BoardLayoutManager : MonoBehaviour
             ulong opponentId = orderedOpponents[i];
             Transform anchor = opponentIslandAnchorPoints[i];
 
-            GameObject islandObj = Instantiate(opponentIslandPrefab, anchor.position, anchor.rotation, anchor);
-            PlayerIslandUI islandUI = islandObj.GetComponent<PlayerIslandUI>();
+            GameObject islandObj = Instantiate(opponentIslandPrefab, anchor);
+            islandObj.transform.localPosition = Vector3.zero;
 
+            PlayerIslandUI islandUI = islandObj.GetComponent<PlayerIslandUI>();
             if (islandUI == null) continue;
 
             spawnedOpponentIslands[opponentId] = islandUI;

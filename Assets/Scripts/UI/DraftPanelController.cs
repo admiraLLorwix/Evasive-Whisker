@@ -7,61 +7,92 @@ public class DraftPanelController : MonoBehaviour
 {
     public static DraftPanelController Instance { get; private set; }
 
-    [Header("UI References")]
-    [SerializeField] private GameObject draftModal;
-    [SerializeField] private TMP_Text draftInstructionsText;
-    [SerializeField] private Transform cardContainer;
+    [SerializeField] private GameObject draftPanelRoot;
+    [SerializeField] private GameObject chooserModalWindow;
+    [SerializeField] private GameObject waitingModalWindow;
+
+    [SerializeField] private TMP_Text draftTitleText;
+    [SerializeField] private Transform cardGridContainer;
     [SerializeField] private GameObject draftCardButtonPrefab;
+
+    [SerializeField] private TMP_Text waitingText;
 
     private void Awake()
     {
         Instance = this;
-        if (draftModal != null) draftModal.SetActive(false);
     }
 
-    public void OpenDraftSelection(DetectiveCatType[] availableCats)
+    public void OpenDraftForChooser(DetectiveCatType[] availableCats)
     {
-        if (draftModal == null || cardContainer == null || draftCardButtonPrefab == null)
+        Debug.Log($"<color=green>[DraftPanel] {availableCats.Length} cats available.</color>");
+
+        gameObject.SetActive(true);
+        if (draftPanelRoot != null) draftPanelRoot.SetActive(true);
+        if (chooserModalWindow != null) chooserModalWindow.SetActive(true);
+        if (waitingModalWindow != null) waitingModalWindow.SetActive(false);
+
+        if (draftTitleText != null)
         {
-            Debug.LogError("[DraftPanel] Missing inspector");
+            draftTitleText.text = $"Choose your Detective Cat ({availableCats.Length} remaining)";
+        }
+
+        if (cardGridContainer == null || draftCardButtonPrefab == null)
+        {
+            Debug.LogError("[DraftPanel] !cardgridcontatiner // !drawcardbtnprefab");
             return;
         }
 
-        draftModal.SetActive(true);
-        if (draftInstructionsText != null)
-        {
-            draftInstructionsText.text = $"Choose your Detective Cat ({availableCats.Length} remaining)";
-        }
-
-        foreach (Transform child in cardContainer)
+        foreach (Transform child in cardGridContainer)
         {
             Destroy(child.gameObject);
         }
 
-        List<DetectiveCatType> randomizedPool = new List<DetectiveCatType>(availableCats);
-        for (int i = 0; i < randomizedPool.Count; i++)
+        List<DetectiveCatType> pool = new List<DetectiveCatType>(availableCats);
+        for (int i = 0; i < pool.Count; i++)
         {
-            int rnd = Random.Range(i, randomizedPool.Count);
-            var temp = randomizedPool[i];
-            randomizedPool[i] = randomizedPool[rnd];
-            randomizedPool[rnd] = temp;
+            int rnd = Random.Range(i, pool.Count);
+            var temp = pool[i];
+            pool[i] = pool[rnd];
+            pool[rnd] = temp;
         }
 
-        for (int i = 0; i < randomizedPool.Count; i++)
+        for (int i = 0; i < pool.Count; i++)
         {
-            DetectiveCatType catToPick = randomizedPool[i];
-            GameObject btnObj = Instantiate(draftCardButtonPrefab, cardContainer);
+            DetectiveCatType catToPick = pool[i];
+            GameObject btnObj = Instantiate(draftCardButtonPrefab, cardGridContainer);
             Button btn = btnObj.GetComponent<Button>();
 
             btn.onClick.AddListener(() => OnCatSelected(catToPick));
         }
     }
 
+    public void OpenDraftSelection(DetectiveCatType[] cats) => OpenDraftForChooser(cats);
+
+    public void ShowWaitingForChooser(string chooserPlayerName)
+    {
+        Debug.Log($"[DraftPanel] waiting for chooser: {chooserPlayerName}");
+
+        gameObject.SetActive(true);
+        if (draftPanelRoot != null) draftPanelRoot.SetActive(true);
+        if (chooserModalWindow != null) chooserModalWindow.SetActive(false);
+        if (waitingModalWindow != null) waitingModalWindow.SetActive(true);
+
+        if (waitingText != null)
+        {
+            waitingText.text = $"Waiting for <color=yellow>{chooserPlayerName}</color> to choose a Detective Cat...";
+        }
+    }
+
     private void OnCatSelected(DetectiveCatType chosenCat)
     {
-        draftModal.SetActive(false);
-
+        HideAll();
         GameManager.Instance.SubmitChosenCatServerRpc(chosenCat);
-        Debug.Log($"[Draft] You chose: {chosenCat}");
+    }
+
+    public void HideAll()
+    {
+        if (draftPanelRoot != null) draftPanelRoot.SetActive(false);
+        if (chooserModalWindow != null) chooserModalWindow.SetActive(false);
+        if (waitingModalWindow != null) waitingModalWindow.SetActive(false);
     }
 }

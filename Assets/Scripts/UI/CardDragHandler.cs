@@ -19,7 +19,8 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         rectTransform = GetComponent<RectTransform>();
         canvas = GetComponentInParent<Canvas>();
-        canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        canvasGroup = gameObject.GetComponent<CanvasGroup>();
+        if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
     }
 
     public void Initialize(NetworkCard card)
@@ -30,21 +31,16 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     public void SetHighlighted(bool highlighted)
     {
-        Image img = GetComponentInChildren<Image>();
-        if (img != null)
-        {
-            img.color = Color.white;
-        }
-
         Outline outline = GetComponentInChildren<Outline>();
-        if (outline == null && img != null)
+        if (outline == null)
         {
-            outline = img.gameObject.AddComponent<Outline>();
-            outline.effectDistance = new Vector2(5f, -5f);
+            var img = GetComponentInChildren<Image>();
+            if (img != null) outline = img.gameObject.AddComponent<Outline>();
         }
 
         if (outline != null)
         {
+            outline.effectDistance = new Vector2(5f, -5f);
             outline.effectColor = new Color(1f, 0.85f, 0.2f, 1f);
             outline.enabled = highlighted;
         }
@@ -52,7 +48,17 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (!IsDraggable) return;
+        bool isMyTurn = GameManager.Instance != null &&
+                        GameManager.Instance.ActiveTurnPlayerId.Value == Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+
+        bool canDragInDiscard = (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_DiscardPrompt);
+        bool canDragInAction = (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_Action && CardData.Type == CardType.Ability);
+
+        if (!isMyTurn || (!canDragInDiscard && !canDragInAction))
+        {
+            eventData.pointerDrag = null;
+            return;
+        }
 
         originalPosition = rectTransform.anchoredPosition;
         originalParent = transform.parent;
@@ -64,42 +70,62 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (!IsDraggable) return;
-        rectTransform.anchoredPosition += eventData.delta / canvas.scaleFactor;
+        if (canvas != null)
+        {
+            rectTransform.anchoredPosition += eventData.delta / canvas.scaleFactor;
+        }
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (!IsDraggable) return;
+        canvasGroup.blocksRaycasts = true;
 
-        if (canvasGroup != null) canvasGroup.blocksRaycasts = true;
+        bool isMyTurn = GameManager.Instance != null &&
+                        GameManager.Instance.ActiveTurnPlayerId.Value == Unity.Netcode.NetworkManager.Singleton.LocalClientId;
 
-        float handYThreshold = Screen.height * 0.35f;
+        float dragUpThreshold = Screen.height * 0.35f;
 
-        if (transform.position.y > handYThreshold)
+        if (isMyTurn && transform.position.y > dragUpThreshold)
         {
-            Debug.Log($"<color=green>[Card Play Success] Dropped {CardData.CardId}</color>");
-
-            PlayerHandController.Instance.RemoveCard(CardData);
-
-            if (TurnActionUI.Instance != null)
+            if (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_DiscardPrompt)
             {
-                TurnActionUI.Instance.HideAllActions();
+                if (CardData.Type == CardType.WhiskerBlower)
+                {
+                    ReturnToHand();
+                    return;
+                }
+
+                ReturnToHand();
+                PlayerHandController.Instance?.PromptDiscardConfirmation(CardData);
+                return;
             }
 
-            GameManager.Instance.SubmitPlayAbilityCardServerRpc(CardData);
+            if (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_Action && CardData.Type == CardType.Ability)
+            {
+                Debug.Log($"<color=green>[Action] played: {CardData.CardId}</color>");
 
-            Destroy(gameObject);
+                gameObject.SetActive(false);
+
+                PlayerHandController.Instance?.RemoveCard(CardData);
+                TurnActionUI.Instance?.HideAllActions();
+                GameManager.Instance?.SubmitPlayAbilityCardServerRpc(CardData);
+
+                Destroy(gameObject);
+                return;
+            }
         }
-        else
+
+        ReturnToHand();
+    }
+
+    private void ReturnToHand()
+    {
+        if (originalParent != null)
         {
             transform.SetParent(originalParent, true);
             transform.SetSiblingIndex(originalSiblingIndex);
             rectTransform.anchoredPosition = originalPosition;
-            if (PlayerHandController.Instance != null)
-            {
-                PlayerHandController.Instance.UpdateHandFanLayout();
-            }
+            PlayerHandController.Instance?.UpdateHandFanLayout();
         }
     }
 }

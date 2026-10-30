@@ -9,25 +9,32 @@ public class PlayerHandController : MonoBehaviour
 {
     public static PlayerHandController Instance { get; private set; }
 
-    [Header("hand setup")]
     [SerializeField] private Transform handCardContainer;
     [SerializeField] private GameObject handCardPrefab;
 
-    [Header("detective slots")]
     [SerializeField] private Image myDetectiveSlot;
-    [SerializeField] private TMP_Text myDetectiveNameText;
     [SerializeField] private Image myActiveAbilitySlot;
 
-    private bool isPlayAbilityActive = false;
+    [Header("confirm modl")]
+    [SerializeField] private GameObject discardConfirmModal;
+    [SerializeField] private TMP_Text confirmPromptText;
+    [SerializeField] private Button confirmDiscardBtn;
+    [SerializeField] private Button cancelDiscardBtn;
+
+    [SerializeField] private float cardSpacingX = 140f;
+
     private List<NetworkCard> currentCards = new List<NetworkCard>();
+    private NetworkCard pendingDiscardCard;
 
     private void Awake()
     {
         Instance = this;
-        if (myActiveAbilitySlot != null)
-        {
-            myActiveAbilitySlot.gameObject.SetActive(false);
-        }
+
+        if (myActiveAbilitySlot != null) myActiveAbilitySlot.gameObject.SetActive(false);
+
+        if (confirmDiscardBtn != null) confirmDiscardBtn.onClick.AddListener(OnConfirmDiscardClicked);
+        if (cancelDiscardBtn != null) cancelDiscardBtn.onClick.AddListener(OnCancelDiscardClicked);
+        if (discardConfirmModal != null) discardConfirmModal.SetActive(false);
     }
 
     public void SetLocalDetectiveCat(DetectiveCatType catType)
@@ -39,12 +46,38 @@ public class PlayerHandController : MonoBehaviour
         if (sprite != null && myDetectiveSlot != null)
         {
             myDetectiveSlot.sprite = sprite;
+            myDetectiveSlot.color = Color.white;
             myDetectiveSlot.gameObject.SetActive(true);
         }
+    }
 
-        if (myDetectiveNameText != null)
+    public void SetActiveAbility(string cardId)
+    {
+        if (myActiveAbilitySlot == null) return;
+
+        Sprite sprite = CardDatabase.Instance != null
+            ? CardDatabase.Instance.GetCardSprite(cardId)
+            : null;
+
+        if (sprite != null)
         {
-            myDetectiveNameText.text = catType.ToString();
+            myActiveAbilitySlot.sprite = sprite;
+            myActiveAbilitySlot.color = Color.white;
+            myActiveAbilitySlot.gameObject.SetActive(true);
+            Debug.Log($"<color=green>[Active Ability] displayed {cardId}</color>");
+        }
+        else
+        {
+            Debug.LogWarning($"[Active Ability] no sprite: {cardId}");
+        }
+    }
+
+    public void ClearActiveAbility()
+    {
+        if (myActiveAbilitySlot != null)
+        {
+            myActiveAbilitySlot.sprite = null;
+            myActiveAbilitySlot.gameObject.SetActive(false);
         }
     }
 
@@ -65,46 +98,7 @@ public class PlayerHandController : MonoBehaviour
 
         for (int i = 0; i < cards.Length; i++)
         {
-            NetworkCard netCard = cards[i];
-            GameObject cardObj = Instantiate(handCardPrefab, handCardContainer);
-
-            Sprite cardSprite = CardDatabase.Instance != null
-                ? CardDatabase.Instance.GetCardSprite(netCard.CardId)
-                : null;
-
-            Image img = cardObj.GetComponentInChildren<Image>();
-            if (img != null)
-            {
-                if (cardSprite != null)
-                {
-                    img.sprite = cardSprite;
-                    img.color = Color.white;
-                }
-                else
-                {
-                    img.color = (netCard.Type == CardType.WhiskerBlower) ? Color.yellow : Color.cyan;
-                }
-            }
-
-            TMP_Text label = cardObj.GetComponentInChildren<TMP_Text>();
-            if (label != null)
-            {
-                label.text = $"{netCard.CardId}\n({netCard.Type})";
-            }
-
-            Button btn = cardObj.GetComponentInChildren<Button>();
-            if (btn != null)
-            {
-                btn.onClick.RemoveAllListeners();
-                btn.onClick.AddListener(() => OnCardClicked(netCard));
-            }
-
-            var dragHandler = cardObj.GetComponent<CardDragHandler>();
-            if (dragHandler == null) dragHandler = cardObj.AddComponent<CardDragHandler>();
-            dragHandler.Initialize(netCard);
-
-            UpdateHandFanLayout();
-
+            SpawnCardObject(cards[i]);
             yield return new WaitForSeconds(0.2f);
         }
     }
@@ -112,47 +106,53 @@ public class PlayerHandController : MonoBehaviour
     public void AddCard(NetworkCard card)
     {
         currentCards.Add(card);
+        SpawnCardObject(card);
+    }
 
+    private void SpawnCardObject(NetworkCard netCard)
+    {
         GameObject cardObj = Instantiate(handCardPrefab, handCardContainer);
 
+
         Sprite cardSprite = CardDatabase.Instance != null
-            ? CardDatabase.Instance.GetCardSprite(card.CardId)
+            ? CardDatabase.Instance.GetCardSprite(netCard.CardId)
             : null;
 
-        Image img = cardObj.GetComponentInChildren<Image>();
-        if (img != null)
+        Card cardSO = netCard.GetScriptableObject();
+        if (cardSprite == null && cardSO != null && cardSO.frontfaceFrame != null)
+        {
+            cardSprite = Sprite.Create(
+                cardSO.frontfaceFrame,
+                new Rect(0, 0, cardSO.frontfaceFrame.width, cardSO.frontfaceFrame.height),
+                new Vector2(0.5f, 0.5f)
+            );
+        }
+
+        Transform visualRoot = cardObj.transform.Find("VisualRoot"); //direct na sa visroot
+        Image cardImage = visualRoot != null ? visualRoot.GetComponent<Image>() : cardObj.GetComponentInChildren<Image>();
+
+        if (cardImage != null)
         {
             if (cardSprite != null)
             {
-                img.sprite = cardSprite;
-                img.color = Color.white;
+                cardImage.sprite = cardSprite;
+                cardImage.color = Color.white;
             }
             else
             {
-                img.color = (card.Type == CardType.WhiskerBlower) ? Color.yellow : Color.cyan;
+                cardImage.color = (netCard.Type == CardType.WhiskerBlower) ? Color.yellow : Color.cyan;
+                Debug.LogWarning($"[PlayerHand] missing sprite: '{netCard.CardId}'!");
             }
-        }
-
-        TMP_Text label = cardObj.GetComponentInChildren<TMP_Text>();
-        if (label != null)
-        {
-            label.text = $"{card.CardId}\n({card.Type})";
-        }
-
-        Button btn = cardObj.GetComponentInChildren<Button>();
-        if (btn != null)
-        {
-            btn.onClick.RemoveAllListeners();
-            btn.onClick.AddListener(() => OnCardClicked(card));
         }
 
         var dragHandler = cardObj.GetComponent<CardDragHandler>();
         if (dragHandler == null) dragHandler = cardObj.AddComponent<CardDragHandler>();
-        dragHandler.Initialize(card);
+        dragHandler.Initialize(netCard);
 
         UpdateHandFanLayout();
     }
 
+    //todo: (bug) not adjusting when stolen
     public void RemoveCard(NetworkCard card)
     {
         currentCards.Remove(card);
@@ -162,11 +162,12 @@ public class PlayerHandController : MonoBehaviour
             var dragHandler = handCardContainer.GetChild(i).GetComponent<CardDragHandler>();
             if (dragHandler != null && dragHandler.CardData.Equals(card))
             {
-                Destroy(handCardContainer.GetChild(i).gameObject);
+                Transform cardTransform = handCardContainer.GetChild(i);
+                cardTransform.SetParent(null);
+                Destroy(cardTransform.gameObject);
                 break;
             }
         }
-
         UpdateHandFanLayout();
     }
 
@@ -175,7 +176,17 @@ public class PlayerHandController : MonoBehaviour
         int total = handCardContainer.childCount;
         for (int i = 0; i < total; i++)
         {
-            var cardVisual = handCardContainer.GetChild(i).GetComponent<HandCardVisual>();
+            var cardTransform = handCardContainer.GetChild(i) as RectTransform;
+            var cardVisual = handCardContainer.GetChild(i).GetComponent<CardVisualInteraction>();
+
+            if (cardTransform != null)
+            {
+                float t = (total <= 1) ? 0f : ((float)i / (total - 1) * 2f) - 1f;
+                float xOffset = t * (cardSpacingX * (total - 1) * 0.5f);
+
+                cardTransform.anchoredPosition = new Vector2(xOffset, 0f);
+            }
+
             if (cardVisual != null)
             {
                 cardVisual.SetFanPosition(i, total);
@@ -185,80 +196,50 @@ public class PlayerHandController : MonoBehaviour
 
     public void SetAbilityCardsPlayable(bool playable)
     {
-        isPlayAbilityActive = playable;
-
         for (int i = 0; i < handCardContainer.childCount; i++)
         {
-            var cardObj = handCardContainer.GetChild(i);
-            var dragHandler = cardObj.GetComponent<CardDragHandler>();
-
-            bool isAbility = (i < currentCards.Count && currentCards[i].Type == CardType.Ability);
-
-            if (isAbility && playable)
+            var dragHandler = handCardContainer.GetChild(i).GetComponent<CardDragHandler>();
+            if (dragHandler != null)
             {
-                Outline outline = cardObj.GetComponentInChildren<Outline>();
-                if (outline == null)
+                if (dragHandler.CardData.Type == CardType.Ability)
                 {
-                    var img = cardObj.GetComponentInChildren<Image>();
-                    if (img != null) outline = img.gameObject.AddComponent<Outline>();
+                    dragHandler.IsDraggable = playable;
+                    dragHandler.SetHighlighted(playable);
                 }
-                if (outline != null)
+                else
                 {
-                    outline.effectDistance = new Vector2(5, -5);
-                    outline.effectColor = new Color(1f, 0.85f, 0.2f, 1f);
-                    outline.enabled = true;
+                    dragHandler.IsDraggable = false;
+                    dragHandler.SetHighlighted(false);
                 }
             }
-            else
-            {
-                Outline outline = cardObj.GetComponentInChildren<Outline>();
-                if (outline != null) outline.enabled = false;
-            }
         }
     }
 
-    public int GetCustodyCardCount()
+    public void PromptDiscardConfirmation(NetworkCard card)
     {
-        return currentCards.FindAll(c => c.Type == CardType.Custody).Count;
-    }
-
-    public bool HasAbilityCards()
-    {
-        return currentCards.Exists(c => c.Type == CardType.Ability);
-    }
-
-    private void OnCardClicked(NetworkCard netCard)
-    {
-        Debug.Log($"<color=white>{netCard.CardId} ({netCard.Type}) | PlayMode: {isPlayAbilityActive}</color>");
-
-        if (GameManager.Instance != null && GameManager.Instance.CurrentState.Value == GameState.PlayerTurn_DiscardPrompt)
+        pendingDiscardCard = card;
+        if (discardConfirmModal != null)
         {
-            if (netCard.Type == CardType.WhiskerBlower)
+            discardConfirmModal.SetActive(true);
+            if (confirmPromptText != null)
             {
-                Debug.LogWarning("<color=red>the WhiskerBlower cannot be discarded</color>");
-                return;
-            }
-            RemoveCard(netCard);
-            GameManager.Instance.SubmitDiscardServerRpc(netCard);
-            return;
-        }
-
-        if (isPlayAbilityActive)
-        {
-            if (netCard.Type == CardType.Ability)
-            {
-                Debug.Log($"<color=cyan>Play: {netCard.CardId}</color>");
-
-                RemoveCard(netCard);
-
-                SetAbilityCardsPlayable(false);
-
-                GameManager.Instance.SubmitPlayAbilityCardServerRpc(netCard);
-            }
-            else
-            {
-                Debug.LogWarning("non-Ability card. click an Ability card to play it!");
+                confirmPromptText.text = $"Are you sure you want to discard <color=yellow>{card.CardId}</color>?";
             }
         }
     }
+
+    private void OnConfirmDiscardClicked()
+    {
+        if (discardConfirmModal != null) discardConfirmModal.SetActive(false);
+        RemoveCard(pendingDiscardCard);
+        GameManager.Instance.SubmitDiscardServerRpc(pendingDiscardCard);
+    }
+
+    private void OnCancelDiscardClicked()
+    {
+        if (discardConfirmModal != null) discardConfirmModal.SetActive(false);
+    }
+
+    public int GetCustodyCardCount() => currentCards.FindAll(c => c.Type == CardType.Custody).Count;
+    public bool HasAbilityCards() => currentCards.Exists(c => c.Type == CardType.Ability);
 }

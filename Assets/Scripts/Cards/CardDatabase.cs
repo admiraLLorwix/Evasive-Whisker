@@ -23,7 +23,6 @@ namespace EvasiveWhisker.Cards
     {
         public static CardDatabase Instance { get; private set; }
 
-        [Tooltip("Card ScriptableObject")]
         [SerializeField] private List<Card> allCards = new List<Card>();
 
         [Header("detective cats")]
@@ -77,11 +76,6 @@ namespace EvasiveWhisker.Cards
         {
             var visual = detectiveCatVisuals.Find(v => v.catType == catType);
             return visual != null ? visual.localHandCardSprite : null;
-        }
-
-        public List<Card> GetAllCardsOfType(CardType type)
-        {
-            return allCards.FindAll(c => c.cardType == type);
         }
     }
 }
