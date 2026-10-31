@@ -31,6 +31,7 @@ public class GameManager : NetworkBehaviour
 
     private Dictionary<ulong, List<NetworkCard>> playerHands = new Dictionary<ulong, List<NetworkCard>>();
     private Dictionary<ulong, DetectiveCatType> chosenDetectives = new Dictionary<ulong, DetectiveCatType>();
+    private Dictionary<ulong, int> abilityTurnDuration = new Dictionary<ulong, int>();
 
     private List<DetectiveCatType> availableCatPool = new List<DetectiveCatType>
     {
@@ -308,19 +309,59 @@ public class GameManager : NetworkBehaviour
         NetworkCard? drawn = DeckManager.Instance.DrawCard();
         if (drawn.HasValue)
         {
-            playerHands[senderId].Add(drawn.Value);
+            NetworkCard drawnCard = drawn.Value;
+            string drawerName = GetPlayerName(senderId);
 
-            ClientRpcParams clientParams = new ClientRpcParams
+            ClientRpcParams drawerParams = new ClientRpcParams
             {
                 Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { senderId } }
             };
-            ReceiveDrawnCardClientRpc(drawn.Value, clientParams);
+            ShowDrawSpotlightClientRpc(drawnCard.CardId.ToString(), $"You drew {drawnCard.CardId}!", false, drawerParams);
 
-            UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
+            List<ulong> spectatorIds = new List<ulong>();
+            foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+            {
+                if (client.ClientId != senderId) spectatorIds.Add(client.ClientId);
+            }
+
+            if (spectatorIds.Count > 0)
+            {
+                ClientRpcParams spectatorParams = new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams { TargetClientIds = spectatorIds.ToArray() }
+                };
+                ShowDrawSpotlightClientRpc("", $"{drawerName} drew a card!", true, spectatorParams);
+            }
             UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
+            StartCoroutine(ResolveDrawAfterSpotlightRoutine(senderId, drawnCard));
         }
+    }
 
-        CheckHandLimitOrProceedToAction(senderId);
+    [ClientRpc]
+    private void ShowDrawSpotlightClientRpc(string cardId, string message, bool isSpectator, ClientRpcParams clientRpcParams = default)
+    {
+        if (CardSpotlightController.Instance != null)
+        {
+            Color glow = isSpectator ? new Color(0.6f, 0.4f, 1f, 1f) : new Color(0.2f, 1f, 0.4f, 1f);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 2.0f, isSpectator);
+        }
+    }
+
+    private IEnumerator ResolveDrawAfterSpotlightRoutine(ulong drawerId, NetworkCard drawnCard)
+    {
+        yield return new WaitForSeconds(2.0f); 
+
+        playerHands[drawerId].Add(drawnCard);
+
+        ClientRpcParams drawerParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { drawerId } }
+        };
+
+        //upd
+        ReceiveDrawnCardClientRpc(drawnCard, drawerParams);
+        UpdateOpponentHandCountClientRpc(drawerId, playerHands[drawerId].Count);
+        CheckHandLimitOrProceedToAction(drawerId);
     }
 
     [ClientRpc]
@@ -447,7 +488,29 @@ public class GameManager : NetworkBehaviour
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (senderId != ActiveTurnPlayerId.Value) return;
 
-        Debug.Log($"<color=cyan>{GetPlayerName(senderId)} played {card.CardId}</color>");
+        string actorName = GetPlayerName(senderId);
+        BroadcastAbilitySpotlightClientRpc(card.CardId.ToString(), $"{actorName} played {card.CardId}!");
+
+        StartCoroutine(ResolveAbilityAfterSpotlightRoutine(senderId, card));
+    }
+
+    [ClientRpc]
+    private void BroadcastAbilitySpotlightClientRpc(string cardId, string message)
+    {
+        if (CardSpotlightController.Instance != null)
+        {
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, new Color(1f, 0.85f, 0.2f, 1f), 2.5f);
+        }
+        else
+        {
+            var spotlight = FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
+            spotlight?.PlaySpotlight(cardId, message, new Color(1f, 0.85f, 0.2f, 1f), 2.5f);
+        }
+    }
+
+    private IEnumerator ResolveAbilityAfterSpotlightRoutine(ulong senderId, NetworkCard card)
+    {
+        yield return new WaitForSeconds(2.5f);
 
         playerHands[senderId].Remove(card);
         UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
@@ -455,7 +518,7 @@ public class GameManager : NetworkBehaviour
         if (card.CardId == "NineLives" || card.CardId == "Zoomies" || card.CardId == "CatNap")
         {
             activePlayerAbilities[senderId] = card;
-            abilityExpiryRounds[senderId] = CurrentRound.Value + 1;
+            abilityTurnDuration[senderId] = 2;
 
             SetPlayerActiveAbilityClientRpc(senderId, card.CardId.ToString());
         }
@@ -467,6 +530,48 @@ public class GameManager : NetworkBehaviour
         CheckHandLimitOrProceedToAction(senderId);
         AdvanceToNextTurn();
     }
+
+    private IEnumerator ResolveStealAfterSpotlightRoutine(ulong thiefId, NetworkCard stolenCard)
+    {
+        yield return new WaitForSeconds(2.5f);
+
+        playerHands[thiefId].Add(stolenCard);
+        UpdateOpponentHandCountClientRpc(thiefId, playerHands[thiefId].Count);
+
+        ClientRpcParams thiefParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
+        };
+        ReceiveDrawnCardClientRpc(stolenCard, thiefParams);
+
+        int limit = GetMaxHandLimit(thiefId);
+        if (playerHands[thiefId].Count > limit)
+        {
+            CurrentState.Value = GameState.PlayerTurn_DiscardPrompt;
+            PromptDiscardClientRpc(thiefId, playerHands[thiefId].Count, limit);
+        }
+        else
+        {
+            AdvanceToNextTurn();
+        }
+    }
+
+    private IEnumerator ResolveTrapAfterSpotlightRoutine(ulong thiefId, ulong victimId, NetworkCard trapCard)
+    {
+        yield return new WaitForSeconds(2.5f);
+
+        DeckManager.Instance.Discard(trapCard);
+
+        if (trapCard.CardId == "CatNap")
+        {
+            activePlayerAbilities[thiefId] = trapCard;
+            abilityTurnDuration[thiefId] = 2;
+            SetPlayerActiveAbilityClientRpc(thiefId, "CatNap");
+        }
+
+        AdvanceToNextTurn();
+    }
+
 
     [ClientRpc]
     private void ClearPlayerActiveAbilityClientRpc(ulong playerId)
@@ -493,64 +598,77 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    [ClientRpc]
+    private void ShowStealSpotlightClientRpc(string cardId, string message, bool isSpectator, ClientRpcParams clientRpcParams = default)
+    {
+        if (CardSpotlightController.Instance != null)
+        {
+            Color glow = isSpectator ? new Color(0.6f, 0.4f, 1f, 1f) : new Color(0f, 0.85f, 1f, 1f);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 2.5f, isSpectator);
+        }
+    }
+
+
+
     public void ExecuteSteal(ulong thiefId, ulong victimId, int cardIndex)
     {
-        hasTakenActionThisTurn = true;
-
         if (!playerHands.ContainsKey(victimId) || cardIndex >= playerHands[victimId].Count) return;
 
         NetworkCard stolenCard = playerHands[victimId][cardIndex];
         playerHands[victimId].RemoveAt(cardIndex);
 
-        ClientRpcParams thiefOnlyParams = new ClientRpcParams
+        hasTakenActionThisTurn = true;
+        string thiefName = GetPlayerName(thiefId); string victimName = GetPlayerName(victimId);
+
+        ClientRpcParams duelParams = new ClientRpcParams
         {
-            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId, victimId } }
         };
-        UnlockStealSelectionClientRpc(thiefOnlyParams);
+        ShowStealSpotlightClientRpc(stolenCard.CardId.ToString(), $"{thiefName} stole {stolenCard.CardId} from {victimName}", false, duelParams);
+
+        List<ulong> spectatorIds = new List<ulong>();
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            if (client.ClientId != thiefId && client.ClientId != victimId)
+            {
+                spectatorIds.Add(client.ClientId);
+            }
+        }
+
+        if (spectatorIds.Count > 0)
+        {
+            ClientRpcParams spectatorParams = new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams { TargetClientIds = spectatorIds.ToArray() }
+            };
+            ShowStealSpotlightClientRpc("", $"{thiefName} stole a card from {victimName}", true, spectatorParams);
+        }
 
         ClientRpcParams victimParams = new ClientRpcParams
         {
             Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { victimId } }
         };
         RemoveStolenCardClientRpc(stolenCard, victimParams);
-
         UpdateOpponentHandCountClientRpc(victimId, playerHands[victimId].Count);
 
         if (stolenCard.Type == CardType.Trap)
         {
-            Debug.Log($"[Steal] {GetPlayerName(thiefId)} stole a card from {GetPlayerName(victimId)}.");
-            DeckManager.Instance.Discard(stolenCard);
-            AnnounceTrapTriggerClientRpc(thiefId, victimId, stolenCard.CardId.ToString());
+            Debug.Log($"<color=red>[TRAP] thief {thiefName} triggered {stolenCard.CardId} from {victimName}</color>");
+            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), $"{thiefName} triggered {stolenCard.CardId}", thiefName, victimName);
+            StartCoroutine(ResolveTrapAfterSpotlightRoutine(thiefId, victimId, stolenCard));
         }
         else
         {
-            playerHands[thiefId].Add(stolenCard);
-            UpdateOpponentHandCountClientRpc(thiefId, playerHands[thiefId].Count);
-
-            ClientRpcParams thiefParams = new ClientRpcParams
-            {
-                Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
-            };
-            ReceiveDrawnCardClientRpc(stolenCard, thiefParams);
+            StartCoroutine(ResolveStealAfterSpotlightRoutine(thiefId, stolenCard));
         }
+    }
 
-        if (stolenCard.CardId == "CatNap")
+    [ClientRpc]
+    private void BroadcastTrapSpotlightClientRpc(string cardId, string message, string thiefName, string victimName)
+    {
+        if (CardSpotlightController.Instance != null)
         {
-            activePlayerAbilities[thiefId] = stolenCard;
-            abilityExpiryRounds[thiefId] = CurrentRound.Value + 1;
-            SetPlayerActiveAbilityClientRpc(thiefId, "CatNap");
-        }
-
-        CheckHandLimitOrProceedToAction(thiefId);
-        int limit = GetMaxHandLimit(thiefId);
-        if (playerHands[thiefId].Count > limit)
-        {
-            CurrentState.Value = GameState.PlayerTurn_DiscardPrompt;
-            PromptDiscardClientRpc(thiefId, playerHands[thiefId].Count, limit);
-        }
-        else
-        {
-            AdvanceToNextTurn();
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, new Color(1f, 0.15f, 0.15f, 1f), 2.5f);
         }
     }
 
@@ -598,15 +716,19 @@ public class GameManager : NetworkBehaviour
 
         if (activePlayerAbilities.ContainsKey(endingPlayerId) && activePlayerAbilities[endingPlayerId].HasValue)
         {
-            if (abilityExpiryRounds.ContainsKey(endingPlayerId) && CurrentRound.Value >= abilityExpiryRounds[endingPlayerId])
+            if (abilityTurnDuration.ContainsKey(endingPlayerId))
             {
-                NetworkCard expiredCard = activePlayerAbilities[endingPlayerId].Value;
-                activePlayerAbilities[endingPlayerId] = null;
+                abilityTurnDuration[endingPlayerId]--;
+                if (abilityTurnDuration[endingPlayerId] <= 0)
+                {
+                    NetworkCard expiredCard = activePlayerAbilities[endingPlayerId].Value;
+                    activePlayerAbilities[endingPlayerId] = null;
 
-                Debug.Log($"<color=orange>[Ability Expired] {GetPlayerName(endingPlayerId)} {expiredCard.CardId} goes to the Discard Pile</color>");
+                    Debug.Log($"<color=orange>[ability expired] {GetPlayerName(endingPlayerId)} completed their turn, {expiredCard.CardId} moves to Discard Pile!</color>");
 
-                ClearPlayerActiveAbilityClientRpc(endingPlayerId);
-                DeckManager.Instance.Discard(expiredCard);
+                    ClearPlayerActiveAbilityClientRpc(endingPlayerId);
+                    DeckManager.Instance.Discard(expiredCard);
+                }
             }
         }
 
