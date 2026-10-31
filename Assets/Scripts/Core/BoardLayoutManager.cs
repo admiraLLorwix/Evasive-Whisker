@@ -33,7 +33,8 @@ public class BoardLayoutManager : MonoBehaviour
             orderedOpponents.Add(allPlayerClientIds[nextIndex]);
         }
 
-        if (opponentIslandPrefab == null) return;
+        int opponentCount = orderedOpponents.Count;
+        if (opponentCount == 0 || opponentIslandPrefab == null) return;
 
         foreach (var pair in spawnedOpponentIslands)
         {
@@ -41,15 +42,34 @@ public class BoardLayoutManager : MonoBehaviour
         }
         spawnedOpponentIslands.Clear();
 
-        for (int i = 0; i < orderedOpponents.Count; i++)
+        int[] targetAnchorIndices;
+
+        switch (opponentCount)
         {
-            if (opponentIslandAnchorPoints == null || i >= opponentIslandAnchorPoints.Length || opponentIslandAnchorPoints[i] == null)
-            {
-                continue;
-            }
+            case 1:
+                targetAnchorIndices = new int[] { 2 };
+                break;
+            case 2:
+                targetAnchorIndices = new int[] { 1, 3 };
+                break;
+            case 3:
+                targetAnchorIndices = new int[] { 1, 2, 3 };
+                break;
+            case 4:
+                targetAnchorIndices = new int[] { 0, 1, 3, 4 };
+                break;
+            default:
+                targetAnchorIndices = new int[] { 0, 1, 2, 3, 4 };
+                break;
+        }
+
+        for (int i = 0; i < opponentCount; i++)
+        {
+            int anchorIdx = targetAnchorIndices[i];
+            if (anchorIdx >= opponentIslandAnchorPoints.Length || opponentIslandAnchorPoints[anchorIdx] == null) continue;
 
             ulong opponentId = orderedOpponents[i];
-            Transform anchor = opponentIslandAnchorPoints[i];
+            Transform anchor = opponentIslandAnchorPoints[anchorIdx];
 
             GameObject islandObj = Instantiate(opponentIslandPrefab, anchor);
             islandObj.transform.localPosition = Vector3.zero;
@@ -65,11 +85,14 @@ public class BoardLayoutManager : MonoBehaviour
 
             string realName = (playerNamesMap != null && playerNamesMap.ContainsKey(opponentId))
                 ? playerNamesMap[opponentId]
-                : $"Detective #{opponentId}";
+                : $"Detective_{Random.Range(100, 999)}";
 
             islandUI.Initialize(opponentId, realName, islandSprite);
         }
+
+        Debug.Log($"[BoardLayout] placed {opponentCount} isladns on: {string.Join(", ", targetAnchorIndices)}");
     }
+
 
     public PlayerIslandUI GetOpponentIsland(ulong clientId)
     {

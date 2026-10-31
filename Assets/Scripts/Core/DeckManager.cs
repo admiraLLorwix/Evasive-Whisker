@@ -89,6 +89,7 @@ public class DeckManager : MonoBehaviour
     public NetworkCard? DrawCard()
     {
         if (drawDeck.Count == 0) return null;
+        DrawDeckClick.Instance?.UpdateRemainingCount(drawDeck.Count);
         NetworkCard card = drawDeck[0];
         drawDeck.RemoveAt(0);
         return card;
@@ -120,6 +121,7 @@ public class DeckManager : MonoBehaviour
         ShuffleList(drawDeck);
 
         discardPile = cardsToKeep;
+        DrawDeckClick.Instance?.UpdateRemainingCount(drawDeck.Count);
         Debug.Log($"[Deck] Reshuffled {cardsToReshuffle.Count} cards into Draw Deck.");
     }
 

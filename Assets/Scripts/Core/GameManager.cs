@@ -59,33 +59,36 @@ public class GameManager : NetworkBehaviour
     {
         string myName = (OnlineLobbyManager.Instance != null && !string.IsNullOrEmpty(OnlineLobbyManager.Instance.LocalPlayerName))
             ? OnlineLobbyManager.Instance.LocalPlayerName
-            : PlayerPrefs.GetString("PlayerName", $"Detective_{Random.Range(100, 999)}");
+            : $"Detective_{Random.Range(100, 999)}";
 
+        Debug.Log($"[client] '{myName}'");
         SubmitPlayerNameServerRpc(myName);
-
-        if (IsServer)
-        {
-            StartCoroutine(InitializeGameRoutine());
-        }
     }
 
     [Rpc(SendTo.Server)]
     public void SubmitPlayerNameServerRpc(string playerName, RpcParams rpcParams = default)
     {
         ulong senderId = rpcParams.Receive.SenderClientId;
-        if (string.IsNullOrWhiteSpace(playerName))
-        {
-            playerName = $"Detective_{senderId + 1}";
-        }
+        if (string.IsNullOrWhiteSpace(playerName)) playerName = $"Detective_{Random.Range(100, 999)}";
 
         playerNamesMap[senderId] = playerName;
-        Debug.Log($"[GameManager] Player #{senderId} as '{playerName}'");
+        Debug.Log($"<color=green>[Server] '{playerName}' from #{senderId} ({playerNamesMap.Count}/{NetworkManager.Singleton.ConnectedClientsList.Count})</color>");
+
+        if (IsServer && CurrentState.Value == GameState.WaitingToStart)
+        {
+            if (playerNamesMap.Count >= NetworkManager.Singleton.ConnectedClientsList.Count)
+            {
+                StartCoroutine(InitializeGameRoutine());
+            }
+        }
     }
 
+
+    //test if still using not proper names
     private IEnumerator InitializeGameRoutine()
     {
-        Debug.Log("[GameManager] initializegameroutine");
-        yield return new WaitForSeconds(1.5f);
+        Debug.Log("<color=cyan>[gm] starting match setup...</color>");
+        yield return new WaitForSeconds(0.2f);
 
         turnOrder.Clear();
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
@@ -96,24 +99,34 @@ public class GameManager : NetworkBehaviour
         draftOrder = new List<ulong>(turnOrder);
         draftOrder.Reverse();
 
-        Debug.Log($"[GameManager] Connected players: {turnOrder.Count}");
-
         List<FixedString32Bytes> namesList = new List<FixedString32Bytes>();
+        List<ulong> idsList = new List<ulong>();
+
         foreach (ulong id in turnOrder)
         {
-            string pName = playerNamesMap.ContainsKey(id) ? playerNamesMap[id] : $"Detective #{id}";
+            string pName = playerNamesMap.ContainsKey(id) ? playerNamesMap[id] : $"Detective_{Random.Range(100, 999)}";
             namesList.Add(new FixedString32Bytes(pName));
+            idsList.Add(id);
         }
 
+        SyncAllPlayerNamesClientRpc(idsList.ToArray(), namesList.ToArray());
         SetupIslandsClientRpc(turnOrder.ToArray(), namesList.ToArray());
 
         yield return new WaitForSeconds(0.5f);
 
         CurrentState.Value = GameState.DraftingDetectiveCats;
         ActiveDraftIndex.Value = 0;
-
-        Debug.Log("<color=cyan>[GameManager] starting Detective Cat Draft</color>");
         PromptNextDraftPlayer();
+    }
+
+    [ClientRpc]
+    private void SyncAllPlayerNamesClientRpc(ulong[] ids, FixedString32Bytes[] names)
+    {
+        playerNamesMap.Clear();
+        for (int i = 0; i < ids.Length; i++)
+        {
+            playerNamesMap[ids[i]] = names[i].ToString();
+        }
     }
 
     [ClientRpc]
@@ -131,13 +144,23 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    public string GetPlayerActiveAbilityId(ulong playerId)
+    {
+        if (activePlayerAbilities.TryGetValue(playerId, out NetworkCard? ability) && ability.HasValue)
+        {
+            return ability.Value.CardId;
+        }
+        return null;
+    }
+
 
     private void PromptNextDraftPlayer()
     {
         if (ActiveDraftIndex.Value < draftOrder.Count)
         {
             ulong choosingPlayerId = draftOrder[ActiveDraftIndex.Value];
-            string chooserName = playerNamesMap.ContainsKey(choosingPlayerId) ? playerNamesMap[choosingPlayerId] : $"Player #{choosingPlayerId}";
+
+            string chooserName = GetPlayerName(choosingPlayerId);
 
             NotifyPlayerToPickCatClientRpc(choosingPlayerId, chooserName, availableCatPool.ToArray());
         }
@@ -191,6 +214,7 @@ public class GameManager : NetworkBehaviour
     [ClientRpc]
     public void BroadcastDetectiveChosenClientRpc(ulong playerId, DetectiveCatType catType)
     {
+        chosenDetectives[playerId] = catType;
         var opponentIsland = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
         if (opponentIsland != null)
         {
@@ -220,6 +244,7 @@ public class GameManager : NetworkBehaviour
                 Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
             };
             ReceiveStartingHandClientRpc(cards, clientParams);
+            UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
             UpdateOpponentHandCountClientRpc(clientId, 3);
         }
 
@@ -238,31 +263,18 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-
+    //dont check here
     public void StartPlayerTurn(ulong playerId)
     {
         CurrentState.Value = GameState.PlayerTurn_Draw;
         ActiveTurnPlayerId.Value = playerId;
-
         hasTakenActionThisTurn = false;
 
         string playerName = GetPlayerName(playerId);
 
-        if (activePlayerAbilities.ContainsKey(playerId) && activePlayerAbilities[playerId].HasValue)
-        {
-            if (abilityExpiryRounds.ContainsKey(playerId) && CurrentRound.Value >= abilityExpiryRounds[playerId])
-            {
-                NetworkCard expiredCard = activePlayerAbilities[playerId].Value;
-                activePlayerAbilities[playerId] = null;
-
-                Debug.Log($"[GameManager] {playerName}'s {expiredCard.CardId} expired and goes to discard pile.");
-
-                ClearPlayerActiveAbilityClientRpc(playerId);
-                DeckManager.Instance.Discard(expiredCard);
-            }
-        }
 
         UpdateTurnUIClientRpc(playerId, playerName, CurrentRound.Value);
+        Debug.Log($"[turn] {playerName}");
     }
 
     [ClientRpc]
@@ -275,6 +287,12 @@ public class GameManager : NetworkBehaviour
             TurnActionUI.Instance.UpdateRoundDisplay(roundNumber);
             TurnActionUI.Instance.ShowDrawPrompt(isMe, activePlayerName);
         }
+    }
+
+    [ClientRpc]
+    public void UpdateDrawDeckCountClientRpc(int remainingCount)
+    {
+        DrawDeckClick.Instance?.UpdateRemainingCount(remainingCount);
     }
 
     [Rpc(SendTo.Server)]
@@ -295,6 +313,7 @@ public class GameManager : NetworkBehaviour
             ReceiveDrawnCardClientRpc(drawn.Value, clientParams);
 
             UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
+            UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
         }
 
         CheckHandLimitOrProceedToAction(senderId);
@@ -479,6 +498,12 @@ public class GameManager : NetworkBehaviour
         NetworkCard stolenCard = playerHands[victimId][cardIndex];
         playerHands[victimId].RemoveAt(cardIndex);
 
+        ClientRpcParams thiefOnlyParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
+        };
+        UnlockStealSelectionClientRpc(thiefOnlyParams);
+
         ClientRpcParams victimParams = new ClientRpcParams
         {
             Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { victimId } }
@@ -526,6 +551,15 @@ public class GameManager : NetworkBehaviour
     }
 
     [ClientRpc]
+    private void UnlockStealSelectionClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        if (StealManager.Instance != null)
+        {
+            StealManager.Instance.CancelSelection();
+        }
+    }
+
+    [ClientRpc]
     private void AnnounceTrapTriggerClientRpc(ulong thiefId, ulong victimId, string trapName)
     {
         Debug.LogWarning($"ALERT: Player {thiefId} triggered {trapName} TRAP by Player {victimId}");
@@ -556,13 +590,28 @@ public class GameManager : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        int currentIndex = turnOrder.IndexOf(ActiveTurnPlayerId.Value);
+        ulong endingPlayerId = ActiveTurnPlayerId.Value;
+
+        if (activePlayerAbilities.ContainsKey(endingPlayerId) && activePlayerAbilities[endingPlayerId].HasValue)
+        {
+            if (abilityExpiryRounds.ContainsKey(endingPlayerId) && CurrentRound.Value >= abilityExpiryRounds[endingPlayerId])
+            {
+                NetworkCard expiredCard = activePlayerAbilities[endingPlayerId].Value;
+                activePlayerAbilities[endingPlayerId] = null;
+
+                Debug.Log($"<color=orange>[Ability Expired] {GetPlayerName(endingPlayerId)} {expiredCard.CardId} goes to the Discard Pile</color>");
+
+                ClearPlayerActiveAbilityClientRpc(endingPlayerId);
+                DeckManager.Instance.Discard(expiredCard);
+            }
+        }
+
+        int currentIndex = turnOrder.IndexOf(endingPlayerId);
         int nextIndex = (currentIndex + 1) % turnOrder.Count;
 
         if (nextIndex == 0)
         {
             CurrentRound.Value++;
-
             if (CurrentRound.Value > 10)
             {
                 ResolveRound10EndGame();
@@ -572,10 +621,23 @@ public class GameManager : NetworkBehaviour
             if (CurrentRound.Value == 3 || CurrentRound.Value == 6 || CurrentRound.Value == 9)
             {
                 DeckManager.Instance.ReshuffleMilestone();
+                BroadcastReshuffleAlertClientRpc(CurrentRound.Value);
             }
         }
 
         StartPlayerTurn(turnOrder[nextIndex]);
+    }
+
+    [ClientRpc]
+    private void BroadcastReshuffleAlertClientRpc(int round)
+    {
+        if (TurnActionUI.Instance != null)
+        {
+            TurnActionUI.Instance.ShowTemporaryNotification(
+                $"<color=yellow>ROUND {round}: DISCARD PILE RESHUFFLED INTO MAIN DECK</color>",
+                3.5f
+            );
+        }
     }
 
     private void ResolveRound10EndGame()
@@ -596,6 +658,14 @@ public class GameManager : NetworkBehaviour
         AnnounceWinnerClientRpc(winnerId, $"{winnerName} held the WhiskerBlower at Round 10");
     }
 
+    private IEnumerator RetryUpdateIslandCount(ulong playerId, int newCount)
+    {
+        yield return new WaitForSeconds(0.3f);
+        var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
+        island?.UpdateCardCount(newCount);
+    }
+
+
     [ClientRpc]
     public void UpdateOpponentHandCountClientRpc(ulong playerId, int newCount)
     {
@@ -603,6 +673,10 @@ public class GameManager : NetworkBehaviour
         if (island != null)
         {
             island.UpdateCardCount(newCount);
+        }
+        else
+        {
+            StartCoroutine(RetryUpdateIslandCount(playerId, newCount));
         }
     }
 
@@ -613,8 +687,10 @@ public class GameManager : NetworkBehaviour
         {
             return pName;
         }
-        return $"Detective_{playerId + 1}";
+        return $"Detective_{Random.Range(100, 999)}";
     }
+
+
     public DetectiveCatType GetPlayerDetective(ulong playerId) => chosenDetectives.ContainsKey(playerId) ? chosenDetectives[playerId] : DetectiveCatType.HoarderMolly;
 
     [ClientRpc]

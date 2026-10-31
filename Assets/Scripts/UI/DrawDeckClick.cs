@@ -6,6 +6,7 @@ public class DrawDeckClick : MonoBehaviour
     public static DrawDeckClick Instance { get; private set; }
 
     [SerializeField] private Outline deckGlowOutline;
+    [SerializeField] private TMPro.TMP_Text deckRemainingCountText;
     private Button button;
 
     private void Awake()
@@ -32,5 +33,12 @@ public class DrawDeckClick : MonoBehaviour
     {
         SetGlow(false);
         GameManager.Instance?.RequestDrawCardServerRpc();
+    }
+    public void UpdateRemainingCount(int count)
+    {
+        if (deckRemainingCountText != null)
+        {
+            deckRemainingCountText.text = $"{count}";
+        }
     }
 }

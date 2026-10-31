@@ -36,6 +36,19 @@ public class TurnActionUI : MonoBehaviour
         if (roundText != null) roundText.text = $"ROUND {roundNumber} / 10";
     }
 
+    public void ShowTemporaryNotification(string message, float duration = 3.5f)
+    {
+        StartCoroutine(TempNoticeRoutine(message, duration));
+    }
+
+    private System.Collections.IEnumerator TempNoticeRoutine(string message, float duration)
+    {
+        string prevText = instructionText != null ? instructionText.text : "";
+        if (instructionText != null) instructionText.text = message;
+        yield return new WaitForSeconds(duration);
+        if (instructionText != null && instructionText.text == message) instructionText.text = prevText;
+    }
+
     public void ShowDrawPrompt(bool isMyTurn, string activePlayerName)
     {
         HideAllActionPanels();

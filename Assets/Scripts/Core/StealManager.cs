@@ -22,6 +22,7 @@ public class StealManager : NetworkBehaviour
     [SerializeField] private float arcDropAmount = 14f;
 
     private ulong currentStealTargetId;
+    public bool IsSelectingTarget { get; set; } = false;
     private bool isAccusingCustodian = false;
 
     private void Awake()
@@ -38,13 +39,21 @@ public class StealManager : NetworkBehaviour
 
     public void CancelSelection()
     {
+        IsSelectingTarget = false;
         HighlightOpponentIslands(false);
+        if (stealModal != null) stealModal.SetActive(false);
+    }
+
+    public void CloseStealModal()
+    {
+        IsSelectingTarget = false;
         if (stealModal != null) stealModal.SetActive(false);
     }
 
     private void OnStealCancelled()
     {
-        if (stealModal != null) stealModal.SetActive(false);
+        CloseStealModal();
+        IsSelectingTarget = false;
         if (TurnActionUI.Instance != null)
         {
             TurnActionUI.Instance.ShowActionPrompt();
@@ -53,6 +62,7 @@ public class StealManager : NetworkBehaviour
 
     public void EnableOpponentSelection()
     {
+        IsSelectingTarget = true;
         isAccusingCustodian = false;
         HighlightOpponentIslands(true, new Color(0f, 0.8f, 1f, 1f));
     }
@@ -73,25 +83,14 @@ public class StealManager : NetworkBehaviour
             if (island != null)
             {
                 island.SetIslandGlow(enable, glowColor);
-
-                Button btn = island.GetComponent<Button>();
-                if (btn == null) btn = island.gameObject.AddComponent<Button>();
-
-                btn.interactable = enable;
-                ulong targetId = client.ClientId;
-
-                btn.onClick.RemoveAllListeners();
-                if (enable)
-                {
-                    btn.onClick.AddListener(() => OnOpponentIslandClicked(targetId));
-                }
             }
         }
     }
 
-    private void OnOpponentIslandClicked(ulong targetId)
+    public void OnOpponentIslandClicked(ulong targetId)
     {
-        HighlightOpponentIslands(false);
+        Debug.Log($"[sm] clicked ply #{targetId}");
+        IsSelectingTarget = false;
 
         if (isAccusingCustodian)
         {
@@ -121,13 +120,21 @@ public class StealManager : NetworkBehaviour
     [ClientRpc]
     private void OpenStealModalClientRpc(ulong victimId, string victimName, DetectiveCatType victimCat, int cardCount, ClientRpcParams clientRpcParams = default)
     {
-        currentStealTargetId = victimId;
-        if (stealModal != null) stealModal.SetActive(true);
+        Debug.Log($"<color=green>[sm] received! viuctim ({victimName}), Cards: {cardCount}</color>");
 
-        if (victimNameText != null)
+        currentStealTargetId = victimId;
+        IsSelectingTarget = false;
+
+        if (stealModal == null)
         {
-            victimNameText.text = $"Stealing from <color=yellow>{victimName}</color>";
+            Debug.LogError("[sm] !stealmodal");
+            return;
         }
+
+        stealModal.SetActive(true);
+        stealModal.transform.SetAsLastSibling();
+
+        if (victimNameText != null) victimNameText.text = $"Stealing from <color=yellow>{victimName}</color>";
 
         if (victimAvatarImage != null && CardDatabase.Instance != null)
         {
@@ -137,6 +144,12 @@ public class StealManager : NetworkBehaviour
                 victimAvatarImage.sprite = catSprite;
                 victimAvatarImage.gameObject.SetActive(true);
             }
+        }
+
+        if (cardFanContainer == null || stealCardPrefab == null)
+        {
+            Debug.LogError("[sm] !fancontiner");
+            return;
         }
 
         foreach (Transform child in cardFanContainer)
@@ -152,10 +165,7 @@ public class StealManager : NetworkBehaviour
             Button btn = cardObj.GetComponentInChildren<Button>();
 
             RectTransform rt = cardObj.GetComponent<RectTransform>();
-            if (rt != null)
-            {
-                rt.sizeDelta = new Vector2(140, 200);
-            }
+            if (rt != null) rt.sizeDelta = new Vector2(130, 190);
 
             float t = (cardCount <= 1) ? 0f : ((float)thiefSlotIndex / (cardCount - 1) * 2f) - 1f;
             float xPos = t * (cardSpacingX * (cardCount * 0.45f));
@@ -177,7 +187,8 @@ public class StealManager : NetworkBehaviour
 
     private void OnStealCardSelected(int victimCardIndex)
     {
-        if (stealModal != null) stealModal.SetActive(false);
+        IsSelectingTarget = false;
+        CloseStealModal();
         SubmitStealPickServerRpc(currentStealTargetId, victimCardIndex);
     }
 
@@ -187,4 +198,5 @@ public class StealManager : NetworkBehaviour
         ulong thiefId = rpcParams.Receive.SenderClientId;
         GameManager.Instance.ExecuteSteal(thiefId, victimId, cardIndex);
     }
+
 }
