@@ -40,15 +40,22 @@ public class PlayerIslandUI : MonoBehaviour
         btn.onClick.RemoveAllListeners();
         btn.onClick.AddListener(() =>
         {
+            //shouldn't open infomodal
+            if (TargetingManager.Instance != null && TargetingManager.Instance.IsTargeting)
+            {
+                TargetingManager.Instance.OnOpponentTargetChosen(OwnerClientId);
+                return;
+            }
+            //shouldn't open infomodal
             if (StealManager.Instance != null && StealManager.Instance.IsSelectingTarget)
             {
                 StealManager.Instance.OnOpponentIslandClicked(OwnerClientId);
                 return;
             }
-
+            //only case to open
             if (OpponentInfoModal.Instance != null)
             {
-                OpponentInfoModal.Instance?.ShowOpponentInfoModal(OwnerClientId, PlayerName, ChosenCat, CurrentCardCount, ActiveAbilityCardId);
+                OpponentInfoModal.Instance.ShowOpponentInfoModal(OwnerClientId, PlayerName, ChosenCat, CurrentCardCount, ActiveAbilityCardId);
             }
         });
 

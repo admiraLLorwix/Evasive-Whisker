@@ -69,6 +69,7 @@ public class StealManager : NetworkBehaviour
 
     public void EnableCustodianAccusationSelection()
     {
+        IsSelectingTarget = true;
         isAccusingCustodian = true;
         HighlightOpponentIslands(true, new Color(1f, 0.2f, 0.2f, 1f));
     }
@@ -187,8 +188,17 @@ public class StealManager : NetworkBehaviour
 
     private void OnStealCardSelected(int victimCardIndex)
     {
+        Debug.Log($"[sm] thief stole {victimCardIndex}");
+
         IsSelectingTarget = false;
+        HighlightOpponentIslands(false);
         CloseStealModal();
+
+        if (TurnActionUI.Instance != null)
+        {
+            TurnActionUI.Instance.HideAllActions();
+        }
+
         SubmitStealPickServerRpc(currentStealTargetId, victimCardIndex);
     }
 

@@ -5,6 +5,10 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Netcode;
 
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
+
 public enum GameState
 {
     WaitingToStart,
@@ -46,7 +50,10 @@ public class GameManager : NetworkBehaviour
     };
 
     private Dictionary<ulong, NetworkCard?> activePlayerAbilities = new Dictionary<ulong, NetworkCard?>();
-    private Dictionary<ulong, int> abilityExpiryRounds = new Dictionary<ulong, int>();
+    //private Dictionary<ulong, int> abilityExpiryRounds = new Dictionary<ulong, int>();
+    private HashSet<ulong> trapImmunePlayers = new HashSet<ulong>();
+    private HashSet<ulong> pendingZoomiesPlayers = new HashSet<ulong>();
+    private Dictionary<ulong, int> remainingActionsThisTurn = new Dictionary<ulong, int>();
 
     private bool hasTakenActionThisTurn = false;
 
@@ -54,6 +61,41 @@ public class GameManager : NetworkBehaviour
     private void Awake()
     {
         Instance = this;
+
+        CardEffectRegistry.RegisterAbility("Declaw", new DeclawEffect());
+        CardEffectRegistry.RegisterAbility("NineLives", new NineLivesEffect());
+        CardEffectRegistry.RegisterAbility("Zoomies", new ZoomiesEffect());
+    }
+    private void Update()
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        var keyboard = Keyboard.current;
+        if (keyboard == null) return;
+
+        if (keyboard.f1Key.wasPressedThisFrame)
+        {
+            Debug.Log("<color=blue>[dev] give 3 Custody Cards</color>");
+            if (PlayerHandController.Instance != null)
+            {
+                PlayerHandController.Instance.AddCard(new NetworkCard("InformantMiley", CardType.Custody));
+                PlayerHandController.Instance.AddCard(new NetworkCard("ProsecutorGarfield", CardType.Custody));
+                PlayerHandController.Instance.AddCard(new NetworkCard("SergeantDrake", CardType.Custody));
+            }
+        }
+
+        if (keyboard.f2Key.wasPressedThisFrame && IsServer)
+        {
+            Debug.Log("<color=blue>[dev] ff to Round 10</color>");
+            CurrentRound.Value = 10;
+            if (TurnActionUI.Instance != null) TurnActionUI.Instance.UpdateRoundDisplay(10);
+            AdvanceToNextTurn();
+        }
+        if (keyboard.f3Key.wasPressedThisFrame)
+        {
+            Debug.Log("<color=blue>[dev] force trigger GameOverModal</color>");
+            GameOverUI.Instance?.ShowWinner("Detective (Debug)", "Testing the Game Over Screen");
+        }
+#endif
     }
 
     public override void OnNetworkSpawn()
@@ -65,6 +107,7 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"[client] '{myName}'");
         SubmitPlayerNameServerRpc(myName);
     }
+
 
     [Rpc(SendTo.Server)]
     public void SubmitPlayerNameServerRpc(string playerName, RpcParams rpcParams = default)
@@ -272,6 +315,17 @@ public class GameManager : NetworkBehaviour
         hasTakenActionThisTurn = false;
 
         string playerName = GetPlayerName(playerId);
+
+        if (pendingZoomiesPlayers.Contains(playerId))
+        {
+            remainingActionsThisTurn[playerId] = 2;
+            pendingZoomiesPlayers.Remove(playerId);
+            Debug.Log($"<color=green>[turn] {playerName} has zoomies, 2 actions granted this turn</color>");
+        }
+        else
+        {
+            remainingActionsThisTurn[playerId] = 1;
+        }
 
 
         UpdateTurnUIClientRpc(playerId, playerName, CurrentRound.Value);
@@ -483,7 +537,7 @@ public class GameManager : NetworkBehaviour
 
 
     [Rpc(SendTo.Server)]
-    public void SubmitPlayAbilityCardServerRpc(NetworkCard card, RpcParams rpcParams = default)
+    public void SubmitPlayAbilityCardServerRpc(NetworkCard card, ulong targetId = 0, RpcParams rpcParams = default)
     {
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (senderId != ActiveTurnPlayerId.Value) return;
@@ -491,7 +545,7 @@ public class GameManager : NetworkBehaviour
         string actorName = GetPlayerName(senderId);
         BroadcastAbilitySpotlightClientRpc(card.CardId.ToString(), $"{actorName} played {card.CardId}!");
 
-        StartCoroutine(ResolveAbilityAfterSpotlightRoutine(senderId, card));
+        StartCoroutine(ResolveAbilityAfterSpotlightRoutine(senderId, targetId, card));
     }
 
     [ClientRpc]
@@ -508,27 +562,28 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    private IEnumerator ResolveAbilityAfterSpotlightRoutine(ulong senderId, NetworkCard card)
+    private IEnumerator ResolveAbilityAfterSpotlightRoutine(ulong senderId, ulong targetId, NetworkCard card)
     {
         yield return new WaitForSeconds(2.5f);
 
         playerHands[senderId].Remove(card);
         UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
 
-        if (card.CardId == "NineLives" || card.CardId == "Zoomies" || card.CardId == "CatNap")
-        {
-            activePlayerAbilities[senderId] = card;
-            abilityTurnDuration[senderId] = 2;
+        CardEffectRegistry.TriggerAbility(card.CardId.ToString(), senderId, targetId, card);
 
-            SetPlayerActiveAbilityClientRpc(senderId, card.CardId.ToString());
+        ConsumeAction(senderId);
+
+        if (GetRemainingActions(senderId) > 0)
+        {
+            Debug.Log($"<color=yellow>[zoomies] {GetPlayerName(senderId)} has 1 action remaining</color>");
+            CurrentState.Value = GameState.PlayerTurn_Action;
+            NotifyActionPhaseClientRpc(senderId);
         }
         else
         {
-            DeckManager.Instance.Discard(card);
+            CheckHandLimitOrProceedToAction(senderId);
+            AdvanceToNextTurn();
         }
-
-        CheckHandLimitOrProceedToAction(senderId);
-        AdvanceToNextTurn();
     }
 
     private IEnumerator ResolveStealAfterSpotlightRoutine(ulong thiefId, NetworkCard stolenCard)
@@ -555,24 +610,35 @@ public class GameManager : NetworkBehaviour
             AdvanceToNextTurn();
         }
     }
-
     private IEnumerator ResolveTrapAfterSpotlightRoutine(ulong thiefId, ulong victimId, NetworkCard trapCard)
     {
         yield return new WaitForSeconds(2.5f);
-
-        DeckManager.Instance.Discard(trapCard);
-
         if (trapCard.CardId == "CatNap")
         {
             activePlayerAbilities[thiefId] = trapCard;
             abilityTurnDuration[thiefId] = 2;
             SetPlayerActiveAbilityClientRpc(thiefId, "CatNap");
         }
+        else
+        {
+            DeckManager.Instance.Discard(trapCard);
+        }
 
+        ClientRpcParams thiefParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
+        };
+        ClearThiefTurnUIClientRpc(thiefParams);
         AdvanceToNextTurn();
     }
-
-
+    [ClientRpc]
+    private void ClearThiefTurnUIClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        if (TurnActionUI.Instance != null)
+        {
+            TurnActionUI.Instance.HideAllActions();
+        }
+    }
     [ClientRpc]
     private void ClearPlayerActiveAbilityClientRpc(ulong playerId)
     {
@@ -607,9 +673,18 @@ public class GameManager : NetworkBehaviour
             CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 2.5f, isSpectator);
         }
     }
-
-
-
+    [ClientRpc]
+    private void CloseThiefStealUIClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        if (StealManager.Instance != null)
+        {
+            StealManager.Instance.CancelSelection();
+        }
+        if (TurnActionUI.Instance != null)
+        {
+            TurnActionUI.Instance.HideAllActions();
+        }
+    }
     public void ExecuteSteal(ulong thiefId, ulong victimId, int cardIndex)
     {
         if (!playerHands.ContainsKey(victimId) || cardIndex >= playerHands[victimId].Count) return;
@@ -619,6 +694,12 @@ public class GameManager : NetworkBehaviour
 
         hasTakenActionThisTurn = true;
         string thiefName = GetPlayerName(thiefId); string victimName = GetPlayerName(victimId);
+
+        ClientRpcParams thiefOnlyParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
+        };
+        CloseThiefStealUIClientRpc(thiefOnlyParams);
 
         ClientRpcParams duelParams = new ClientRpcParams
         {
@@ -653,8 +734,17 @@ public class GameManager : NetworkBehaviour
 
         if (stolenCard.Type == CardType.Trap)
         {
-            Debug.Log($"<color=red>[TRAP] thief {thiefName} triggered {stolenCard.CardId} from {victimName}</color>");
-            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), $"{thiefName} triggered {stolenCard.CardId}", thiefName, victimName);
+            if (HasTrapImmunity(thiefId))
+            {
+                Debug.Log($"<color=green>[ninelives] {thiefName} was immune to traps, discarded {stolenCard.CardId}</color>");
+                BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), $"TRAP IMMUNITY: {stolenCard.CardId} (Nine Lives)", thiefName, victimName);
+                DeckManager.Instance.Discard(stolenCard);
+                AdvanceToNextTurn();
+                return;
+            }
+
+            Debug.Log($"<color=red>[trap] Thief {thiefName} triggered {stolenCard.CardId} from {victimName}</color>");
+            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), $"TRAP TRIGGERED: {stolenCard.CardId}", thiefName, victimName);
             StartCoroutine(ResolveTrapAfterSpotlightRoutine(thiefId, victimId, stolenCard));
         }
         else
@@ -828,6 +918,64 @@ public class GameManager : NetworkBehaviour
         if (GameOverUI.Instance != null)
         {
             GameOverUI.Instance.ShowWinner(winnerName, reason);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+    //abilities
+    public void EquipActiveAbility(ulong playerId, NetworkCard card, int turnDuration)
+    {
+        activePlayerAbilities[playerId] = card;
+        abilityTurnDuration[playerId] = turnDuration;
+        SetPlayerActiveAbilityClientRpc(playerId, card.CardId.ToString());
+    }
+
+    public void DisarmPlayerActiveAbility(ulong targetId)
+    {
+        if (activePlayerAbilities.TryGetValue(targetId, out NetworkCard? ability) && ability.HasValue)
+        {
+            NetworkCard disarmed = ability.Value;
+            activePlayerAbilities[targetId] = null;
+
+            ClearPlayerActiveAbilityClientRpc(targetId);
+            DeckManager.Instance.Discard(disarmed);
+
+            Debug.Log($"[gm] disarm {disarmed.CardId} from player {targetId}");
+        }
+    }
+
+    public void SetTrapImmunity(ulong playerId, bool immune)
+    {
+        if (immune) trapImmunePlayers.Add(playerId);
+        else trapImmunePlayers.Remove(playerId);
+    }
+
+    public bool HasTrapImmunity(ulong playerId) => trapImmunePlayers.Contains(playerId);
+
+    public void SetPendingZoomies(ulong playerId, bool hasZoomies)
+    {
+        if (hasZoomies) pendingZoomiesPlayers.Add(playerId);
+        else pendingZoomiesPlayers.Remove(playerId);
+    }
+
+    public int GetRemainingActions(ulong playerId)
+    {
+        return remainingActionsThisTurn.ContainsKey(playerId) ? remainingActionsThisTurn[playerId] : 1;
+    }
+
+    public void ConsumeAction(ulong playerId)
+    {
+        if (remainingActionsThisTurn.ContainsKey(playerId))
+        {
+            remainingActionsThisTurn[playerId]--;
         }
     }
 

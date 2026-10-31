@@ -102,15 +102,17 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
             if (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_Action && CardData.Type == CardType.Ability)
             {
-                Debug.Log($"<color=green>[Action] played: {CardData.CardId}</color>");
+                if (CardData.CardId == "Declaw" || CardData.CardId == "BombasticCatEyes" || CardData.CardId == "CatInstinct")
+                {
+                    ReturnToHand();
+                    TargetingManager.Instance?.StartTargeting(CardData, gameObject);
+                    return;
+                }
 
                 gameObject.SetActive(false);
-
                 PlayerHandController.Instance?.RemoveCardObject(gameObject, CardData);
-
                 TurnActionUI.Instance?.HideAllActions();
                 GameManager.Instance?.SubmitPlayAbilityCardServerRpc(CardData);
-
                 return;
             }
         }
