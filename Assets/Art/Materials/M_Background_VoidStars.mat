@@ -56,15 +56,18 @@ Material:
     m_Ints: []
     m_Floats:
     - _EmitStrength: 1
-    - _Factor: 3
+    - _Factor: 1
     - _MorphSpeed: 0.1
-    - _NebulaSize: 0.65
+    - _NebulaRotateSpeed: 1
+    - _NebulaSize: 1
     - _NoiseScale: 0
     - _Period: 0
     - _QueueControl: 0
     - _QueueOffset: 0
+    - _RotateSpeed: 5
     - _Size: 5
-    - _Starfield_Size: 75
+    - _StarfieldRotateSpeed: 1.5
+    - _Starfield_Size: 90
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1
