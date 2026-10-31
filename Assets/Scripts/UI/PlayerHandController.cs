@@ -171,6 +171,19 @@ public class PlayerHandController : MonoBehaviour
         UpdateHandFanLayout();
     }
 
+    public void RemoveCardObject(GameObject cardObj, NetworkCard card)
+    {
+        currentCards.Remove(card);
+
+        if (cardObj != null)
+        {
+            cardObj.transform.SetParent(null);
+            Destroy(cardObj);
+        }
+
+        UpdateHandFanLayout();
+    }
+
     public void UpdateHandFanLayout()
     {
         int total = handCardContainer.childCount;

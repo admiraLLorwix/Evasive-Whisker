@@ -106,11 +106,11 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
                 gameObject.SetActive(false);
 
-                PlayerHandController.Instance?.RemoveCard(CardData);
+                PlayerHandController.Instance?.RemoveCardObject(gameObject, CardData);
+
                 TurnActionUI.Instance?.HideAllActions();
                 GameManager.Instance?.SubmitPlayAbilityCardServerRpc(CardData);
 
-                Destroy(gameObject);
                 return;
             }
         }
