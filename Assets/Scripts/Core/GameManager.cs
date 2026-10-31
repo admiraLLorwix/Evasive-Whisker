@@ -287,6 +287,10 @@ public class GameManager : NetworkBehaviour
             TurnActionUI.Instance.UpdateRoundDisplay(roundNumber);
             TurnActionUI.Instance.ShowDrawPrompt(isMe, activePlayerName);
         }
+        else
+        {
+            Debug.LogError("[gm] null turnactionui");
+        }
     }
 
     [ClientRpc]

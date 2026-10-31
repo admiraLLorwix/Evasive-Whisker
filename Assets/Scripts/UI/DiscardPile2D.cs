@@ -33,7 +33,7 @@ public class DiscardPile2D : MonoBehaviour
 
         rt.anchoredPosition = new Vector2(jitterX, jitterY);
         rt.localRotation = Quaternion.Euler(0f, 0f, randomAngle);
-        rt.localScale = new Vector3(0.55f, 0.55f, 1f);
+        rt.localScale = new Vector3(0.44f, 0.44f, 1f);
 
         Sprite cardSprite = CardDatabase.Instance != null
             ? CardDatabase.Instance.GetCardSprite(card.CardId)

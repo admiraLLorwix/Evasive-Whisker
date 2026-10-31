@@ -625,6 +625,7 @@ GameObject:
   - component: {fileID: 8856023462091634504}
   - component: {fileID: 4725580482159428018}
   - component: {fileID: 8405784518872711342}
+  - component: {fileID: 4858041669432525653}
   m_Layer: 5
   m_Name: OpponentIsland2D
   m_TagString: Untagged
@@ -770,12 +771,12 @@ MonoBehaviour:
   opponentNameText: {fileID: 2511930278207663734}
   detectiveProfileImage: {fileID: 3855925869204564580}
   activeAbilityCardSlot: {fileID: 2916067106593809792}
-  miniCardSpacingX: 26
-  miniMaxTiltZ: 9
-  miniArcDropY: 4
   handCardsContainer: {fileID: 3092600322326351609}
   cardBackPrefab: {fileID: 2558986351143620998, guid: 00fed3a646b4c294e8a5fe190c24f41e, type: 3}
   cardCountText: {fileID: 3099213577173140515}
+  miniCardSpacingX: 26
+  miniMaxTiltZ: 9
+  miniArcDropY: 4
 --- !u!225 &8405784518872711342
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -788,3 +789,19 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &4858041669432525653
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9148708501848704248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: adab257b1bf24ee478d8c36f91c9b505, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FloatingIsland
+  floatDistance: 16
+  floatSpeed: 2
+  enableTilt: 1
+  maxTiltAngle: 1.9

@@ -51,12 +51,13 @@ public class TurnActionUI : MonoBehaviour
 
     public void ShowDrawPrompt(bool isMyTurn, string activePlayerName)
     {
+        Debug.Log($"showdrawprompt: {isMyTurn}, {activePlayerName}");
         HideAllActionPanels();
 
         if (isMyTurn)
         {
             if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
-            if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card";
+            if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card!";
 
             DrawDeckClick.Instance?.SetGlow(true);
         }
