@@ -36,6 +36,12 @@ public class PlayerHandController : MonoBehaviour
     private string passLabel = "";
     public bool IsScatterPickActive => isScatterPickActive && !scatterPickSubmitted;
     public int HandCount => currentCards.Count;
+
+    //counterplay window
+    private HashSet<string> reactionValidIds = null;
+    public bool IsReactionActive => reactionValidIds != null;
+    public bool IsValidReactionCard(NetworkCard card) => reactionValidIds != null && reactionValidIds.Contains(card.CardId);
+
     private Coroutine reorderRoutine;
     public bool IsActiveAbilitySlotOccupied => myActiveAbilitySlot != null && myActiveAbilitySlot.gameObject.activeSelf;
     private void OnDisable()
@@ -462,8 +468,42 @@ public class PlayerHandController : MonoBehaviour
         }
     }
 
+//for reaction windwo
+    public void BeginReaction(string description, NetworkCard[] legalCards, float seconds)
+    {
+        reactionValidIds = new HashSet<string>();
+        var names = new List<string>();
+        foreach (NetworkCard card in legalCards)
+        {
+            if (reactionValidIds.Add(card.CardId)) names.Add(card.CardId);
+        }
 
+        if (handCardContainer != null)
+        {
+            for (int i = 0; i < handCardContainer.childCount; i++)
+            {
+                var dragHandler = handCardContainer.GetChild(i).GetComponent<CardDragHandler>();
+                if (dragHandler != null) dragHandler.SetHighlighted(IsValidReactionCard(dragHandler.CardData));
+            }
+        }
 
+        TurnActionUI.Instance?.ShowTemporaryNotification(
+            $"<color=red>{description}!</color> Drag <color=yellow>{string.Join(" / ", names)}</color> up to respond", seconds);
+    }
+
+    public void EndReaction()
+    {
+        if (reactionValidIds == null) return;
+        reactionValidIds = null;
+        SetAllCardsHighlighted(false);
+    }
+    public void CommitReaction(NetworkCard card)
+    {
+        EndReaction();
+        GameManager.Instance?.SubmitReactionServerRpc(card);
+    }
     public int GetCustodyCardCount() => currentCards.FindAll(c => c.Type == CardType.Custody).Count;
     public bool HasAbilityCards() => currentCards.Exists(c => c.Type == CardType.Ability);
+    public bool HasPlayableAbilityCards() => currentCards.Exists(c =>
+        c.Type == CardType.Ability && !(CardEffectRegistry.OccupiesSlot(c.CardId) && IsActiveAbilitySlotOccupied));
 }

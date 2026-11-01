@@ -52,6 +52,7 @@ public class StealManager : NetworkBehaviour
 
     private void OnStealCancelled()
     {
+        HighlightOpponentIslands(false);
         CloseStealModal();
         IsSelectingTarget = false;
         CancelStealServerRpc();
@@ -212,7 +213,25 @@ public class StealManager : NetworkBehaviour
             }
         }
     }
+    public void ShowCounterStealModal(ulong thiefId, string thiefName, DetectiveCatType thiefCat, int cardCount)
+    {
+        currentStealTargetId = thiefId;
+        IsSelectingTarget = false;
 
+        var allIndices = new List<int>();
+        for (int i = 0; i < cardCount; i++) allIndices.Add(i);
+
+        OpenFanModal(thiefId, thiefName, thiefCat,
+            $"<color=orange>Eye For An Eye!</color> Steal a card back from <color=yellow>{thiefName}</color>",
+            allIndices, OnCounterStealSelected, false);
+    }
+
+    private void OnCounterStealSelected(int thiefCardIndex)
+    {
+        Debug.Log($"[sm] counter-steal pick {thiefCardIndex}");
+        CloseStealModal();
+        GameManager.Instance?.SubmitCounterStealPickServerRpc(thiefCardIndex);
+    }
     private void OnPeekCardSelected(int victimCardIndex)
     {
         Debug.Log($"[sm] peek pick {victimCardIndex}");

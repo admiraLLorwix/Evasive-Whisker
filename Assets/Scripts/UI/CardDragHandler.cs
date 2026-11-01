@@ -50,7 +50,10 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         bool scatterPick = PlayerHandController.Instance != null && PlayerHandController.Instance.IsScatterPickActive;
 
-        if (!scatterPick)
+        bool reactionPick = PlayerHandController.Instance != null && PlayerHandController.Instance.IsReactionActive
+            && PlayerHandController.Instance.IsValidReactionCard(CardData);
+
+        if (!scatterPick && !reactionPick)
         {
             bool isMyTurn = GameManager.Instance != null && 
                 GameManager.Instance.ActiveTurnPlayerId.Value == Unity.Netcode.NetworkManager.Singleton.LocalClientId;
@@ -92,6 +95,16 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             if (draggedUp) PlayerHandController.Instance.PromptScatterConfirmation(CardData);
             return;
         }
+
+        if (PlayerHandController.Instance != null && PlayerHandController.Instance.IsReactionActive
+            && PlayerHandController.Instance.IsValidReactionCard(CardData))
+        {
+            bool draggedUp = transform.position.y > Screen.height * 0.35f;
+            ReturnToHand();
+            if (draggedUp) PlayerHandController.Instance.CommitReaction(CardData);
+            return;
+        }
+
         bool isMyTurn = GameManager.Instance != null && 
             GameManager.Instance.ActiveTurnPlayerId.Value == Unity.Netcode.NetworkManager.Singleton.LocalClientId;
 

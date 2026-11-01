@@ -110,8 +110,7 @@ public class TurnActionUI : MonoBehaviour
         if (endTurnButton != null) endTurnButton.gameObject.SetActive(allowSkip);
 
         int custodyCount = PlayerHandController.Instance != null ? PlayerHandController.Instance.GetCustodyCardCount() : 0;
-        bool hasAbilities = PlayerHandController.Instance != null && PlayerHandController.Instance.HasAbilityCards();
-
+        bool hasAbilities = PlayerHandController.Instance != null && PlayerHandController.Instance.HasPlayableAbilityCards();
         if (playAbilityChoiceCard != null) playAbilityChoiceCard.interactable = hasAbilities;
         if (stealChoiceCard != null) stealChoiceCard.interactable = !abilityOnly;
         if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.interactable = (custodyCount >= 3) && !abilityOnly;

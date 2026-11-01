@@ -20,11 +20,12 @@ public partial class GameManager
         public int PicksTotal;
         public int Stage;
         public bool AwaitingPick;
+        public bool Reflected; // for copy cat
     }
 
     private PendingBombastic pendingBombastic;
 
-    public void BeginBombastic(ulong askerId, ulong targetId, NetworkCard card, System.Action onFinished)
+    public void BeginBombastic(ulong askerId, ulong targetId, NetworkCard card, System.Action onFinished, bool reflected = false)
     {
         if (!IsServer) return;
 
@@ -33,7 +34,7 @@ public partial class GameManager
         {
             Debug.Log("[bombastic] target has no cards, fizzling");
             SendNotice(askerId, $"<color=yellow>{GetPlayerName(targetId)} has no cards to peek at</color>");
-            DeckManager.Instance.Discard(card);
+            if (!reflected) DeckManager.Instance.Discard(card);
             onFinished?.Invoke();
             return;
         }
@@ -44,6 +45,7 @@ public partial class GameManager
             Target = targetId,
             Card = card,
             OnFinished = onFinished,
+            Reflected = reflected,
             PicksTotal = Mathf.Min(2, targetHand.Count)
         };
         pendingBombastic = pending;
@@ -97,26 +99,79 @@ public partial class GameManager
         string askerName = GetPlayerName(pending.Asker);
         string targetName = GetPlayerName(pending.Target);
 
-        Debug.Log($"<color=magenta>[bombastic] {askerName} peeked at {targetName}'s {cardId}</color>");
+        Debug.Log($"<color=blue>[bombastic] {askerName} picked {targetName}'s card #{victimCardIndex} ({cardId}), open react window</color>");
         ClosePeekModalClientRpc(SingleTarget(pending.Asker));
-        ShowPeekRevealClientRpc(cardId, $"You peeked at {targetName}'s {cardId}", SingleTarget(pending.Asker));
-        ShowPeekRevealClientRpc(cardId, $"{askerName} peeked at your {cardId}!", SingleTarget(pending.Target));
+        //ShowPeekRevealClientRpc(cardId, $"You peeked at {targetName}'s {cardId}", SingleTarget(pending.Asker));
+        //ShowPeekRevealClientRpc(cardId, $"{askerName} peeked at your {cardId}!", SingleTarget(pending.Target));
+        if (pending.Reflected)
+        {
+            StartCoroutine(ReflectedBombasticRevealRoutine(pending, seen));
+            return;
+        }
 
-        StartCoroutine(BombasticAfterRevealRoutine(pending));
+        StartReactionWindow(new ReactionRequest
+        {
+            Attacker = pending.Asker,
+            Defender = pending.Target,
+            ActionTags = AbilityReactionTags(pending.Card.CardId),
+            Description = $"{askerName} is peeking at your {cardId}",
+            Reveal = new ReactionReveal
+            {
+                Card = seen,
+                AttackerWindowMsg = $"Waiting for {targetName} to react...",
+                DefenderWindowMsg = $"{askerName} is peeking at your {cardId}!",
+                SpectatorWindowMsg = $"{askerName} is peeking at a card from {targetName}!",
+                AttackerResultMsg = $"You peeked at {targetName}'s {cardId}",
+                DefenderResultMsg = $"{askerName} peeked at your {cardId}!",
+                SpectatorResultMsg = $"{askerName} peeked at a card from {targetName}!"
+            },
+            OnProceed = () => ContinueBombastic(pending),
+            OnCancelled = endTurn => CancelBombastic(pending, endTurn)
+        });
     }
-
-    private IEnumerator BombasticAfterRevealRoutine(PendingBombastic pending)
+    //replaced from IEnumerator BombasticAfterRevealRoutine
+    private void ContinueBombastic(PendingBombastic pending)
     {
-        yield return new WaitForSeconds(BombasticRevealWait);
+        //yield return new WaitForSeconds(BombasticRevealWait);
 
         if (pending.Picked.Count < pending.PicksTotal)
         {
             OpenNextBombasticPick(pending);
-            yield break;
+            //yield break;
+            return;
         }
-        DeckManager.Instance.Discard(pending.Card);
+        if (!pending.Reflected) DeckManager.Instance.Discard(pending.Card);
         if (pendingBombastic == pending) pendingBombastic = null;
         pending.OnFinished?.Invoke();
+    }
+    private IEnumerator ReflectedBombasticRevealRoutine(PendingBombastic pending, NetworkCard seen)
+    {
+        string askerName = GetPlayerName(pending.Asker);
+        string targetName = GetPlayerName(pending.Target);
+        string cardId = seen.CardId;
+
+        var view = new ReactionRequest
+        {
+            Attacker = pending.Asker,
+            Defender = pending.Target,
+            Reveal = new ReactionReveal
+            {
+                Card = seen,
+                AttackerResultMsg = $"You peeked at {targetName}'s {cardId}",
+                DefenderResultMsg = $"{askerName} peeked at your {cardId}!",
+                SpectatorResultMsg = $"{askerName} peeked at a card from {targetName}!"
+            }
+        };
+        BroadcastReactionSpotlights(view, true, ReactionResultSeconds);
+        yield return new WaitForSeconds(ReactionResultSeconds);
+
+        ContinueBombastic(pending);
+    }
+
+    private void CancelBombastic(PendingBombastic pending, bool endAttackerTurn)
+    {
+        if (pendingBombastic == pending) pendingBombastic = null;
+        CancelAbility(pending.Asker, pending.Card, endAttackerTurn);
     }
     private IEnumerator BombasticPickTimeoutRoutine(PendingBombastic pending, int stage)
     {

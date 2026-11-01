@@ -77,6 +77,8 @@ public static class CardEffectRegistry
         DeckManager.Instance.Discard(trapCard);
         return true;
     }
+    public static bool CanCounter(string counterCardId, string actionType) =>
+        counterplays.TryGetValue(counterCardId, out var effect) && effect.CanCounter(actionType);
 
     public static bool TryCounter(string counterCardId, string actionType, ulong defenderId, ulong attackerId, NetworkCard card)
     {

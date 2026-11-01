@@ -12,12 +12,21 @@ public class CardSpotlightController : MonoBehaviour
     [SerializeField] private Image spotlightCardImage; [SerializeField] private Sprite defaultCardBackSprite;
     [SerializeField] private TMP_Text actionTitleText;
     [SerializeField] private Outline cardGlowOutline;
+    //optional but better if set
+    //necessary lang para di matakpan player hand
+    [SerializeField] private Transform[] keepInFront;
+
+
 
     private Coroutine activeSpotlightRoutine;
 
     private void Awake()
     {
         Instance = this;
+        CanvasGroup group = GetComponent<CanvasGroup>();
+        if (group == null) group = gameObject.AddComponent<CanvasGroup>();
+        group.blocksRaycasts = false;
+        group.interactable = false;
         if (spotlightRoot != null) spotlightRoot.SetActive(false);
     }
 
@@ -26,7 +35,13 @@ public class CardSpotlightController : MonoBehaviour
         gameObject.SetActive(true);
         if (spotlightRoot != null) spotlightRoot.SetActive(true);
         transform.SetAsLastSibling();
-
+        if (keepInFront != null)
+        {
+            foreach (Transform front in keepInFront)
+            {
+                if (front != null && front.parent == transform.parent) front.SetAsLastSibling();
+            }
+        }
         if (activeSpotlightRoutine != null) StopCoroutine(activeSpotlightRoutine);
         activeSpotlightRoutine = StartCoroutine(SpotlightAnimationRoutine(cardId, bannerMessage, glowColor, duration, showBackface));
     }

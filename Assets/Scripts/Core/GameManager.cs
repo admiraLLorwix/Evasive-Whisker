@@ -83,6 +83,10 @@ public partial class GameManager : NetworkBehaviour
         CardEffectRegistry.RegisterInteractiveTrap("CatFlash", new CatFlashTrapEffect());
         CardEffectRegistry.RegisterInteractiveTrap("Swipe", new SwipeTrapEffect());
         CardEffectRegistry.RegisterInteractiveTrap("RobinPaw", new RobinPawTrapEffect());
+
+        CardEffectRegistry.RegisterCounterplay("Hiss", new HissEffect());
+        CardEffectRegistry.RegisterCounterplay("CopyCat", new CopyCatEffect());
+        CardEffectRegistry.RegisterCounterplay("EyeForAnEye", new EyeForAnEyeEffect());
     }
     private void Update()
     {
@@ -331,6 +335,7 @@ public partial class GameManager : NetworkBehaviour
         ClearShuffleLocks();
         ResetShuffleCharges(playerId);
         TickGuessImmunity(playerId);
+        queuedEyeForAnEye = null; queuedCopyCat = null;
         if (ShouldSkipTurnForCatNap(playerId))
         {
             StartCoroutine(SkipTurnRoutine(playerId));
@@ -601,31 +606,60 @@ public partial class GameManager : NetworkBehaviour
         UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
 
         string actorName = GetPlayerName(senderId);
-        BroadcastAbilitySpotlightClientRpc(card.CardId.ToString(), $"{actorName} played {card.CardId}!");
+        float spotlightSeconds = (targetId != NoTarget && card.CardId != "BombasticCatEyes") ? ReactionWindowSeconds : 2.5f;
+        BroadcastAbilitySpotlightClientRpc(card.CardId.ToString(), $"{actorName} played {card.CardId}!", spotlightSeconds);
+
 
         StartCoroutine(ResolveAbilityAfterSpotlightRoutine(senderId, targetId, card));
     }
 
     [ClientRpc]
-    private void BroadcastAbilitySpotlightClientRpc(string cardId, string message)
+    private void BroadcastAbilitySpotlightClientRpc(string cardId, string message, float duration)
     {
+        Color glow = new Color(1f, 0.85f, 0.2f, 1f);
         if (CardSpotlightController.Instance != null)
         {
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, new Color(1f, 0.85f, 0.2f, 1f), 2.5f);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, duration);
         }
         else
         {
             var spotlight = FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
-            spotlight?.PlaySpotlight(cardId, message, new Color(1f, 0.85f, 0.2f, 1f), 2.5f);
+            spotlight?.PlaySpotlight(cardId, message, glow, duration);
+            //(cardId, message, new Color(1f, 0.85f, 0.2f, 1f), 2.5f);
         }
     }
 
     private IEnumerator ResolveAbilityAfterSpotlightRoutine(ulong senderId, ulong targetId, NetworkCard card)
     {
-        yield return new WaitForSeconds(2.5f);
+        if (targetId == NoTarget || card.CardId == "BombasticCatEyes")
+        {
+            yield return new WaitForSeconds(2.5f);
+            RunAbilityEffect(senderId, targetId, card);
+            yield break;
+        }
 
+        StartReactionWindow(new ReactionRequest
+        {
+            Attacker = senderId,
+            Defender = targetId,
+            ActionTags = AbilityReactionTags(card.CardId),
+            Description = $"{GetPlayerName(senderId)} played {card.CardId} on you",
+            OnProceed = () => RunAbilityEffect(senderId, targetId, card),
+            OnCancelled = endTurn => CancelAbility(senderId, card, endTurn)
+        });
+    }
+
+    private void RunAbilityEffect(ulong senderId, ulong targetId, NetworkCard card)
+    {
         bool finished = CardEffectRegistry.TriggerAbility(card.CardId, senderId, targetId, card, () => FinishAbilityResolution(senderId));
         if (finished) FinishAbilityResolution(senderId);
+    }
+    private void CancelAbility(ulong senderId, NetworkCard card, bool endAttackerTurn)
+    {
+        DeckManager.Instance.Discard(card);
+
+        if (endAttackerTurn) EndTurnAfterCancel(senderId, TurnActionKind.Ability);
+        else FinishAbilityResolution(senderId);
     }
 
     public void FinishAbilityResolution(ulong senderId)
@@ -634,35 +668,28 @@ public partial class GameManager : NetworkBehaviour
         AfterAction(senderId, TurnActionKind.Ability);
     }
 
-    private IEnumerator ResolveStealAfterSpotlightRoutine(ulong thiefId, NetworkCard stolenCard)
+    private void CompleteSteal(ulong thiefId, NetworkCard stolenCard)
     {
-        yield return new WaitForSeconds(2.5f);
-
         playerHands[thiefId].Add(stolenCard);
         UpdateOpponentHandCountClientRpc(thiefId, playerHands[thiefId].Count);
 
-        ClientRpcParams thiefParams = new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
-        };
-        ReceiveDrawnCardClientRpc(stolenCard, thiefParams);
+        ReceiveDrawnCardClientRpc(stolenCard, SingleTarget(thiefId));
 
-        // hand limit + Zoomies follow-up are handled in AfterAction
         AfterAction(thiefId, TurnActionKind.Steal);
     }
 
-    private IEnumerator ResolveTrapAfterSpotlightRoutine(ulong thiefId, ulong victimId, NetworkCard trapCard, bool thiefImmune)
+    private IEnumerator ResolveTrapAfterSpotlightRoutine(ulong thiefId, ulong victimId, NetworkCard trapCard, bool thiefImmune, System.Action onDone)
     {
         yield return new WaitForSeconds(2.5f);
 
         if (thiefImmune)
         {
             DeckManager.Instance.Discard(trapCard);
-            FinishTrapResolution(thiefId);
+            onDone?.Invoke();
             yield break;
         }
-        bool finished = CardEffectRegistry.TriggerTrap(trapCard.CardId, thiefId, victimId, trapCard, () => FinishTrapResolution(thiefId));
-        if (finished) FinishTrapResolution(thiefId);
+        bool finished = CardEffectRegistry.TriggerTrap(trapCard.CardId, thiefId, victimId, trapCard, onDone);
+        if (finished) onDone?.Invoke();
     }
     public void FinishTrapResolution(ulong thiefId)
     {
@@ -707,12 +734,12 @@ public partial class GameManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void ShowStealSpotlightClientRpc(string cardId, string message, bool isSpectator, ClientRpcParams clientRpcParams = default)
+    private void ShowStealSpotlightClientRpc(string cardId, string message, bool isSpectator, float duration, ClientRpcParams clientRpcParams = default)
     {
         if (CardSpotlightController.Instance != null)
         {
             Color glow = isSpectator ? new Color(0.6f, 0.4f, 1f, 1f) : new Color(0f, 0.85f, 1f, 1f);
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 2.5f, isSpectator);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, duration, isSpectator);
         }
     }
     [ClientRpc]
@@ -745,7 +772,7 @@ public partial class GameManager : NetworkBehaviour
         LockShuffle(victimId);
 
         NetworkCard stolenCard = playerHands[victimId][cardIndex];
-        playerHands[victimId].RemoveAt(cardIndex);
+        //playerHands[victimId].RemoveAt(cardIndex);
 
         string thiefName = GetPlayerName(thiefId); string victimName = GetPlayerName(victimId);
 
@@ -755,59 +782,58 @@ public partial class GameManager : NetworkBehaviour
         };
         CloseThiefStealUIClientRpc(thiefOnlyParams);
 
-        ClientRpcParams duelParams = new ClientRpcParams
+        StartReactionWindow(new ReactionRequest
         {
-            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId, victimId } }
-        };
-        ShowStealSpotlightClientRpc(stolenCard.CardId.ToString(), $"{thiefName} stole {stolenCard.CardId} from {victimName}", false, duelParams);
-
-        List<ulong> spectatorIds = new List<ulong>();
-        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
-        {
-            if (client.ClientId != thiefId && client.ClientId != victimId)
+            Attacker = thiefId,
+            Defender = victimId,
+            ActionTags = StealReactionTags,
+            Description = $"{thiefName} is stealing from you",
+            Reveal = new ReactionReveal
             {
-                spectatorIds.Add(client.ClientId);
-            }
-        }
+                Card = stolenCard,
+                AttackerWindowMsg = $"Waiting for {victimName} to react...",
+                DefenderWindowMsg = $"{thiefName} is stealing {stolenCard.CardId} from you!",
+                SpectatorWindowMsg = $"{thiefName} is stealing a card from {victimName}!",
+                AttackerResultMsg = $"You stole {stolenCard.CardId} from {victimName}!",
+                DefenderResultMsg = $"{thiefName} stole {stolenCard.CardId} from you!",
+                SpectatorResultMsg = $"{thiefName} stole a card from {victimName}!"
+            },
 
-        if (spectatorIds.Count > 0)
-        {
-            ClientRpcParams spectatorParams = new ClientRpcParams
-            {
-                Send = new ClientRpcSendParams { TargetClientIds = spectatorIds.ToArray() }
-            };
-            ShowStealSpotlightClientRpc("", $"{thiefName} stole a card from {victimName}", true, spectatorParams);
-        }
-
-        ClientRpcParams victimParams = new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { victimId } }
-        };
-        RemoveStolenCardClientRpc(stolenCard, victimParams);
-        UpdateOpponentHandCountClientRpc(victimId, playerHands[victimId].Count);
-
-        if (stolenCard.Type == CardType.Trap)
-        {
-            bool thiefImmune = HasTrapImmunity(thiefId);
-
-            if (thiefImmune)
-            {
-                Debug.Log($"<color=green>[ninelives] {thiefName} was immune to traps, {stolenCard.CardId} will be discarded</color>");
-                BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), $"TRAP IMMUNITY: {stolenCard.CardId} (Nine Lives)", thiefName, victimName);
-            }
-            else
-            {
-                Debug.Log($"<color=red>[trap] Thief {thiefName} triggered {stolenCard.CardId} from {victimName}</color>");
-                BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), $"TRAP TRIGGERED: {stolenCard.CardId}", thiefName, victimName);
-            }
-
-            StartCoroutine(ResolveTrapAfterSpotlightRoutine(thiefId, victimId, stolenCard, thiefImmune));
-        }
-        else
-        {
-            StartCoroutine(ResolveStealAfterSpotlightRoutine(thiefId, stolenCard));
-        }
+            OnProceed = () => ProceedSteal(thiefId, victimId, cardIndex, stolenCard),
+            OnCancelled = endTurn => CancelSteal(thiefId, endTurn)
+        });
     }
+    private void ProceedSteal(ulong thiefId, ulong victimId, int cardIndex, NetworkCard stolenCard)
+    {
+        List<NetworkCard> victimHand = playerHands[victimId];
+
+        if (cardIndex >= 0 && cardIndex < victimHand.Count && victimHand[cardIndex].Equals(stolenCard)) victimHand.RemoveAt(cardIndex);
+        else victimHand.Remove(stolenCard);
+
+        RemoveStolenCardClientRpc(stolenCard, SingleTarget(victimId));
+        UpdateOpponentHandCountClientRpc(victimId, victimHand.Count);
+
+        if (stolenCard.Type != CardType.Trap)
+        {
+            CompleteSteal(thiefId, stolenCard);
+            return;
+        }
+        TriggerStolenTrap(thiefId, victimId, stolenCard, () => FinishTrapResolution(thiefId));
+    }
+
+    private void CancelSteal(ulong thiefId, bool endAttackerTurn)
+    {
+        if (endAttackerTurn) EndTurnAfterCancel(thiefId, TurnActionKind.Steal);
+        else AfterAction(thiefId, TurnActionKind.Steal);
+    }
+
+    private bool IsImmuneToTraps(ulong playerId) => HasTrapImmunity(playerId) || IsGuessImmune(playerId);
+
+
+
+
+
+    //for broadcasting to client
 
     [ClientRpc]
     private void BroadcastTrapSpotlightClientRpc(string cardId, string message, string thiefName, string victimName)
@@ -873,13 +899,17 @@ public partial class GameManager : NetworkBehaviour
 
     private void AfterAction(ulong playerId, TurnActionKind kind)
     {
+        //eye for an eye follow up
+        if (TryRunQueuedCounterFollowUp(kind, () => AfterAction(playerId, kind))) return;
+
+
         ClearShuffleLocks();
         if (!firstActionKind.HasValue) firstActionKind = kind;
         hasTakenActionThisTurn = true;
         ConsumeAction(playerId);
 
         bool canActAgain = GetRemainingActions(playerId) > 0 &&
-                           (kind == TurnActionKind.Ability || HandHasAbility(playerId));
+                           (kind == TurnActionKind.Ability || HandHasPlayableAbility(playerId));
 
         if (canActAgain)
         {
@@ -915,10 +945,27 @@ public partial class GameManager : NetworkBehaviour
         bool allowSkip = firstActionKind.HasValue;
         NotifyActionPhaseClientRpc(playerId, abilityOnly, allowSkip);
     }
+    private bool HandHasPlayableAbility(ulong playerId)
+    {
+        if (!playerHands.TryGetValue(playerId, out var hand)) return false;
 
-    private bool HandHasAbility(ulong playerId) =>
-        playerHands.TryGetValue(playerId, out var hand) && hand.Exists(c => c.Type == CardType.Ability);
+        bool slotFull = GetPlayerActiveAbilityId(playerId) != null;
+        bool hasTarget = false;
+        foreach (ulong id in turnOrder)
+        {
+            if (id != playerId && !IsGuessImmune(id)) { hasTarget = true; break; }
+        }
 
+        foreach (NetworkCard card in hand)
+        {
+            if (card.Type != CardType.Ability) continue;
+            if (!CardEffectRegistry.HasAbility(card.CardId)) continue;
+            if (CardEffectRegistry.OccupiesSlot(card.CardId) && slotFull) continue;
+            if (CardEffectRegistry.RequiresTarget(card.CardId) && !hasTarget) continue;
+            return true;
+        }
+        return false;
+    }
     // ------------------------------------------------------------------ validation (server only authority)
 
     private string ValidateAbilityPlay(ulong senderId, NetworkCard card, ref ulong targetId)

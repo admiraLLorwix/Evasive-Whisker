@@ -74,6 +74,7 @@ public partial class GameManager
         for (int step = 1; step < turnOrder.Count; step++)
         {
             ulong id = turnOrder[(start + step) % turnOrder.Count];
+            if (IsGuessImmune(id)) continue;
             int count = playerHands.TryGetValue(id, out var hand) ? hand.Count : int.MaxValue;
 
             if (count < bestCount)
