@@ -32,6 +32,8 @@ public class PlayerHandController : MonoBehaviour
     private bool confirmIsScatter = false;
     private string scatterNeighborName = "";
     private NetworkCard pendingScatterCard;
+    private bool passIsTrapGive = false;
+    private string passLabel = "";
     public bool IsScatterPickActive => isScatterPickActive && !scatterPickSubmitted;
     public bool IsActiveAbilitySlotOccupied => myActiveAbilitySlot != null && myActiveAbilitySlot.gameObject.activeSelf;
 
@@ -258,8 +260,16 @@ public class PlayerHandController : MonoBehaviour
             confirmIsScatter = false;
             scatterPickSubmitted = true;
             SetAllCardsHighlighted(false);
-            TurnActionUI.Instance?.SetInstructionText("Waiting for the other players to pick...", "<color=orange>SCATTER</color>");
-            GameManager.Instance?.SubmitScatterPickServerRpc(pendingScatterCard);
+            if (passIsTrapGive)
+            {
+                TurnActionUI.Instance?.SetInstructionText("Passing your card...", passLabel);
+                GameManager.Instance?.SubmitTrapGivePickServerRpc(pendingScatterCard);
+            }
+            else
+            {
+                TurnActionUI.Instance?.SetInstructionText("Waiting for the other players to pick...", passLabel);
+                GameManager.Instance?.SubmitScatterPickServerRpc(pendingScatterCard);
+            }
             return;
         }
         RemoveCard(pendingDiscardCard);
@@ -272,18 +282,26 @@ public class PlayerHandController : MonoBehaviour
         if (discardConfirmModal != null) discardConfirmModal.SetActive(false);
     }
 
-    public void BeginScatterPick(string neighborName)
+    public void BeginScatterPick(string neighborName) =>
+        BeginPassPick("<color=orange>SCATTER!</color>", neighborName, false);
+
+    public void BeginTrapGivePick(string trapName, string recipientName) =>
+        BeginPassPick($"<color=red>{trapName.ToUpper()}!</color>", recipientName, true);
+
+    private void BeginPassPick(string label, string recipientName, bool trapGive)
+
     {
         isScatterPickActive = true;
         scatterPickSubmitted = false;
         confirmIsScatter = false;
-        scatterNeighborName = neighborName;
+        passIsTrapGive = trapGive;
+        passLabel = label;
+        scatterNeighborName = recipientName;
 
         SetAbilityCardsPlayable(false);
         TurnActionUI.Instance?.HideAllActions();
         SetAllCardsHighlighted(true);
-        TurnActionUI.Instance?.SetInstructionText(
-            $"Drag a card up to pass it to <color=yellow>{neighborName}</color>", "<color=orange>SCATTER!</color>");
+        TurnActionUI.Instance?.SetInstructionText($"Drag a card up to pass it to <color=yellow>{recipientName}</color>", label);
     }
 
     public void PromptScatterConfirmation(NetworkCard card)
@@ -303,7 +321,7 @@ public class PlayerHandController : MonoBehaviour
     public void ReopenScatterPick()
     {
         scatterPickSubmitted = false;
-        if (isScatterPickActive) BeginScatterPick(scatterNeighborName);
+        if (isScatterPickActive) BeginPassPick(passLabel, scatterNeighborName, passIsTrapGive);
     }
 
     public void EndScatterPick()

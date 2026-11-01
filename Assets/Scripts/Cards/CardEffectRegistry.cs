@@ -7,6 +7,7 @@ public static class CardEffectRegistry
     private static readonly Dictionary<string, IAbilityEffect> abilities = new Dictionary<string, IAbilityEffect>();
     private static readonly Dictionary<string, IInteractiveAbilityEffect> interactiveAbilities = new Dictionary<string, IInteractiveAbilityEffect>();
     private static readonly Dictionary<string, ITrapEffect> traps = new Dictionary<string, ITrapEffect>();
+    private static readonly Dictionary<string, IInteractiveTrapEffect> interactiveTraps = new Dictionary<string, IInteractiveTrapEffect>();
     private static readonly Dictionary<string, ICounterplayEffect> counterplays = new Dictionary<string, ICounterplayEffect>();
     private static readonly Dictionary<DetectiveCatType, IDetectiveCatTrait> detectiveTraits = new Dictionary<DetectiveCatType, IDetectiveCatTrait>();
 
@@ -33,6 +34,7 @@ public static class CardEffectRegistry
     }
 
     public static void RegisterTrap(string trapId, ITrapEffect effect) => traps[trapId] = effect;
+    public static void RegisterInteractiveTrap(string trapId, IInteractiveTrapEffect effect) => interactiveTraps[trapId] = effect;
     public static void RegisterCounterplay(string cardId, ICounterplayEffect effect) => counterplays[cardId] = effect;
     public static void RegisterDetective(DetectiveCatType catType, IDetectiveCatTrait trait) => detectiveTraits[catType] = trait;
 
@@ -59,16 +61,21 @@ public static class CardEffectRegistry
         return true;
     }
 
-    public static void TriggerTrap(string trapId, ulong thiefId, ulong victimId, NetworkCard trapCard)
+    public static bool TriggerTrap(string trapId, ulong thiefId, ulong victimId, NetworkCard trapCard, System.Action onInteractiveFinished)
     {
         if (traps.TryGetValue(trapId, out var effect))
         {
             effect.Execute(thiefId, victimId, trapCard);
+            return true;
         }
-        else
+        if (interactiveTraps.TryGetValue(trapId, out var interactive))
         {
-            Debug.LogWarning($"[registry-trap] nothing for: '{trapId}'");
+            interactive.Begin(thiefId, victimId, trapCard, onInteractiveFinished);
+            return false;
         }
+        Debug.LogWarning($"[registry-trap] nothing for: '{trapId}', discarding the card");
+        DeckManager.Instance.Discard(trapCard);
+        return true;
     }
 
     public static bool TryCounter(string counterCardId, string actionType, ulong defenderId, ulong attackerId, NetworkCard card)

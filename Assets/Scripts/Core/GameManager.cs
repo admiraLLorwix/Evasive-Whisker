@@ -78,6 +78,11 @@ public partial class GameManager : NetworkBehaviour
         CardEffectRegistry.RegisterInteractiveAbility("CatInstinct", new CatInstinctEffect(), requiresTarget: true);
         CardEffectRegistry.RegisterInteractiveAbility("BombasticCatEyes", new BombasticCatEyesEffect(), requiresTarget: true);
         CardEffectRegistry.RegisterInteractiveAbility("Scatter", new ScatterEffect());
+
+        CardEffectRegistry.RegisterTrap("CatNap", new CatNapTrapEffect());
+        CardEffectRegistry.RegisterInteractiveTrap("CatFlash", new CatFlashTrapEffect());
+        CardEffectRegistry.RegisterInteractiveTrap("Swipe", new SwipeTrapEffect());
+        CardEffectRegistry.RegisterInteractiveTrap("RobinPaw", new RobinPawTrapEffect());
     }
     private void Update()
     {
@@ -323,6 +328,11 @@ public partial class GameManager : NetworkBehaviour
     //dont check here
     public void StartPlayerTurn(ulong playerId)
     {
+        if (ShouldSkipTurnForCatNap(playerId))
+        {
+            StartCoroutine(SkipTurnRoutine(playerId));
+            return;
+        }
         CurrentState.Value = GameState.PlayerTurn_Draw;
         ActiveTurnPlayerId.Value = playerId;
         hasTakenActionThisTurn = false;
@@ -639,15 +649,20 @@ public partial class GameManager : NetworkBehaviour
     {
         yield return new WaitForSeconds(2.5f);
 
-        // TODO (traps milestone): if (!thiefImmune) CardEffectRegistry.TriggerTrap(trapCard.CardId, thiefId, victimId, trapCard);
-        if (!thiefImmune && trapCard.CardId == "CatNap")
-        {
-            EquipActiveAbility(thiefId, trapCard, 2);
-        }
-        else
+        if (thiefImmune)
         {
             DeckManager.Instance.Discard(trapCard);
+            FinishTrapResolution(thiefId);
+            yield break;
         }
+        bool finished = CardEffectRegistry.TriggerTrap(trapCard.CardId, thiefId, victimId, trapCard, () => FinishTrapResolution(thiefId));
+        if (finished) FinishTrapResolution(thiefId);
+    }
+    public void FinishTrapResolution(ulong thiefId)
+    {
+        if (!IsServer || CurrentState.Value != GameState.PlayerTurn_Resolving) return;
+
+
 
         ClearThiefTurnUIClientRpc(SingleTarget(thiefId));
         AfterAction(thiefId, TurnActionKind.Steal);
