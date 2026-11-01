@@ -292,7 +292,10 @@ public class PlayerHandController : MonoBehaviour
         RemoveCard(pendingDiscardCard);
         GameManager.Instance.SubmitDiscardServerRpc(pendingDiscardCard);
     }
-
+    public void HideDiscardConfirm()
+    {
+        if (!confirmIsScatter && discardConfirmModal != null) discardConfirmModal.SetActive(false);
+    }
     private void OnCancelDiscardClicked()
     {
         confirmIsScatter = false;

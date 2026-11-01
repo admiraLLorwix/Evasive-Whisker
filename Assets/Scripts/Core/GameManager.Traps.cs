@@ -6,7 +6,7 @@ using EvasiveWhisker.Cards;
 public partial class GameManager
 {
     private const float HandRevealSeconds = 6f;
-    private const float TrapGivePickSeconds = 25f;
+    private const float TrapGivePickSeconds = DecisionSeconds;//prev 25f
     private const float TrapGiveResultWait = 2.6f;
     private const float TurnSkipSeconds = 2.8f;
 
@@ -112,6 +112,7 @@ public partial class GameManager
         Debug.Log($"<color=red>[trap] {trapCard.CardId}: {GetPlayerName(thiefId)} must give a card to {GetPlayerName(recipientId)}</color>");
 
         OpenTrapGivePickClientRpc(trapCard.CardId, GetPlayerName(recipientId), SingleTarget(thiefId));
+        ShowDecisionTimerClientRpc(thiefId, GetPlayerName(thiefId), TrapGivePickSeconds);
         StartCoroutine(TrapGiveTimeoutRoutine(pending));
     }
 
@@ -137,6 +138,7 @@ public partial class GameManager
     {
         if (pending.Done) return;
         pending.Done = true;
+        HideDecisionTimerClientRpc();
 
         playerHands[pending.Thief].Remove(given);
         playerHands[pending.Recipient].Add(given);

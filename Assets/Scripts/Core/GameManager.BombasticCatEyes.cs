@@ -6,7 +6,7 @@ using EvasiveWhisker.Cards;
 
 public partial class GameManager
 {
-    private const float BombasticPickSeconds = 15f;
+    private const float BombasticPickSeconds = DecisionSeconds; //prev; 15f
     private const float BombasticRevealSeconds = 2f;
     private const float BombasticRevealWait = 2.3f;
 
@@ -74,6 +74,7 @@ public partial class GameManager
             pending.Picked.Count + 1,
             pending.PicksTotal,
             SingleTarget(pending.Asker));
+        ShowDecisionTimerClientRpc(pending.Asker, GetPlayerName(pending.Asker), BombasticPickSeconds);
         StartCoroutine(BombasticPickTimeoutRoutine(pending, pending.Stage));
     }
 
@@ -103,6 +104,7 @@ public partial class GameManager
         ClosePeekModalClientRpc(SingleTarget(pending.Asker));
         //ShowPeekRevealClientRpc(cardId, $"You peeked at {targetName}'s {cardId}", SingleTarget(pending.Asker));
         //ShowPeekRevealClientRpc(cardId, $"{askerName} peeked at your {cardId}!", SingleTarget(pending.Target));
+        HideDecisionTimerClientRpc();
         if (pending.Reflected)
         {
             StartCoroutine(ReflectedBombasticRevealRoutine(pending, seen));

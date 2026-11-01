@@ -23,6 +23,7 @@ public class TargetingManager : MonoBehaviour
         TurnActionUI.Instance?.ShowTemporaryNotification($"<color=yellow>Click an opponent's island to target with {card.CardId}</color>", 8f);
 
         HighlightIslands(true);
+        GameManager.Instance?.ReportDecisionStepServerRpc((int)GameManager.DecisionStep.AbilityTarget, card.CardId);
     }
 
     public void OnOpponentTargetChosen(ulong targetId)
@@ -41,6 +42,13 @@ public class TargetingManager : MonoBehaviour
 
         TurnActionUI.Instance?.HideAllActions();
         GameManager.Instance?.SubmitPlayAbilityCardServerRpc(pendingAbilityCard, targetId);
+    }
+
+    public void ForceStop()
+    {
+        if (!IsTargeting) return;
+        IsTargeting = false;
+        HighlightIslands(false);
     }
 
     public void CancelTargeting()

@@ -115,9 +115,12 @@ public class TurnActionUI : MonoBehaviour
         if (stealChoiceCard != null) stealChoiceCard.interactable = !abilityOnly;
         if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.interactable = (custodyCount >= 3) && !abilityOnly;
     }
+    private void ReportStep(GameManager.DecisionStep step) =>
+    GameManager.Instance?.ReportDecisionStepServerRpc((int)step, "");
 
     private void OnPlayAbilitySelected()
     {
+        ReportStep(GameManager.DecisionStep.PickAbility);
         if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
         if (instructionText != null) instructionText.text = "Drag an Ability Card or Detective Cat up to play it";
@@ -127,6 +130,7 @@ public class TurnActionUI : MonoBehaviour
 
     private void OnStealSelected()
     {
+        ReportStep(GameManager.DecisionStep.StealOpponent);
         if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
         if (instructionText != null) instructionText.text = "Click an Opponent's Island to steal from";
@@ -136,6 +140,7 @@ public class TurnActionUI : MonoBehaviour
 
     private void OnGuessCustodianSelected()
     {
+        ReportStep(GameManager.DecisionStep.AccuseTarget);
         if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
         if (instructionText != null) instructionText.text = "Click the Opponent you accuse of holding the WhiskerBlower";
@@ -153,6 +158,7 @@ public class TurnActionUI : MonoBehaviour
         PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
         StealManager.Instance?.CancelSelection();
         ShowActionPrompt();
+        ReportStep(GameManager.DecisionStep.ChooseAction);
     }
 
     private void OnEndTurnClicked()

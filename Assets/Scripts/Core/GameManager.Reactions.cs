@@ -191,6 +191,7 @@ public partial class GameManager
 
     private void EndTurnAfterCancel(ulong attackerId, TurnActionKind kind)
     {
+        CancelDecisionTimer();
         ClearShuffleLocks();
         CloseThiefStealUIClientRpc(SingleTarget(attackerId));
 

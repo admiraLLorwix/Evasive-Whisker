@@ -229,9 +229,11 @@ public partial class GameManager : NetworkBehaviour
             string chooserName = GetPlayerName(choosingPlayerId);
 
             NotifyPlayerToPickCatClientRpc(choosingPlayerId, chooserName, availableCatPool.ToArray());
+            StartDraftTimer(choosingPlayerId);
         }
         else
         {
+            CancelDecisionTimer();
             CloseDraftPanelsClientRpc();
             StartCoroutine(DealStartingHandsRoutine());
         }
@@ -268,6 +270,16 @@ public partial class GameManager : NetworkBehaviour
     public void SubmitChosenCatServerRpc(DetectiveCatType catType, RpcParams rpcParams = default)
     {
         ulong senderId = rpcParams.Receive.SenderClientId;
+        if (CurrentState.Value != GameState.DraftingDetectiveCats) return;
+        if (ActiveDraftIndex.Value >= draftOrder.Count || draftOrder[ActiveDraftIndex.Value] != senderId) return;
+        if (!availableCatPool.Contains(catType)) return;
+
+        ApplyChosenCat(senderId, catType);
+    }
+
+    private void ApplyChosenCat(ulong senderId, DetectiveCatType catType)
+    {
+        CancelDecisionTimer();
         chosenDetectives[senderId] = catType;
         availableCatPool.Remove(catType);
 
@@ -333,6 +345,7 @@ public partial class GameManager : NetworkBehaviour
     public void StartPlayerTurn(ulong playerId)
     {
         ClearShuffleLocks();
+        CancelDecisionTimer();
         ResetShuffleCharges(playerId);
         TickGuessImmunity(playerId);
         queuedEyeForAnEye = null; queuedCopyCat = null;
@@ -362,6 +375,7 @@ public partial class GameManager : NetworkBehaviour
 
         UpdateTurnUIClientRpc(playerId, playerName, CurrentRound.Value);
         Debug.Log($"[turn] {playerName}");
+        StartDrawTimer(playerId);
     }
 
     [ClientRpc]
@@ -391,7 +405,12 @@ public partial class GameManager : NetworkBehaviour
     {
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (senderId != ActiveTurnPlayerId.Value || CurrentState.Value != GameState.PlayerTurn_Draw) return;
+        PerformDraw(senderId);
+    }
 
+    private void PerformDraw(ulong senderId)
+    {
+        CancelDecisionTimer();
         NetworkCard? drawn = DeckManager.Instance.DrawCard();
         if (drawn.HasValue)
         {
@@ -434,6 +453,7 @@ public partial class GameManager : NetworkBehaviour
     [ClientRpc]
     private void ShowDrawSpotlightClientRpc(string cardId, string message, bool isSpectator, ClientRpcParams clientRpcParams = default)
     {
+        DrawDeckClick.Instance?.SetGlow(false);
         if (CardSpotlightController.Instance != null)
         {
             Color glow = isSpectator ? new Color(0.6f, 0.4f, 1f, 1f) : new Color(0.2f, 1f, 0.4f, 1f);
@@ -466,10 +486,6 @@ public partial class GameManager : NetworkBehaviour
             PlayerHandController.Instance.AddCard(card);
         }
     }
-
-
-
-    // draw-phase gate: discard prompt if over the limit, otherwise open the action choice
     public void CheckHandLimitOrProceedToAction(ulong playerId)
     {
         int limit = GetMaxHandLimit(playerId);
@@ -479,6 +495,7 @@ public partial class GameManager : NetworkBehaviour
         {
             CurrentState.Value = GameState.PlayerTurn_DiscardPrompt;
             PromptDiscardClientRpc(playerId, handCount, limit);
+            BeginDiscardTimer(playerId);
         }
         else
         {
@@ -518,8 +535,11 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitDiscardServerRpc(NetworkCard cardToDiscard, RpcParams rpcParams = default)
     {
-        ulong senderId = rpcParams.Receive.SenderClientId;
+        ProcessDiscard(rpcParams.Receive.SenderClientId, cardToDiscard);
+    }
 
+    private void ProcessDiscard(ulong senderId, NetworkCard cardToDiscard)
+    {
         if (senderId != ActiveTurnPlayerId.Value || CurrentState.Value != GameState.PlayerTurn_DiscardPrompt)
         {
             RejectCardRequest(senderId, cardToDiscard, "You can't discard right now");
@@ -537,7 +557,7 @@ public partial class GameManager : NetworkBehaviour
             RejectCardRequest(senderId, cardToDiscard, "That card isn't in your hand");
             return;
         }
-
+        CancelDecisionTimer();
         DeckManager.Instance.Discard(cardToDiscard);
         UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
 
@@ -547,6 +567,7 @@ public partial class GameManager : NetworkBehaviour
         if (currentHandCount > limit)
         {
             PromptDiscardClientRpc(senderId, currentHandCount, limit);
+            BeginDiscardTimer(senderId);
             return;
         }
 
@@ -588,8 +609,10 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitPlayAbilityCardServerRpc(NetworkCard card, ulong targetId = NoTarget, RpcParams rpcParams = default)
     {
-        ulong senderId = rpcParams.Receive.SenderClientId;
-
+        ProcessPlayAbility(rpcParams.Receive.SenderClientId, card, targetId);
+    }
+    private void ProcessPlayAbility(ulong senderId, NetworkCard card, ulong targetId)
+    {
         string error = ValidateAbilityPlay(senderId, card, ref targetId);
         if (error != null)
         {
@@ -598,7 +621,7 @@ public partial class GameManager : NetworkBehaviour
         }
 
         CurrentState.Value = GameState.PlayerTurn_Resolving;
-        
+        CancelDecisionTimer();
         if (card.CardId == "Scatter") LockShuffleForEveryone();
         else if (targetId != NoTarget) LockShuffle(targetId);
 
@@ -765,7 +788,7 @@ public partial class GameManager : NetworkBehaviour
             RejectAction(thiefId, error);
             return;
         }
-
+        CancelDecisionTimer();
         CurrentState.Value = GameState.PlayerTurn_Resolving;
 
         LockShuffle(thiefId);
@@ -862,15 +885,18 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitCustodyGuessServerRpc(ulong accusedPlayerId, RpcParams rpcParams = default)
     {
-        ulong guesserId = rpcParams.Receive.SenderClientId;
+        ProcessCustodyGuess(rpcParams.Receive.SenderClientId, accusedPlayerId);
+    }
 
+    private void ProcessCustodyGuess(ulong guesserId, ulong accusedPlayerId)
+    {
         string error = ValidateGuess(guesserId, accusedPlayerId);
         if (error != null)
         {
             RejectAction(guesserId, error);
             return;
         }
-
+        CancelDecisionTimer();
         bool isCorrect = playerHands[accusedPlayerId].Exists(c => c.Type == CardType.WhiskerBlower);
 
         if (isCorrect)
@@ -893,6 +919,7 @@ public partial class GameManager : NetworkBehaviour
         if (senderId != ActiveTurnPlayerId.Value || CurrentState.Value != GameState.PlayerTurn_Action) return;
         if (!firstActionKind.HasValue) return;
 
+        CancelDecisionTimer();
         CloseThiefStealUIClientRpc(SingleTarget(senderId));
         EndTurnSequence(senderId);
     }
@@ -900,6 +927,7 @@ public partial class GameManager : NetworkBehaviour
     private void AfterAction(ulong playerId, TurnActionKind kind)
     {
         //eye for an eye follow up
+        CancelDecisionTimer();
         if (TryRunQueuedCounterFollowUp(kind, () => AfterAction(playerId, kind))) return;
 
 
@@ -931,6 +959,7 @@ public partial class GameManager : NetworkBehaviour
         {
             CurrentState.Value = GameState.PlayerTurn_DiscardPrompt;
             PromptDiscardClientRpc(playerId, count, limit);
+            BeginDiscardTimer(playerId);
             return;
         }
 
@@ -944,28 +973,29 @@ public partial class GameManager : NetworkBehaviour
         bool abilityOnly = firstActionKind.HasValue && firstActionKind.Value != TurnActionKind.Ability;
         bool allowSkip = firstActionKind.HasValue;
         NotifyActionPhaseClientRpc(playerId, abilityOnly, allowSkip);
+        StartActionTimer(playerId);
     }
-    private bool HandHasPlayableAbility(ulong playerId)
-    {
-        if (!playerHands.TryGetValue(playerId, out var hand)) return false;
+    //private bool HandHasPlayableAbility(ulong playerId)
+    //{
+    //    if (!playerHands.TryGetValue(playerId, out var hand)) return false;
 
-        bool slotFull = GetPlayerActiveAbilityId(playerId) != null;
-        bool hasTarget = false;
-        foreach (ulong id in turnOrder)
-        {
-            if (id != playerId && !IsGuessImmune(id)) { hasTarget = true; break; }
-        }
+    //    bool slotFull = GetPlayerActiveAbilityId(playerId) != null;
+    //    bool hasTarget = false;
+    //    foreach (ulong id in turnOrder)
+    //    {
+    //        if (id != playerId && !IsGuessImmune(id)) { hasTarget = true; break; }
+    //    }
 
-        foreach (NetworkCard card in hand)
-        {
-            if (card.Type != CardType.Ability) continue;
-            if (!CardEffectRegistry.HasAbility(card.CardId)) continue;
-            if (CardEffectRegistry.OccupiesSlot(card.CardId) && slotFull) continue;
-            if (CardEffectRegistry.RequiresTarget(card.CardId) && !hasTarget) continue;
-            return true;
-        }
-        return false;
-    }
+    //    foreach (NetworkCard card in hand)
+    //    {
+    //        if (card.Type != CardType.Ability) continue;
+    //        if (!CardEffectRegistry.HasAbility(card.CardId)) continue;
+    //        if (CardEffectRegistry.OccupiesSlot(card.CardId) && slotFull) continue;
+    //        if (CardEffectRegistry.RequiresTarget(card.CardId) && !hasTarget) continue;
+    //        return true;
+    //    }
+    //    return false;
+    //}
     // ------------------------------------------------------------------ validation (server only authority)
 
     private string ValidateAbilityPlay(ulong senderId, NetworkCard card, ref ulong targetId)

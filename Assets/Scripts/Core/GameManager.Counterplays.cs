@@ -6,7 +6,7 @@ using EvasiveWhisker.Cards;
 
 public partial class GameManager
 {
-    private const float CounterStealPickSeconds = 15f;
+    private const float CounterStealPickSeconds = DecisionSeconds; //prev 15f
 
     private class QueuedCounter
     {
@@ -99,6 +99,7 @@ public partial class GameManager
         Debug.Log($"<color=red>[eye for an eye] {defenderName} steals back from {thiefName}</color>");
         SendNotice(q.Attacker, $"<color=red>Eye For An Eye! {defenderName} is stealing a card back</color>");
         OpenCounterStealModalClientRpc(q.Attacker, thiefName, GetPlayerDetective(q.Attacker), thiefHand.Count, SingleTarget(q.Defender));
+        ShowDecisionTimerClientRpc(q.Defender, defenderName, CounterStealPickSeconds);
         StartCoroutine(CounterStealTimeoutRoutine(pending));
     }
 
@@ -118,6 +119,7 @@ public partial class GameManager
     {
         if (pending.Done) return;
         pending.Done = true;
+        HideDecisionTimerClientRpc();
 
         List<NetworkCard> thiefHand = playerHands[pending.Thief];
         NetworkCard card = thiefHand[cardIndex];
