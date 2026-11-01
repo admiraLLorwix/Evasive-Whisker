@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 using EvasiveWhisker.Cards;
+using System.Collections;
 
 public class PlayerIslandUI : MonoBehaviour
 {
@@ -15,6 +16,7 @@ public class PlayerIslandUI : MonoBehaviour
     [SerializeField] private Transform handCardsContainer;
     [SerializeField] private GameObject cardBackPrefab;
     [SerializeField] private TMP_Text cardCountText;
+    [SerializeField] private GameObject guessImmunityBadge; //need new asset for badge
 
     [SerializeField] private float miniCardSpacingX = 42f; [SerializeField] private float miniMaxTiltZ = 9f;
     [SerializeField] private float miniArcDropY = 4f;
@@ -24,7 +26,12 @@ public class PlayerIslandUI : MonoBehaviour
     public DetectiveCatType ChosenCat { get; private set; }
     public string ActiveAbilityCardId { get; private set; } = null;
     public int CurrentCardCount { get; private set; } = 3;
+    public bool IsGuessImmune { get; private set; } = false;
     private List<GameObject> spawnedCardBacks = new List<GameObject>();
+    //adtl for handreshuffle
+    private List<Vector2> restPositions = new List<Vector2>();
+    private List<Quaternion> restRotations = new List<Quaternion>();
+    private Coroutine shuffleRoutine;
 
     public void Initialize(ulong clientId, string playerName, Sprite islandSprite)
     {
@@ -40,6 +47,13 @@ public class PlayerIslandUI : MonoBehaviour
         btn.onClick.RemoveAllListeners();
         btn.onClick.AddListener(() =>
         {
+            bool selecting = (TargetingManager.Instance != null && TargetingManager.Instance.IsTargeting)
+                          || (StealManager.Instance != null && StealManager.Instance.IsSelectingTarget);
+            if (selecting && IsGuessImmune)
+            {
+                TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>{PlayerName} is protected after a failed accusation</color>", 2.5f);
+                return;
+            }
             //shouldn't open infomodal
             if (TargetingManager.Instance != null && TargetingManager.Instance.IsTargeting)
             {
@@ -60,7 +74,14 @@ public class PlayerIslandUI : MonoBehaviour
         });
 
         ClearActiveAbility();
+        SetGuessImmune(false);
         UpdateCardCount(3);
+    }
+    //for wrong accusation
+    public void SetGuessImmune(bool immune)
+    {
+        IsGuessImmune = immune;
+        if (guessImmunityBadge != null) guessImmunityBadge.SetActive(immune);
     }
 
     public void SetDetectiveCat(DetectiveCatType catType)
@@ -112,13 +133,20 @@ public class PlayerIslandUI : MonoBehaviour
 
     public void UpdateCardCount(int count)
     {
+        if (shuffleRoutine != null)
+        {
+            StopCoroutine(shuffleRoutine);
+            shuffleRoutine = null;
+        }
+
         CurrentCardCount = count;
         if (cardCountText != null) cardCountText.text = $"{count}";
 
         if (handCardsContainer != null && cardBackPrefab != null)
         {
             foreach (var card in spawnedCardBacks) if (card != null) Destroy(card);
-            spawnedCardBacks.Clear();
+            spawnedCardBacks.Clear(); 
+            restPositions.Clear(); restRotations.Clear();
 
             for (int i = 0; i < count; i++)
             {
@@ -138,6 +166,8 @@ public class PlayerIslandUI : MonoBehaviour
                     rt.anchoredPosition = new Vector2(xPos, yPos);
                     rt.localRotation = Quaternion.Euler(0f, 0f, zRot);
                 }
+                restPositions.Add(rt != null ? rt.anchoredPosition : Vector2.zero);
+                restRotations.Add(rt != null ? rt.localRotation : Quaternion.identity);
 
                 Button btn = cardBack.GetComponentInChildren<Button>();
                 if (btn != null) btn.interactable = false;
@@ -146,7 +176,99 @@ public class PlayerIslandUI : MonoBehaviour
             }
         }
     }
+    //animation reference from rrepo#10
+    public void PlayShuffleAnimation()
+    {
+        if (!isActiveAndEnabled) return;
+        if (spawnedCardBacks.Count < 2 || restPositions.Count != spawnedCardBacks.Count) return;
 
+        if (shuffleRoutine != null)
+        {
+            StopCoroutine(shuffleRoutine);
+            SnapCardBacksToRest();
+        }
+        shuffleRoutine = StartCoroutine(ShuffleAnimationRoutine());
+    }
+
+    private void SnapCardBacksToRest()
+    {
+        for (int i = 0; i < spawnedCardBacks.Count && i < restPositions.Count; i++)
+        {
+            if (spawnedCardBacks[i] == null) continue;
+            RectTransform rt = spawnedCardBacks[i].GetComponent<RectTransform>();
+            if (rt == null) continue;
+            rt.anchoredPosition = restPositions[i];
+            rt.localRotation = restRotations[i];
+        }
+    }
+
+    private IEnumerator ShuffleAnimationRoutine()
+    {
+        const float gatherTime = 0.35f;
+        const float riffleTime = 0.55f;
+        const float fanTime = 0.40f;
+        const float riffleSpread = 38f;
+        const float riffleLift = 6f;
+        const int riffleCount = 2;
+
+        int n = spawnedCardBacks.Count;
+        var rts = new RectTransform[n];
+        for (int i = 0; i < n; i++)
+            rts[i] = spawnedCardBacks[i] != null ? spawnedCardBacks[i].GetComponent<RectTransform>() : null;
+
+        Vector2 StackPos(int i) => new Vector2(0f, i * 1.2f);
+
+        float t = 0f;
+        while (t < gatherTime)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.SmoothStep(0f, 1f, t / gatherTime);
+            for (int i = 0; i < n; i++)
+            {
+                if (rts[i] == null) continue;
+                rts[i].anchoredPosition = Vector2.Lerp(restPositions[i], StackPos(i), k);
+                rts[i].localRotation = Quaternion.Slerp(restRotations[i], Quaternion.identity, k);
+            }
+            yield return null;
+        }
+
+        t = 0f;
+        while (t < riffleTime)
+        {
+            t += Time.deltaTime;
+            float u = Mathf.Repeat(t / riffleTime * riffleCount, 1f);
+            float s = Mathf.Sin(u * Mathf.PI);
+            for (int i = 0; i < n; i++)
+            {
+                if (rts[i] == null) continue;
+                float side = (i % 2 == 0) ? -1f : 1f;
+                Vector2 p = StackPos(i);
+                p.x += side * s * riffleSpread;
+                p.y += side * s * riffleLift;
+                rts[i].anchoredPosition = p;
+                rts[i].localRotation = Quaternion.Euler(0f, 0f, side * s * 4f);
+            }
+            yield return null;
+        }
+
+        t = 0f;
+        while (t < fanTime)
+        {
+            t += Time.deltaTime;
+            for (int i = 0; i < n; i++)
+            {
+                if (rts[i] == null) continue;
+                float delay = (n > 1 ? (float)i / (n - 1) : 0f) * 0.25f * fanTime;
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - delay) / (fanTime - delay)));
+                rts[i].anchoredPosition = Vector2.Lerp(StackPos(i), restPositions[i], k);
+                rts[i].localRotation = Quaternion.Slerp(Quaternion.identity, restRotations[i], k);
+            }
+            yield return null;
+        }
+
+        SnapCardBacksToRest();
+        shuffleRoutine = null;
+    }
     public void SetIslandGlow(bool enable, Color glowColor = default)
     {
         Outline outline = GetComponent<Outline>();

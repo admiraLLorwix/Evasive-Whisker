@@ -309,7 +309,7 @@ public partial class GameManager : NetworkBehaviour
             UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
             UpdateOpponentHandCountClientRpc(clientId, 3);
         }
-
+        InitShuffleCharges();
         yield return new WaitForSeconds(1.5f);
 
         CurrentRound.Value = 1;
@@ -328,6 +328,9 @@ public partial class GameManager : NetworkBehaviour
     //dont check here
     public void StartPlayerTurn(ulong playerId)
     {
+        ClearShuffleLocks();
+        ResetShuffleCharges(playerId);
+        TickGuessImmunity(playerId);
         if (ShouldSkipTurnForCatNap(playerId))
         {
             StartCoroutine(SkipTurnRoutine(playerId));
@@ -388,7 +391,7 @@ public partial class GameManager : NetworkBehaviour
         if (drawn.HasValue)
         {
             CurrentState.Value = GameState.PlayerTurn_Resolving;
-
+            LockShuffle(senderId);
             NetworkCard drawnCard = drawn.Value;
             string drawerName = GetPlayerName(senderId);
 
@@ -446,7 +449,7 @@ public partial class GameManager : NetworkBehaviour
 
         //upd
         ReceiveDrawnCardClientRpc(drawnCard, drawerParams);
-        UpdateOpponentHandCountClientRpc(drawerId, playerHands[drawerId].Count);
+        UpdateOpponentHandCountClientRpc(drawerId, playerHands[drawerId].Count); ClearShuffleLocks();
         CheckHandLimitOrProceedToAction(drawerId);
     }
 
@@ -590,6 +593,9 @@ public partial class GameManager : NetworkBehaviour
         }
 
         CurrentState.Value = GameState.PlayerTurn_Resolving;
+        
+        if (card.CardId == "Scatter") LockShuffleForEveryone();
+        else if (targetId != NoTarget) LockShuffle(targetId);
 
         playerHands[senderId].Remove(card);
         UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
@@ -728,11 +734,15 @@ public partial class GameManager : NetworkBehaviour
         string error = ValidateSteal(thiefId, victimId, cardIndex);
         if (error != null)
         {
+            ReleaseStealTargetLock(thiefId);
             RejectAction(thiefId, error);
             return;
         }
 
         CurrentState.Value = GameState.PlayerTurn_Resolving;
+
+        LockShuffle(thiefId);
+        LockShuffle(victimId);
 
         NetworkCard stolenCard = playerHands[victimId][cardIndex];
         playerHands[victimId].RemoveAt(cardIndex);
@@ -835,21 +845,18 @@ public partial class GameManager : NetworkBehaviour
             return;
         }
 
-        // TODO (Custody milestone): require + consume 3 Custody cards server-side. On a wrong guess, reveal the
-        // accused's hand to everyone and give them ability/trap immunity until the end of the guesser's next turn.
         bool isCorrect = playerHands[accusedPlayerId].Exists(c => c.Type == CardType.WhiskerBlower);
 
         if (isCorrect)
         {
             CurrentState.Value = GameState.GameOver;
-            string winnerName = GetPlayerName(guesserId);
-            AnnounceWinnerClientRpc(guesserId, $"{winnerName} correctly guessed the Custodian with 3 Custody cards");
+            CloseThiefStealUIClientRpc(SingleTarget(guesserId));
+            StartCoroutine(ResolveCorrectGuessRoutine(guesserId, accusedPlayerId));
         }
         else
         {
-            Debug.Log($"[Guess Failed] Player #{guesserId} guessed incorrectly");
-            CloseThiefStealUIClientRpc(SingleTarget(guesserId));
-            AfterAction(guesserId, TurnActionKind.Guess);
+            CurrentState.Value = GameState.PlayerTurn_Resolving;
+            StartCoroutine(ResolveWrongGuessRoutine(guesserId, accusedPlayerId));
         }
     }
 
@@ -866,6 +873,7 @@ public partial class GameManager : NetworkBehaviour
 
     private void AfterAction(ulong playerId, TurnActionKind kind)
     {
+        ClearShuffleLocks();
         if (!firstActionKind.HasValue) firstActionKind = kind;
         hasTakenActionThisTurn = true;
         ConsumeAction(playerId);
@@ -930,6 +938,7 @@ public partial class GameManager : NetworkBehaviour
         if (CardEffectRegistry.RequiresTarget(cardId))
         {
             if (targetId == senderId || !playerHands.ContainsKey(targetId)) return "Pick an opponent to target";
+            if (IsGuessImmune(targetId)) return GuessImmuneMessage(targetId);
         }
         else
         {
@@ -947,6 +956,7 @@ public partial class GameManager : NetworkBehaviour
         if (firstActionKind.HasValue && firstActionKind.Value != TurnActionKind.Ability)
             return "Only one Steal or Guess per turn";
         if (victimId == thiefId || !playerHands.TryGetValue(victimId, out var victimHand)) return "Invalid target";
+        if (IsGuessImmune(victimId)) return GuessImmuneMessage(victimId);
         if (victimHand.Count == 0) return "That player has no cards to steal";
         if (cardIndex < 0 || cardIndex >= victimHand.Count) return "Invalid card";
         return null;
@@ -960,6 +970,8 @@ public partial class GameManager : NetworkBehaviour
         if (firstActionKind.HasValue && firstActionKind.Value != TurnActionKind.Ability)
             return "Only one Steal or Guess per turn";
         if (accusedId == guesserId || !playerHands.ContainsKey(accusedId)) return "Invalid target";
+        if (IsGuessImmune(accusedId)) return GuessImmuneMessage(accusedId);
+        if (CountCustodyCards(guesserId) < CustodyCardsRequired) return $"You need {CustodyCardsRequired} Custody cards to accuse someone";
         return null;
     }
 

@@ -35,8 +35,13 @@ public class PlayerHandController : MonoBehaviour
     private bool passIsTrapGive = false;
     private string passLabel = "";
     public bool IsScatterPickActive => isScatterPickActive && !scatterPickSubmitted;
+    public int HandCount => currentCards.Count;
+    private Coroutine reorderRoutine;
     public bool IsActiveAbilitySlotOccupied => myActiveAbilitySlot != null && myActiveAbilitySlot.gameObject.activeSelf;
-
+    private void OnDisable()
+    {
+        reorderRoutine = null;
+    }
     private void Awake()
     {
         Instance = this;
@@ -196,6 +201,12 @@ public class PlayerHandController : MonoBehaviour
 
     public void UpdateHandFanLayout()
     {
+        if (reorderRoutine != null)
+        {
+            StopCoroutine(reorderRoutine);
+            reorderRoutine = null;
+        }
+
         int total = handCardContainer.childCount;
         for (int i = 0; i < total; i++)
         {
@@ -332,6 +343,109 @@ public class PlayerHandController : MonoBehaviour
         confirmIsScatter = false;
         SetAllCardsHighlighted(false);
     }
+    
+    //hand shuffle from game 7: repo#13
+    public void ApplyShuffledOrder(NetworkCard[] serverOrder)
+    {
+        if (handCardContainer == null || serverOrder == null)
+        {
+            Debug.LogWarning("[shuffle][hand] applyshuffleorder: missing container");
+            return;
+        }
+
+        var remaining = new List<Transform>();
+        for (int i = 0; i < handCardContainer.childCount; i++) remaining.Add(handCardContainer.GetChild(i));
+        if (remaining.Count < 2)
+        {
+            Debug.LogWarning($"[shuffle][hand] applyshuffleorder ignored: only {remaining.Count} card visuals in the hand container");
+            return;
+        }
+        int visualCount = remaining.Count;
+
+        var startPos = new Dictionary<Transform, Vector2>();
+        foreach (Transform tr in remaining)
+        {
+            RectTransform rt = tr as RectTransform;
+            if (rt != null) startPos[tr] = rt.anchoredPosition;
+        }
+
+        var ordered = new List<Transform>();
+        foreach (NetworkCard card in serverOrder)
+        {
+            int idx = remaining.FindIndex(tr =>
+            {
+                var h = tr.GetComponent<CardDragHandler>();
+                return h != null && h.CardData.Equals(card);
+            });
+            if (idx < 0) continue;
+
+            ordered.Add(remaining[idx]);
+            remaining.RemoveAt(idx);
+        }
+        Debug.Log($"[shuffle][hand] server order={serverOrder.Length}, visuals={visualCount}, matched={ordered.Count}, unmatched visuals={remaining.Count}");
+
+        ordered.AddRange(remaining);
+
+        for (int i = 0; i < ordered.Count; i++) ordered[i].SetSiblingIndex(i);
+
+        var newModel = new List<NetworkCard>();
+        var leftovers = new List<NetworkCard>(currentCards);
+        foreach (Transform tr in ordered)
+        {
+            var h = tr.GetComponent<CardDragHandler>();
+            if (h == null) continue;
+            newModel.Add(h.CardData);
+            leftovers.Remove(h.CardData);
+        }
+        newModel.AddRange(leftovers);
+        currentCards = newModel;
+
+        UpdateHandFanLayout();
+
+        var moves = new List<(RectTransform rt, Vector2 start, Vector2 end)>();
+        foreach (Transform tr in ordered)
+        {
+            RectTransform rt = tr as RectTransform;
+            if (rt == null || !startPos.TryGetValue(tr, out Vector2 start)) continue;
+
+            Vector2 end = rt.anchoredPosition;
+            rt.anchoredPosition = start;
+            moves.Add((rt, start, end));
+        }
+
+        if (moves.Count > 0 && isActiveAndEnabled) reorderRoutine = StartCoroutine(ReorderAnimationRoutine(moves));
+    }
+    private IEnumerator ReorderAnimationRoutine(List<(RectTransform rt, Vector2 start, Vector2 end)> moves)
+    {
+        const float gatherTime = 0.25f;
+        const float spreadTime = 0.35f;
+
+        float t = 0f;
+        while (t < gatherTime)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.SmoothStep(0f, 1f, t / gatherTime);
+            foreach (var m in moves)
+                if (m.rt != null) m.rt.anchoredPosition = Vector2.Lerp(m.start, new Vector2(0f, m.start.y), k);
+            yield return null;
+        }
+
+        t = 0f;
+        while (t < spreadTime)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.SmoothStep(0f, 1f, t / spreadTime);
+            foreach (var m in moves)
+                if (m.rt != null) m.rt.anchoredPosition = Vector2.Lerp(new Vector2(0f, m.start.y), m.end, k);
+            yield return null;
+        }
+
+        foreach (var m in moves)
+            if (m.rt != null) m.rt.anchoredPosition = m.end;
+
+        reorderRoutine = null;
+    }
+
     public void ApplyScatterResult(bool gave, NetworkCard passed, bool got, NetworkCard received)
     {
         if (gave) RemoveCard(passed);

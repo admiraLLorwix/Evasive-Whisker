@@ -54,6 +54,7 @@ public class StealManager : NetworkBehaviour
     {
         CloseStealModal();
         IsSelectingTarget = false;
+        CancelStealServerRpc();
         if (TurnActionUI.Instance != null)
         {
             TurnActionUI.Instance.ShowActionPrompt();
@@ -106,6 +107,9 @@ public class StealManager : NetworkBehaviour
     private void RequestVictimHandForStealServerRpc(ulong victimId, RpcParams rpcParams = default)
     {
         ulong thiefId = rpcParams.Receive.SenderClientId;
+
+        if (!GameManager.Instance.TryBeginStealTargeting(thiefId, victimId)) return;
+
         int victimCardCount = GameManager.Instance.GetPlayerHandCount(victimId);
         string victimName = GameManager.Instance.GetPlayerName(victimId);
         DetectiveCatType victimCat = GameManager.Instance.GetPlayerDetective(victimId);
@@ -231,12 +235,15 @@ public class StealManager : NetworkBehaviour
 
         SubmitStealPickServerRpc(currentStealTargetId, victimCardIndex);
     }
-
+    [Rpc(SendTo.Server)]
+    private void CancelStealServerRpc(RpcParams rpcParams = default)
+    {
+        GameManager.Instance?.ReleaseStealTargetLock(rpcParams.Receive.SenderClientId);
+    }
     [Rpc(SendTo.Server)]
     private void SubmitStealPickServerRpc(ulong victimId, int cardIndex, RpcParams rpcParams = default)
     {
         ulong thiefId = rpcParams.Receive.SenderClientId;
         GameManager.Instance.ExecuteSteal(thiefId, victimId, cardIndex);
     }
-
 }
