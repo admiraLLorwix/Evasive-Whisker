@@ -48,16 +48,21 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        bool isMyTurn = GameManager.Instance != null &&
-                        GameManager.Instance.ActiveTurnPlayerId.Value == Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+        bool scatterPick = PlayerHandController.Instance != null && PlayerHandController.Instance.IsScatterPickActive;
 
-        bool canDragInDiscard = (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_DiscardPrompt);
-        bool canDragInAction = (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_Action && CardData.Type == CardType.Ability);
-
-        if (!isMyTurn || (!canDragInDiscard && !canDragInAction))
+        if (!scatterPick)
         {
-            eventData.pointerDrag = null;
-            return;
+            bool isMyTurn = GameManager.Instance != null && 
+                GameManager.Instance.ActiveTurnPlayerId.Value == Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+
+            bool canDragInDiscard = (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_DiscardPrompt);
+            bool canDragInAction = (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_Action && CardData.Type == CardType.Ability);
+
+            if (!isMyTurn || (!canDragInDiscard && !canDragInAction))
+            {
+                eventData.pointerDrag = null;
+                return;
+            }
         }
 
         originalPosition = rectTransform.anchoredPosition;
@@ -80,8 +85,15 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         canvasGroup.blocksRaycasts = true;
 
-        bool isMyTurn = GameManager.Instance != null &&
-                        GameManager.Instance.ActiveTurnPlayerId.Value == Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+        if (PlayerHandController.Instance != null && PlayerHandController.Instance.IsScatterPickActive)
+        {
+            bool draggedUp = transform.position.y > Screen.height * 0.35f;
+            ReturnToHand();
+            if (draggedUp) PlayerHandController.Instance.PromptScatterConfirmation(CardData);
+            return;
+        }
+        bool isMyTurn = GameManager.Instance != null && 
+            GameManager.Instance.ActiveTurnPlayerId.Value == Unity.Netcode.NetworkManager.Singleton.LocalClientId;
 
         float dragUpThreshold = Screen.height * 0.35f;
 
@@ -102,7 +114,17 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
             if (GameManager.Instance?.CurrentState.Value == GameState.PlayerTurn_Action && CardData.Type == CardType.Ability)
             {
-                if (CardData.CardId == "Declaw" || CardData.CardId == "BombasticCatEyes" || CardData.CardId == "CatInstinct")
+                string playedId = CardData.CardId;
+
+                if (CardEffectRegistry.OccupiesSlot(playedId) &&
+                    PlayerHandController.Instance != null && PlayerHandController.Instance.IsActiveAbilitySlotOccupied)
+                {
+                    ReturnToHand();
+                    TurnActionUI.Instance?.ShowTemporaryNotification("<color=red>Your Active Ability slot is full</color>", 2.5f);
+                    return;
+                }
+
+                if (CardEffectRegistry.RequiresTarget(playedId))
                 {
                     ReturnToHand();
                     TargetingManager.Instance?.StartTargeting(CardData, gameObject);
@@ -112,7 +134,7 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
                 gameObject.SetActive(false);
                 PlayerHandController.Instance?.RemoveCardObject(gameObject, CardData);
                 TurnActionUI.Instance?.HideAllActions();
-                GameManager.Instance?.SubmitPlayAbilityCardServerRpc(CardData);
+                GameManager.Instance?.SubmitPlayAbilityCardServerRpc(CardData, GameManager.NoTarget);
                 return;
             }
         }

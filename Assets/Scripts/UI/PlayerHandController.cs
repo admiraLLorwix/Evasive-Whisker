@@ -26,6 +26,15 @@ public class PlayerHandController : MonoBehaviour
     private List<NetworkCard> currentCards = new List<NetworkCard>();
     private NetworkCard pendingDiscardCard;
 
+    //scatter
+    private bool isScatterPickActive = false;
+    private bool scatterPickSubmitted = false;
+    private bool confirmIsScatter = false;
+    private string scatterNeighborName = "";
+    private NetworkCard pendingScatterCard;
+    public bool IsScatterPickActive => isScatterPickActive && !scatterPickSubmitted;
+    public bool IsActiveAbilitySlotOccupied => myActiveAbilitySlot != null && myActiveAbilitySlot.gameObject.activeSelf;
+
     private void Awake()
     {
         Instance = this;
@@ -152,7 +161,6 @@ public class PlayerHandController : MonoBehaviour
         UpdateHandFanLayout();
     }
 
-    //todo: (bug) not adjusting when stolen
     public void RemoveCard(NetworkCard card)
     {
         currentCards.Remove(card);
@@ -231,6 +239,7 @@ public class PlayerHandController : MonoBehaviour
     public void PromptDiscardConfirmation(NetworkCard card)
     {
         pendingDiscardCard = card;
+        confirmIsScatter = false;
         if (discardConfirmModal != null)
         {
             discardConfirmModal.SetActive(true);
@@ -244,14 +253,84 @@ public class PlayerHandController : MonoBehaviour
     private void OnConfirmDiscardClicked()
     {
         if (discardConfirmModal != null) discardConfirmModal.SetActive(false);
+        if (confirmIsScatter)
+        {
+            confirmIsScatter = false;
+            scatterPickSubmitted = true;
+            SetAllCardsHighlighted(false);
+            TurnActionUI.Instance?.SetInstructionText("Waiting for the other players to pick...", "<color=orange>SCATTER</color>");
+            GameManager.Instance?.SubmitScatterPickServerRpc(pendingScatterCard);
+            return;
+        }
         RemoveCard(pendingDiscardCard);
         GameManager.Instance.SubmitDiscardServerRpc(pendingDiscardCard);
     }
 
     private void OnCancelDiscardClicked()
     {
+        confirmIsScatter = false;
         if (discardConfirmModal != null) discardConfirmModal.SetActive(false);
     }
+
+    public void BeginScatterPick(string neighborName)
+    {
+        isScatterPickActive = true;
+        scatterPickSubmitted = false;
+        confirmIsScatter = false;
+        scatterNeighborName = neighborName;
+
+        SetAbilityCardsPlayable(false);
+        TurnActionUI.Instance?.HideAllActions();
+        SetAllCardsHighlighted(true);
+        TurnActionUI.Instance?.SetInstructionText(
+            $"Drag a card up to pass it to <color=yellow>{neighborName}</color>", "<color=orange>SCATTER!</color>");
+    }
+
+    public void PromptScatterConfirmation(NetworkCard card)
+    {
+        pendingScatterCard = card;
+        confirmIsScatter = true;
+
+        if (discardConfirmModal != null)
+        {
+            discardConfirmModal.SetActive(true);
+            if (confirmPromptText != null)
+            {
+                confirmPromptText.text = $"Pass <color=yellow>{card.CardId}</color> to <color=yellow>{scatterNeighborName}</color>?";
+            }
+        }
+    }
+    public void ReopenScatterPick()
+    {
+        scatterPickSubmitted = false;
+        if (isScatterPickActive) BeginScatterPick(scatterNeighborName);
+    }
+
+    public void EndScatterPick()
+    {
+        isScatterPickActive = false;
+        scatterPickSubmitted = false;
+        if (confirmIsScatter && discardConfirmModal != null) discardConfirmModal.SetActive(false);
+        confirmIsScatter = false;
+        SetAllCardsHighlighted(false);
+    }
+    public void ApplyScatterResult(bool gave, NetworkCard passed, bool got, NetworkCard received)
+    {
+        if (gave) RemoveCard(passed);
+        if (got) AddCard(received);
+    }
+
+    private void SetAllCardsHighlighted(bool on)
+    {
+        if (handCardContainer == null) return;
+        for (int i = 0; i < handCardContainer.childCount; i++)
+        {
+            var dragHandler = handCardContainer.GetChild(i).GetComponent<CardDragHandler>();
+            if (dragHandler != null) dragHandler.SetHighlighted(on);
+        }
+    }
+
+
 
     public int GetCustodyCardCount() => currentCards.FindAll(c => c.Type == CardType.Custody).Count;
     public bool HasAbilityCards() => currentCards.Exists(c => c.Type == CardType.Ability);

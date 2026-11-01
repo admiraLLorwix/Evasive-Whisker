@@ -126,6 +126,27 @@ public class StealManager : NetworkBehaviour
         currentStealTargetId = victimId;
         IsSelectingTarget = false;
 
+        List<int> allIndices = new List<int>();
+        for (int i = 0; i < cardCount; i++) allIndices.Add(i);
+
+        OpenFanModal(victimId, victimName, victimCat,
+            $"Stealing from <color=yellow>{victimName}</color>",
+            allIndices, OnStealCardSelected, true);
+    }
+
+    public void ShowPeekModal(ulong victimId, string victimName, DetectiveCatType victimCat,
+                              int[] remainingVictimIndices, int pickNumber, int pickTotal)
+    {
+        currentStealTargetId = victimId;
+        IsSelectingTarget = false;
+
+        OpenFanModal(victimId, victimName, victimCat,
+            $"Peeking at <color=yellow>{victimName}</color>'s cards ({pickNumber}/{pickTotal})",
+            new List<int>(remainingVictimIndices), OnPeekCardSelected, false);
+    }
+
+    private void OpenFanModal(ulong victimId, string victimName, DetectiveCatType victimCat, string title, List<int> victimIndices, System.Action<int> onPick, bool allowCancel)
+    {
         if (stealModal == null)
         {
             Debug.LogError("[sm] !stealmodal");
@@ -135,7 +156,8 @@ public class StealManager : NetworkBehaviour
         stealModal.SetActive(true);
         stealModal.transform.SetAsLastSibling();
 
-        if (victimNameText != null) victimNameText.text = $"Stealing from <color=yellow>{victimName}</color>";
+        if (victimNameText != null) victimNameText.text = title;
+        if (stealCancelButton != null) stealCancelButton.gameObject.SetActive(allowCancel);
 
         if (victimAvatarImage != null && CardDatabase.Instance != null)
         {
@@ -158,9 +180,10 @@ public class StealManager : NetworkBehaviour
             Destroy(child.gameObject);
         }
 
+        int cardCount = victimIndices.Count;
         for (int thiefSlotIndex = 0; thiefSlotIndex < cardCount; thiefSlotIndex++)
         {
-            int actualVictimIndex = (cardCount - 1) - thiefSlotIndex;
+            int actualVictimIndex = victimIndices[(cardCount - 1) - thiefSlotIndex];
 
             GameObject cardObj = Instantiate(stealCardPrefab, cardFanContainer);
             Button btn = cardObj.GetComponentInChildren<Button>();
@@ -181,9 +204,16 @@ public class StealManager : NetworkBehaviour
             if (btn != null)
             {
                 btn.onClick.RemoveAllListeners();
-                btn.onClick.AddListener(() => OnStealCardSelected(selectedIndex));
+                btn.onClick.AddListener(() => onPick(selectedIndex));
             }
         }
+    }
+
+    private void OnPeekCardSelected(int victimCardIndex)
+    {
+        Debug.Log($"[sm] peek pick {victimCardIndex}");
+        CloseStealModal();
+        GameManager.Instance?.SubmitBombasticPickServerRpc(victimCardIndex);
     }
 
     private void OnStealCardSelected(int victimCardIndex)

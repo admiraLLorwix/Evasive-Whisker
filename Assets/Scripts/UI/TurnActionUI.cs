@@ -2,10 +2,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
-
 public class TurnActionUI : MonoBehaviour
 {
     public static TurnActionUI Instance { get; private set; }
@@ -22,6 +18,11 @@ public class TurnActionUI : MonoBehaviour
     [SerializeField] private Button guessCustodianChoiceCard;
     [SerializeField] private Button cancelActionButton;
 
+    [SerializeField] private Button endTurnButton;
+
+    private bool lastAbilityOnly = false;
+    private bool lastAllowSkip = false;
+
     private void Awake()
     {
         Instance = this;
@@ -31,6 +32,7 @@ public class TurnActionUI : MonoBehaviour
         if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.onClick.AddListener(OnGuessCustodianSelected);
 
         if (cancelActionButton != null) cancelActionButton.onClick.AddListener(OnCancelClicked);
+        if (endTurnButton != null) endTurnButton.onClick.AddListener(OnEndTurnClicked);   // [M2a]
 
         HideAllActionPanels();
     }
@@ -39,7 +41,11 @@ public class TurnActionUI : MonoBehaviour
     {
         if (roundText != null) roundText.text = $"ROUND {roundNumber} / 10";
     }
-
+    public void SetInstructionText(string instruction, string turnLabel = null)
+    {
+        if (instructionText != null) instructionText.text = instruction;
+        if (turnLabel != null && turnText != null) turnText.text = turnLabel;
+    }
     public void ShowTemporaryNotification(string message, float duration = 3.5f)
     {
         StartCoroutine(TempNoticeRoutine(message, duration));
@@ -55,13 +61,12 @@ public class TurnActionUI : MonoBehaviour
 
     public void ShowDrawPrompt(bool isMyTurn, string activePlayerName)
     {
-        Debug.Log($"showdrawprompt: {isMyTurn}, {activePlayerName}");
         HideAllActionPanels();
 
         if (isMyTurn)
         {
             if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
-            if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card!";
+            if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card";
 
             DrawDeckClick.Instance?.SetGlow(true);
         }
@@ -85,22 +90,31 @@ public class TurnActionUI : MonoBehaviour
             instructionText.text = $"<color=red>HAND LIMIT EXCEEDED ({currentCount}/{maxLimit}) DRAG A CARD UP TO DISCARD IT</color>";
     }
 
-    public void ShowActionPhaseModal()
+    public void ShowActionPhaseModal(bool abilityOnly = false, bool allowSkip = false)
     {
+        lastAbilityOnly = abilityOnly;
+        lastAllowSkip = allowSkip;
+
         DrawDeckClick.Instance?.SetGlow(false);
 
         if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
-        if (instructionText != null) instructionText.text = "Choose your action for this turn";
+        if (instructionText != null)
+        {
+            instructionText.text = abilityOnly ? "Second action: you can only play an Ability now"
+                                 : allowSkip ? "Second action: choose again, or end your turn"
+                                 : "Choose your action for this turn";
+        }
 
         if (actionChoiceModal != null) actionChoiceModal.SetActive(true);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
+        if (endTurnButton != null) endTurnButton.gameObject.SetActive(allowSkip);
 
         int custodyCount = PlayerHandController.Instance != null ? PlayerHandController.Instance.GetCustodyCardCount() : 0;
         bool hasAbilities = PlayerHandController.Instance != null && PlayerHandController.Instance.HasAbilityCards();
 
         if (playAbilityChoiceCard != null) playAbilityChoiceCard.interactable = hasAbilities;
-        if (stealChoiceCard != null) stealChoiceCard.interactable = true;
-        if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.interactable = (custodyCount >= 3);
+        if (stealChoiceCard != null) stealChoiceCard.interactable = !abilityOnly;
+        if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.interactable = (custodyCount >= 3) && !abilityOnly;
     }
 
     private void OnPlayAbilitySelected()
@@ -132,17 +146,30 @@ public class TurnActionUI : MonoBehaviour
 
     private void OnCancelClicked()
     {
+        if (TargetingManager.Instance != null && TargetingManager.Instance.IsTargeting)
+        {
+            TargetingManager.Instance.CancelTargeting();
+        }
+
         PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
         StealManager.Instance?.CancelSelection();
-        ShowActionPhaseModal();
+        ShowActionPrompt();
+    }
+
+    private void OnEndTurnClicked()
+    {
+        HideAllActionPanels();
+        PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
+        GameManager.Instance?.SubmitEndTurnServerRpc();
     }
 
     public void HideAllActionPanels()
     {
         if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
+        if (endTurnButton != null) endTurnButton.gameObject.SetActive(false);
     }
 
-    public void ShowActionPrompt() => ShowActionPhaseModal();
+    public void ShowActionPrompt() => ShowActionPhaseModal(lastAbilityOnly, lastAllowSkip);
     public void HideAllActions() => HideAllActionPanels();
 }
