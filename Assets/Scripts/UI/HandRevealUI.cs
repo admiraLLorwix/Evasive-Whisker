@@ -5,6 +5,7 @@ using TMPro;
 using EvasiveWhisker.Cards;
 using System.Collections;
 //used for robin paw and correct guess on custodian
+//adjusted for discard pile vieweing and inspector bebang
 public class HandRevealUI : MonoBehaviour
 {
     public static HandRevealUI Instance { get; private set; }
@@ -18,13 +19,90 @@ public class HandRevealUI : MonoBehaviour
 
     private readonly List<GameObject> spawnedCards = new List<GameObject>();
     private Coroutine autoHideRoutine;
+    private System.Action<int> pickCallback;
+    private System.Action cancelCallback;
 
     private void Awake()
     {
         Instance = this;
 
         if (panel != null) panel.SetActive(false);
-        if (closeButton != null) closeButton.onClick.AddListener(Hide);
+        if (closeButton != null) closeButton.onClick.AddListener(OnCloseClicked);
+    }
+
+    //wrap and shrink to fit
+    public void ShowPicker(string title, NetworkCard[] cards, System.Action<int> onPick, System.Action onCancel)
+    {
+        if (panel == null || cardContainer == null) return;
+
+        if (autoHideRoutine != null)
+        {
+            StopCoroutine(autoHideRoutine);
+            autoHideRoutine = null;
+        }
+        ClearCards();
+        pickCallback = onPick;
+        cancelCallback = onCancel;
+        if (titleText != null) titleText.text = title;
+
+        int count = cards != null ? cards.Length : 0;
+        float width = cardContainer.rect.width > 10f ? cardContainer.rect.width : 900f;
+        float height = cardContainer.rect.height > 10f ? cardContainer.rect.height : 420f;
+
+        float scale = 1f;
+        int perRow = 1;
+        int rows = 1;
+        for (; scale >= 0.3f; scale -= 0.1f)
+        {
+            float w = cardSize.x * scale;
+            float h = cardSize.y * scale;
+            perRow = Mathf.Max(1, Mathf.FloorToInt((width + cardGap) / (w + cardGap)));
+            rows = Mathf.Max(1, Mathf.CeilToInt(count / (float)perRow));
+            if (rows * (h + cardGap) - cardGap <= height) break;
+        }
+
+        float cw = cardSize.x * scale;
+        float ch = cardSize.y * scale;
+        for (int i = 0; i < count; i++)
+        {
+            int row = i / perRow;
+            int col = i % perRow;
+            int inRow = Mathf.Min(perRow, count - row * perRow);
+
+            float x = (col - (inRow - 1) * 0.5f) * (cw + cardGap);
+            float y = ((rows - 1) * 0.5f - row) * (ch + cardGap);
+
+            GameObject obj = CreateCard(cards[i], x);
+            var rt = (RectTransform)obj.transform;
+            rt.sizeDelta = new Vector2(cw, ch);
+            rt.anchoredPosition = new Vector2(x, y);
+
+            var image = obj.GetComponent<Image>();
+            image.raycastTarget = true;
+            var btn = obj.AddComponent<Button>();
+            btn.targetGraphic = image;
+            int index = i;
+            btn.onClick.AddListener(() => OnPickClicked(index));
+
+            spawnedCards.Add(obj);
+        }
+
+        panel.SetActive(true);
+        panel.transform.SetAsLastSibling();
+    }
+
+    private void OnPickClicked(int index)
+    {
+        var callback = pickCallback;
+        Hide();
+        callback?.Invoke(index);
+    }
+
+    private void OnCloseClicked()
+    {
+        var cancel = cancelCallback;
+        Hide();
+        cancel?.Invoke();
     }
     public void ShowTimed(string title, NetworkCard[] cards, float seconds)
     {
@@ -41,6 +119,8 @@ public class HandRevealUI : MonoBehaviour
     public void Show(string title, NetworkCard[] cards)
     {
         if (panel == null || cardContainer == null) return;
+        pickCallback = null;
+        cancelCallback = null;
 
         if (autoHideRoutine != null)
         {
@@ -71,6 +151,8 @@ public class HandRevealUI : MonoBehaviour
 
     public void Hide()
     {
+        pickCallback = null;
+        cancelCallback = null;
         if (autoHideRoutine != null)
         {
             StopCoroutine(autoHideRoutine);

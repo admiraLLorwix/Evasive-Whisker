@@ -14,6 +14,8 @@ public class DiscardPile2D : MonoBehaviour
     [SerializeField] private float maxPositionJitter = 10f;
 
     private List<GameObject> pileCards = new List<GameObject>();
+    private List<NetworkCard> pileData = new List<NetworkCard>();
+    private const int MaxVisibleCards = 6;
 
     private void Awake()
     {
@@ -21,6 +23,30 @@ public class DiscardPile2D : MonoBehaviour
     }
 
     public void AddCardToDiscard(NetworkCard card)
+    {
+        pileData.Add(card);
+        SpawnPileVisual(card);
+    }
+
+    public void RemoveCardFromDiscard(NetworkCard card)
+    {
+        for (int i = pileData.Count - 1; i >= 0; i--)
+        {
+            if (pileData[i].Equals(card))
+            {
+                pileData.RemoveAt(i);
+                break;
+            }
+        }
+
+        foreach (GameObject obj in pileCards) if (obj != null) Destroy(obj);
+        pileCards.Clear();
+
+        int start = Mathf.Max(0, pileData.Count - MaxVisibleCards);
+        for (int i = start; i < pileData.Count; i++) SpawnPileVisual(pileData[i]);
+    }
+
+    private void SpawnPileVisual(NetworkCard card)
     {
         if (discardContainer == null || cardUIPrefab == null) return;
 
@@ -74,7 +100,7 @@ public class DiscardPile2D : MonoBehaviour
 
         pileCards.Add(cardObj);
 
-        if (pileCards.Count > 6)
+        if (pileCards.Count > MaxVisibleCards)
         {
             Destroy(pileCards[0]);
             pileCards.RemoveAt(0);

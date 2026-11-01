@@ -87,6 +87,9 @@ public partial class GameManager : NetworkBehaviour
         CardEffectRegistry.RegisterCounterplay("Hiss", new HissEffect());
         CardEffectRegistry.RegisterCounterplay("CopyCat", new CopyCatEffect());
         CardEffectRegistry.RegisterCounterplay("EyeForAnEye", new EyeForAnEyeEffect());
+
+        CardEffectRegistry.RegisterDetective(DetectiveCatType.InspectorBebang, new InspectorBebangTrait());
+        CardEffectRegistry.RegisterDetective(DetectiveCatType.DumpsterDiverShimo, new DumpsterDiverShimoTrait());
     }
     private void Update()
     {
@@ -414,33 +417,8 @@ public partial class GameManager : NetworkBehaviour
         NetworkCard? drawn = DeckManager.Instance.DrawCard();
         if (drawn.HasValue)
         {
-            CurrentState.Value = GameState.PlayerTurn_Resolving;
-            LockShuffle(senderId);
             NetworkCard drawnCard = drawn.Value;
-            string drawerName = GetPlayerName(senderId);
-
-            ClientRpcParams drawerParams = new ClientRpcParams
-            {
-                Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { senderId } }
-            };
-            ShowDrawSpotlightClientRpc(drawnCard.CardId.ToString(), $"You drew {drawnCard.CardId}!", false, drawerParams);
-
-            List<ulong> spectatorIds = new List<ulong>();
-            foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
-            {
-                if (client.ClientId != senderId) spectatorIds.Add(client.ClientId);
-            }
-
-            if (spectatorIds.Count > 0)
-            {
-                ClientRpcParams spectatorParams = new ClientRpcParams
-                {
-                    Send = new ClientRpcSendParams { TargetClientIds = spectatorIds.ToArray() }
-                };
-                ShowDrawSpotlightClientRpc("", $"{drawerName} drew a card!", true, spectatorParams);
-            }
-            UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
-            StartCoroutine(ResolveDrawAfterSpotlightRoutine(senderId, drawnCard));
+            PresentDrawnCard(senderId, drawnCard, $"You drew {drawnCard.CardId}!", $"{GetPlayerName(senderId)} drew a card!", false);
         }
         else
         {
@@ -448,6 +426,37 @@ public partial class GameManager : NetworkBehaviour
             SendNotice(senderId, "<color=yellow>The draw deck is empty - no card drawn</color>");
             CheckHandLimitOrProceedToAction(senderId);
         }
+    }
+
+    private void PresentDrawnCard(ulong playerId, NetworkCard card, string ownMessage, string othersMessage, bool publicCard)
+    {
+        CurrentState.Value = GameState.PlayerTurn_Resolving;
+        LockShuffle(playerId);
+
+        ClientRpcParams playerParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { playerId } }
+        };
+        ShowDrawSpotlightClientRpc(card.CardId.ToString(), ownMessage, false, playerParams);
+
+
+        List<ulong> spectatorIds = new List<ulong>();
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            if (client.ClientId != playerId) spectatorIds.Add(client.ClientId);
+        }
+
+        if (spectatorIds.Count > 0)
+        {
+            ClientRpcParams spectatorParams = new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams { TargetClientIds = spectatorIds.ToArray() }
+            };
+            ShowDrawSpotlightClientRpc(publicCard ? card.CardId.ToString() : "", othersMessage, !publicCard, spectatorParams);
+        }
+
+        UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
+        StartCoroutine(ResolveDrawAfterSpotlightRoutine(playerId, card));
     }
 
     [ClientRpc]

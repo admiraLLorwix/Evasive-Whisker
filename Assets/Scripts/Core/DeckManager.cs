@@ -94,6 +94,30 @@ public class DeckManager : MonoBehaviour
         drawDeck.RemoveAt(0);
         return card;
     }
+    // for detective cats onli
+    public NetworkCard[] GetDiscardPile() => discardPile.ToArray();
+
+    public NetworkCard[] PeekTop(int count) => drawDeck.GetRange(0, Mathf.Min(count, drawDeck.Count)).ToArray();
+
+    public NetworkCard? TakeTop(int index)
+    {
+        if (index < 0 || index >= drawDeck.Count) return null;
+        NetworkCard card = drawDeck[index];
+        drawDeck.RemoveAt(index);
+        return card;
+    }
+    public bool TakeFromDiscard(NetworkCard card)
+    {
+        for (int i = discardPile.Count - 1; i >= 0; i--)
+        {
+            if (discardPile[i].Equals(card))
+            {
+                discardPile.RemoveAt(i);
+                return true;
+            }
+        }
+        return false;
+    }
 
     public void Discard(NetworkCard card)
     {

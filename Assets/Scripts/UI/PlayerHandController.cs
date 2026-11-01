@@ -71,6 +71,10 @@ public class PlayerHandController : MonoBehaviour
             myDetectiveSlot.color = Color.white;
             myDetectiveSlot.gameObject.SetActive(true);
         }
+
+        DetectiveCatUI catUi = DetectiveCatUI.Instance != null ? DetectiveCatUI.Instance 
+            : FindAnyObjectByType<DetectiveCatUI>(FindObjectsInactive.Include);
+        if (catUi != null) catUi.SetCat(catType);
     }
 
     public void SetActiveAbility(string cardId)

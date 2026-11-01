@@ -37,7 +37,8 @@ public static class CardEffectRegistry
     public static void RegisterInteractiveTrap(string trapId, IInteractiveTrapEffect effect) => interactiveTraps[trapId] = effect;
     public static void RegisterCounterplay(string cardId, ICounterplayEffect effect) => counterplays[cardId] = effect;
     public static void RegisterDetective(DetectiveCatType catType, IDetectiveCatTrait trait) => detectiveTraits[catType] = trait;
-
+    public static IDetectiveCatTrait GetDetective(DetectiveCatType catType) =>
+    detectiveTraits.TryGetValue(catType, out var trait) ? trait : null;
     public static bool HasAbility(string cardId) => abilities.ContainsKey(cardId) || interactiveAbilities.ContainsKey(cardId);
     public static bool RequiresTarget(string cardId) => targetedAbilities.Contains(cardId);
     public static bool OccupiesSlot(string cardId) => slotAbilities.Contains(cardId);
