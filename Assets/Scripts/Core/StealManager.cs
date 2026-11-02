@@ -24,7 +24,8 @@ public class StealManager : NetworkBehaviour
     private ulong currentStealTargetId;
     public bool IsSelectingTarget { get; set; } = false;
     private bool isAccusingCustodian = false;
-
+    private bool isIslandPick = false;
+    private HashSet<ulong> islandPickEligible = new HashSet<ulong>();
     private void Awake()
     {
         Instance = this;
@@ -36,9 +37,34 @@ public class StealManager : NetworkBehaviour
             stealCancelButton.onClick.AddListener(OnStealCancelled);
         }
     }
+    //decoy mokang
+    public void BeginIslandPick(ulong[] eligible, string prompt)
+    {
+        isIslandPick = true;
+        isAccusingCustodian = false;
+        IsSelectingTarget = true;
+        islandPickEligible = new HashSet<ulong>(eligible);
+
+        foreach (ulong id in eligible)
+        {
+            var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(id) : null;
+            if (island != null) island.SetIslandGlow(true, new Color(1f, 0.6f, 0.2f, 1f));
+        }
+
+        TurnActionUI.Instance?.ShowTemporaryNotification($"<color=orange>{prompt}</color>", GameManager.DecisionSeconds);
+    }
+    public void EndIslandPick()
+    {
+        if (!isIslandPick) return;
+        isIslandPick = false;
+        IsSelectingTarget = false;
+        islandPickEligible.Clear();
+        HighlightOpponentIslands(false);
+    }
 
     public void CancelSelection()
     {
+        isIslandPick = false;
         IsSelectingTarget = false;
         HighlightOpponentIslands(false);
         if (stealModal != null) stealModal.SetActive(false);
@@ -93,6 +119,20 @@ public class StealManager : NetworkBehaviour
     public void OnOpponentIslandClicked(ulong targetId)
     {
         Debug.Log($"[sm] clicked ply #{targetId}");
+
+        if (isIslandPick)
+        {
+            if (!islandPickEligible.Contains(targetId))
+            {
+                TurnActionUI.Instance?.ShowTemporaryNotification("<color=red>Pick a different player</color>", 2f);
+                return;
+            }
+
+            EndIslandPick();
+            GameManager.Instance?.SubmitIslandPickServerRpc(targetId);
+            return;
+        }
+
         IsSelectingTarget = false;
 
         if (isAccusingCustodian)

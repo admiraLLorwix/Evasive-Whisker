@@ -7,13 +7,16 @@ public partial class GameManager
 {
     private readonly Dictionary<ulong, int> catLastUsedRound = new Dictionary<ulong, int>();
 
-    private enum CatPickKind { Shimo, Bebang }
+    private enum CatPickKind { Shimo, Bebang, ShadowSwap}
 
     private class PendingCatPick
     {
         public ulong Player;
         public CatPickKind Kind;
         public NetworkCard[] Offered;
+        public int[] HandIndices;
+        public System.Action<int> OnPicked;
+        public System.Action OnCancelled;
     }
     private PendingCatPick pendingCatPick;
 
@@ -116,6 +119,13 @@ public partial class GameManager
         if (pending == null || rpcParams.Receive.SenderClientId != pending.Player) return;
         if (index < 0 || index >= pending.Offered.Length) return;
 
+        if (pending.OnPicked != null)
+        {
+            pendingCatPick = null;
+            CancelDecisionTimer();
+            pending.OnPicked(pending.HandIndices != null ? pending.HandIndices[index] : index);
+            return;
+        }
         ResolveCatPick(pending, index);
     }
 
@@ -124,6 +134,14 @@ public partial class GameManager
     {
         PendingCatPick pending = pendingCatPick;
         if (pending == null || rpcParams.Receive.SenderClientId != pending.Player) return;
+
+        if (pending.OnCancelled != null)
+        {
+            pendingCatPick = null;
+            CancelDecisionTimer();
+            pending.OnCancelled();
+            return;
+        }
 
         pendingCatPick = null;
         ClearShuffleLocks();
@@ -135,6 +153,14 @@ public partial class GameManager
     private void AutoCatPick(PendingCatPick pending)
     {
         if (pendingCatPick != pending) return;
+
+        if (pending.OnCancelled != null)
+        {
+            pendingCatPick = null;
+            CloseHandRevealClientRpc(SingleTarget(pending.Player));
+            pending.OnCancelled();
+            return;
+        }
 
         int index = pending.Kind == CatPickKind.Shimo ? Random.Range(0, pending.Offered.Length) : 0;
         Debug.Log($"<color=orange>[timer] {GetPlayerName(pending.Player)} ran out of time - cat pick #{index}</color>");

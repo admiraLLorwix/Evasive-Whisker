@@ -22,6 +22,10 @@ public partial class GameManager
     }
     private class ReactionRequest
     {
+        public bool Redirected;
+        public int TargetIndex = -1;
+        public System.Action<int> OnSwapTarget;
+        public System.Action<ulong> OnRedirect;
         public ReactionReveal Reveal;
         public ulong Attacker;
         public ulong Defender;
@@ -35,6 +39,7 @@ public partial class GameManager
     {
         public ReactionRequest Request;
         public bool CounterPlayed;
+        public bool CatPlayed; public DetectiveCatType CatKind;
         public NetworkCard CounterCard;
         public bool Cancelled;
         public bool EndAttackerTurn;
@@ -55,20 +60,28 @@ public partial class GameManager
         ReactionRequest req = pending.Request;
         if (req.Reveal != null) BroadcastReactionSpotlights(req, false, ReactionWindowSeconds);
         NetworkCard[] legalCards = GetLegalCounterCards(req.Defender, req.ActionTags);
-        bool prompted = legalCards.Length > 0;
+        bool catLegal = TryGetLegalCatReaction(req, out DetectiveCatType legalCat);
+        bool prompted = legalCards.Length > 0 || catLegal;
         if (prompted)
         {
-            OpenReactionPromptClientRpc(req.Description, legalCards, ReactionWindowSeconds, SingleTarget(req.Defender));
+            string catName = catLegal ? DetectiveCatRules.DisplayName(legalCat) : "";
+            OpenReactionPromptClientRpc(req.Description, legalCards, ReactionWindowSeconds, catName, SingleTarget(req.Defender));
         }
 
         float endTime = Time.time + ReactionWindowSeconds;
-        while (Time.time < endTime && !pending.CounterPlayed)
+        while (Time.time < endTime && !pending.CounterPlayed && !pending.CatPlayed)
         {
             yield return null;
         }
 
         if (pendingReaction == pending) pendingReaction = null;
         if (prompted) CloseReactionPromptClientRpc(SingleTarget(req.Defender));
+        
+        if (pending.CatPlayed)
+        {
+            yield return StartCoroutine(HandleCatReaction(pending));
+            yield break;
+        }
 
         if (!pending.CounterPlayed)
         {
@@ -165,7 +178,7 @@ public partial class GameManager
         ulong senderId = rpcParams.Receive.SenderClientId;
         PendingReaction pending = pendingReaction;
 
-        if (pending == null || pending.CounterPlayed || senderId != pending.Request.Defender) return;
+        if (pending == null || pending.CounterPlayed || pending.CatPlayed || senderId != pending.Request.Defender) return;
 
         if (card.Type != CardType.Counterplay || !CanCounterAny(card.CardId, pending.Request.ActionTags))
         {
@@ -204,9 +217,10 @@ public partial class GameManager
 
 
     [ClientRpc]
-    private void OpenReactionPromptClientRpc(string description, NetworkCard[] legalCards, float seconds, ClientRpcParams clientRpcParams = default)
+    private void OpenReactionPromptClientRpc(string description, NetworkCard[] legalCards, float seconds, string catName, ClientRpcParams clientRpcParams = default)
     {
-        PlayerHandController.Instance?.BeginReaction(description, legalCards, seconds);
+        PlayerHandController.Instance?.BeginReaction(description, legalCards, seconds, catName);
+        if (!string.IsNullOrEmpty(catName)) DetectiveCatUI.Instance?.BeginReaction();
     }
 
     [ClientRpc]

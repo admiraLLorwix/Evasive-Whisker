@@ -30,7 +30,13 @@ public class CardSpotlightController : MonoBehaviour
         if (spotlightRoot != null) spotlightRoot.SetActive(false);
     }
 
-    public void PlaySpotlight(string cardId, string bannerMessage, Color glowColor, float duration = 2.8f, bool showBackface = false)
+    public void PlayCatSpotlight(DetectiveCatType cat, string bannerMessage, Color glowColor, float duration = 2.5f)
+    {
+        Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetLocalHandCardSprite(cat) : null;
+        PlaySpotlight("", bannerMessage, glowColor, duration, false, sprite);
+    }
+
+    public void PlaySpotlight(string cardId, string bannerMessage, Color glowColor, float duration = 2.8f, bool showBackface = false, Sprite overrideSprite = null)
     {
         gameObject.SetActive(true);
         if (spotlightRoot != null) spotlightRoot.SetActive(true);
@@ -43,10 +49,10 @@ public class CardSpotlightController : MonoBehaviour
             }
         }
         if (activeSpotlightRoutine != null) StopCoroutine(activeSpotlightRoutine);
-        activeSpotlightRoutine = StartCoroutine(SpotlightAnimationRoutine(cardId, bannerMessage, glowColor, duration, showBackface));
+        activeSpotlightRoutine = StartCoroutine(SpotlightAnimationRoutine(cardId, bannerMessage, glowColor, duration, showBackface, overrideSprite));
     }
 
-    private IEnumerator SpotlightAnimationRoutine(string cardId, string bannerMessage, Color glowColor, float duration, bool showBackface)
+    private IEnumerator SpotlightAnimationRoutine(string cardId, string bannerMessage, Color glowColor, float duration, bool showBackface, Sprite overrideSprite)
     {
         if (spotlightRoot == null) yield break;
 
@@ -79,6 +85,7 @@ public class CardSpotlightController : MonoBehaviour
 
         if (spotlightCardImage != null)
         {
+            if (overrideSprite != null) cardSprite = overrideSprite;
             spotlightCardImage.sprite = cardSprite != null ? cardSprite : defaultCardBackSprite;
             spotlightCardImage.color = Color.white;
         }

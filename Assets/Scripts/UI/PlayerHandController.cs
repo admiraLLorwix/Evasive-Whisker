@@ -475,8 +475,8 @@ public class PlayerHandController : MonoBehaviour
         }
     }
 
-//for reaction windwo
-    public void BeginReaction(string description, NetworkCard[] legalCards, float seconds)
+    //for reaction windwo
+    public void BeginReaction(string description, NetworkCard[] legalCards, float seconds, string catName = null)
     {
         reactionValidIds = new HashSet<string>();
         var names = new List<string>();
@@ -484,6 +484,7 @@ public class PlayerHandController : MonoBehaviour
         {
             if (reactionValidIds.Add(card.CardId)) names.Add(card.CardId);
         }
+        if (!string.IsNullOrEmpty(catName)) names.Add(catName);
 
         if (handCardContainer != null)
         {
@@ -500,6 +501,7 @@ public class PlayerHandController : MonoBehaviour
 
     public void EndReaction()
     {
+        DetectiveCatUI.Instance?.EndReaction();
         if (reactionValidIds == null) return;
         reactionValidIds = null;
         SetAllCardsHighlighted(false);

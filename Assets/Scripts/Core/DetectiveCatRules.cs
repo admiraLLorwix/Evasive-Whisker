@@ -57,7 +57,7 @@ public static class DetectiveCatRules
             if (lastUsedRound > 0 && round <= lastUsedRound + cooldown)
             {
                 int wait = lastUsedRound + cooldown + 1 - round;
-                return $"On cooldown - ready in {wait} round{(wait == 1 ? "" : "s")}";
+                return $"On cooldown - {wait} round{(wait == 1 ? "" : "s")}";
             }
             return null;
         }
@@ -88,7 +88,7 @@ public static class DetectiveCatRules
             case CatTiming.Passive: return "Passive";
             case CatTiming.DrawPhase: return "Use in your draw phase";
             case CatTiming.ActionPhase: return "Use in your action phase";
-            default: return "Reacts automatically";
+            default: return "Standby";
         }
     }
 }

@@ -803,37 +803,39 @@ public partial class GameManager : NetworkBehaviour
         LockShuffle(thiefId);
         LockShuffle(victimId);
 
-        NetworkCard stolenCard = playerHands[victimId][cardIndex];
-        //playerHands[victimId].RemoveAt(cardIndex);
+        CloseThiefStealUIClientRpc(SingleTarget(thiefId));
+        //NetworkCard stolenCard = playerHands[victimId][cardIndex];
+        ////playerHands[victimId].RemoveAt(cardIndex);
 
-        string thiefName = GetPlayerName(thiefId); string victimName = GetPlayerName(victimId);
+        //string thiefName = GetPlayerName(thiefId); string victimName = GetPlayerName(victimId);
 
-        ClientRpcParams thiefOnlyParams = new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
-        };
-        CloseThiefStealUIClientRpc(thiefOnlyParams);
+        //ClientRpcParams thiefOnlyParams = new ClientRpcParams
+        //{
+        //    Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
+        //};
+        //CloseThiefStealUIClientRpc(thiefOnlyParams);
 
-        StartReactionWindow(new ReactionRequest
-        {
-            Attacker = thiefId,
-            Defender = victimId,
-            ActionTags = StealReactionTags,
-            Description = $"{thiefName} is stealing from you",
-            Reveal = new ReactionReveal
-            {
-                Card = stolenCard,
-                AttackerWindowMsg = $"Waiting for {victimName} to react...",
-                DefenderWindowMsg = $"{thiefName} is stealing {stolenCard.CardId} from you!",
-                SpectatorWindowMsg = $"{thiefName} is stealing a card from {victimName}!",
-                AttackerResultMsg = $"You stole {stolenCard.CardId} from {victimName}!",
-                DefenderResultMsg = $"{thiefName} stole {stolenCard.CardId} from you!",
-                SpectatorResultMsg = $"{thiefName} stole a card from {victimName}!"
-            },
+        //StartReactionWindow(new ReactionRequest
+        //{
+        //    Attacker = thiefId,
+        //    Defender = victimId,
+        //    ActionTags = StealReactionTags,
+        //    Description = $"{thiefName} is stealing from you",
+        //    Reveal = new ReactionReveal
+        //    {
+        //        Card = stolenCard,
+        //        AttackerWindowMsg = $"Waiting for {victimName} to react...",
+        //        DefenderWindowMsg = $"{thiefName} is stealing {stolenCard.CardId} from you!",
+        //        SpectatorWindowMsg = $"{thiefName} is stealing a card from {victimName}!",
+        //        AttackerResultMsg = $"You stole {stolenCard.CardId} from {victimName}!",
+        //        DefenderResultMsg = $"{thiefName} stole {stolenCard.CardId} from you!",
+        //        SpectatorResultMsg = $"{thiefName} stole a card from {victimName}!"
+        //    },
 
-            OnProceed = () => ProceedSteal(thiefId, victimId, cardIndex, stolenCard),
-            OnCancelled = endTurn => CancelSteal(thiefId, endTurn)
-        });
+        //    OnProceed = () => ProceedSteal(thiefId, victimId, cardIndex, stolenCard),
+        //    OnCancelled = endTurn => CancelSteal(thiefId, endTurn)
+        //});
+        BeginStealReaction(thiefId, victimId, cardIndex, false);
     }
     private void ProceedSteal(ulong thiefId, ulong victimId, int cardIndex, NetworkCard stolenCard)
     {

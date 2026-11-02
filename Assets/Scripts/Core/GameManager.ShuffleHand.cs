@@ -36,6 +36,10 @@ public partial class GameManager
     {
         if (shuffleLocked.Add(playerId)) PushShuffleState(playerId);
     }
+    private void UnlockShuffle(ulong playerId)
+    {
+        if (shuffleLocked.Remove(playerId)) PushShuffleState(playerId);
+    }
 
     private void LockShuffleForEveryone()
     {

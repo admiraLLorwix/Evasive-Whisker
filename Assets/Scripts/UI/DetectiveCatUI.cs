@@ -21,7 +21,7 @@ public class DetectiveCatUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     private Transform originalParent;
     private int originalSiblingIndex;
     private bool dragging;
-
+    private bool reactionActive;
     private string lastBadge;
     private bool lastReady;
 
@@ -42,7 +42,8 @@ public class DetectiveCatUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     }
 
     public void SetLastUsedRound(int round) => lastUsedRound = round;
-
+    public void BeginReaction() => reactionActive = true;
+    public void EndReaction() => reactionActive = false;
     private bool InUsablePhase()
     {
         GameManager gm = GameManager.Instance;
@@ -60,6 +61,12 @@ public class DetectiveCatUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     {
         badge = null;
         if (!hasCat || GameManager.Instance == null) return false;
+
+        if (reactionActive)
+        {
+            badge = "REACT - drag up";
+            return true;
+        }
 
         int round = GameManager.Instance.CurrentRound.Value;
         string reason = DetectiveCatRules.UnavailableReason(cat, round, lastUsedRound);
@@ -126,7 +133,17 @@ public class DetectiveCatUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         bool draggedUp = transform.position.y > Screen.height * 0.35f;
         ReturnHome();
 
-        if (draggedUp) GameManager.Instance?.ActivateDetectiveServerRpc();
+        if (!draggedUp) return;
+
+        if (reactionActive)
+        {
+            reactionActive = false;
+            GameManager.Instance?.SubmitCatReactionServerRpc();
+        }
+        else
+        {
+            GameManager.Instance?.ActivateDetectiveServerRpc();
+        }
     }
     private void ReturnHome()
     {
