@@ -58,7 +58,7 @@ Material:
     - _EmitStrength: 1
     - _Factor: 1
     - _MorphSpeed: 0.1
-    - _NebulaRotateSpeed: 1
+    - _NebulaRotateSpeed: 1.5
     - _NebulaSize: 1
     - _NoiseScale: 0
     - _Period: 0
@@ -66,7 +66,7 @@ Material:
     - _QueueOffset: 0
     - _RotateSpeed: 5
     - _Size: 5
-    - _StarfieldRotateSpeed: 1.5
+    - _StarfieldRotateSpeed: 3
     - _Starfield_Size: 90
     m_Colors: []
   m_BuildTextureStacks: []
