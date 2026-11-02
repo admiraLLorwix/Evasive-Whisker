@@ -38,7 +38,7 @@ public class StealManager : NetworkBehaviour
         }
     }
     //decoy mokang
-    public void BeginIslandPick(ulong[] eligible, string prompt)
+    public void BeginIslandPick(ulong[] eligible, string prompt, bool allowCancel = false)
     {
         isIslandPick = true;
         isAccusingCustodian = false;
@@ -52,6 +52,7 @@ public class StealManager : NetworkBehaviour
         }
 
         TurnActionUI.Instance?.ShowTemporaryNotification($"<color=orange>{prompt}</color>", GameManager.DecisionSeconds);
+        if (allowCancel) TurnActionUI.Instance?.ShowCancelButton();
     }
     public void EndIslandPick()
     {
@@ -60,6 +61,7 @@ public class StealManager : NetworkBehaviour
         IsSelectingTarget = false;
         islandPickEligible.Clear();
         HighlightOpponentIslands(false);
+        TurnActionUI.Instance?.HideCancelButton();
     }
 
     public void CancelSelection()

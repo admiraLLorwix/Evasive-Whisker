@@ -7,7 +7,7 @@ public partial class GameManager
 {
     private readonly Dictionary<ulong, int> catLastUsedRound = new Dictionary<ulong, int>();
 
-    private enum CatPickKind { Shimo, Bebang, ShadowSwap}
+    private enum CatPickKind { Shimo, Bebang, ShadowSwap, WhamosDisarm }
 
     private class PendingCatPick
     {

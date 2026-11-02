@@ -167,6 +167,16 @@ public class TurnActionUI : MonoBehaviour
         PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
         GameManager.Instance?.SubmitEndTurnServerRpc();
     }
+    public void ShowCancelButton()
+    {
+        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
+        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
+    }
+
+    public void HideCancelButton()
+    {
+        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
+    }
 
     public void HideAllActionPanels()
     {

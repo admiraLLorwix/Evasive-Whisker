@@ -90,6 +90,7 @@ public partial class GameManager : NetworkBehaviour
 
         CardEffectRegistry.RegisterDetective(DetectiveCatType.InspectorBebang, new InspectorBebangTrait());
         CardEffectRegistry.RegisterDetective(DetectiveCatType.DumpsterDiverShimo, new DumpsterDiverShimoTrait());
+        CardEffectRegistry.RegisterDetective(DetectiveCatType.DetectiveNido, new DetectiveNidoTrait());
     }
     private void Update()
     {

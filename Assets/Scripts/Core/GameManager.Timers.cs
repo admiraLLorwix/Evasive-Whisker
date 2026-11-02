@@ -74,7 +74,10 @@ public partial class GameManager
         return result;
     }
 
-    private bool HandHasPlayableAbility(ulong playerId) => GetPlayableAbilityCards(playerId).Count > 0;
+    private bool HandHasPlayableAbility(ulong playerId) =>
+        GetPlayableAbilityCards(playerId).Count > 0 ||
+        (IsCatAvailable(playerId, DetectiveCatType.DetectiveNido, CurrentRound.Value) && GetEligibleOpponents(playerId, true).Count > 0);
+
     private void StartDraftTimer(ulong chooserId) => StartDecisionTimer(chooserId, () => AutoPickCat(chooserId));
     private void StartDrawTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoDraw(playerId));
     private void StartActionTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoChooseAction(playerId));
@@ -85,6 +88,9 @@ public partial class GameManager
     {
         ulong sender = rpcParams.Receive.SenderClientId;
         if (!IsActionPhaseOf(sender)) return;
+
+        if (pendingIslandPick != null && pendingIslandPick.Player == sender && pendingIslandPick.CancelOnStepReport)
+            pendingIslandPick = null;
 
         switch ((DecisionStep)step)
         {

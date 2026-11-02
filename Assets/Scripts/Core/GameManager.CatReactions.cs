@@ -182,7 +182,7 @@ public partial class GameManager
             };
             pendingIslandPick = pick;
 
-            BeginIslandPickClientRpc(targets.ToArray(), "Decoy Mokang: choose who takes the hit", SingleTarget(defender));
+            BeginIslandPickClientRpc(targets.ToArray(), "Decoy Mokang: choose who takes the hit", false, SingleTarget(defender));
             StartDecisionTimer(defender, () => TimeoutIslandPick(pick));
 
             while (!finished) yield return null;
@@ -281,6 +281,7 @@ public partial class GameManager
         public List<ulong> Eligible;
         public System.Action<ulong> OnChosen;
         public System.Action OnCancelled;
+        public bool CancelOnStepReport;
     }
 
     private PendingIslandPick pendingIslandPick;
@@ -305,9 +306,9 @@ public partial class GameManager
     }
 
     [ClientRpc]
-    private void BeginIslandPickClientRpc(ulong[] eligible, string prompt, ClientRpcParams clientRpcParams = default)
+    private void BeginIslandPickClientRpc(ulong[] eligible, string prompt, bool allowCancel, ClientRpcParams clientRpcParams = default)
     {
-        StealManager.Instance?.BeginIslandPick(eligible, prompt);
+        StealManager.Instance?.BeginIslandPick(eligible, prompt, allowCancel);
     }
 
     [ClientRpc]

@@ -21,11 +21,12 @@ public partial class GameManager
         public int Stage;
         public bool AwaitingPick;
         public bool Reflected; // for copy cat
+        public bool FromCat;   //nido
     }
 
     private PendingBombastic pendingBombastic;
 
-    public void BeginBombastic(ulong askerId, ulong targetId, NetworkCard card, System.Action onFinished, bool reflected = false)
+    public void BeginBombastic(ulong askerId, ulong targetId, NetworkCard card, System.Action onFinished, bool reflected = false, int maxPicks = 2, bool fromCat = false)
     {
         if (!IsServer) return;
 
@@ -34,7 +35,7 @@ public partial class GameManager
         {
             Debug.Log("[bombastic] target has no cards, fizzling");
             SendNotice(askerId, $"<color=yellow>{GetPlayerName(targetId)} has no cards to peek at</color>");
-            if (!reflected) DeckManager.Instance.Discard(card);
+            if (!reflected && !fromCat) DeckManager.Instance.Discard(card);
             onFinished?.Invoke();
             return;
         }
@@ -46,11 +47,12 @@ public partial class GameManager
             Card = card,
             OnFinished = onFinished,
             Reflected = reflected,
-            PicksTotal = Mathf.Min(2, targetHand.Count)
+            FromCat = fromCat,
+            PicksTotal = Mathf.Min(maxPicks, targetHand.Count)
         };
         pendingBombastic = pending;
 
-        Debug.Log($"<color=magenta>[bombastic] {GetPlayerName(askerId)} peeks at {GetPlayerName(targetId)} ({pending.PicksTotal} pick(s))</color>");
+        Debug.Log($"<color=blue>[bombastic] {GetPlayerName(askerId)} peeks at {GetPlayerName(targetId)} ({pending.PicksTotal} pick(s))</color>");
         OpenNextBombasticPick(pending);
     }
 
@@ -115,7 +117,7 @@ public partial class GameManager
         {
             Attacker = pending.Asker,
             Defender = pending.Target,
-            ActionTags = AbilityReactionTags(pending.Card.CardId),
+            ActionTags = pending.FromCat ? NidoReactionTags : AbilityReactionTags(pending.Card.CardId),
             Description = $"{askerName} is peeking at your {cardId}",
             Reveal = new ReactionReveal
             {
@@ -142,7 +144,8 @@ public partial class GameManager
             //yield break;
             return;
         }
-        if (!pending.Reflected) DeckManager.Instance.Discard(pending.Card);
+
+        if (!pending.Reflected && !pending.FromCat) DeckManager.Instance.Discard(pending.Card);
         if (pendingBombastic == pending) pendingBombastic = null;
         pending.OnFinished?.Invoke();
     }
@@ -173,6 +176,14 @@ public partial class GameManager
     private void CancelBombastic(PendingBombastic pending, bool endAttackerTurn)
     {
         if (pendingBombastic == pending) pendingBombastic = null;
+
+        if (pending.FromCat)
+        {
+            if (endAttackerTurn) EndTurnAfterCancel(pending.Asker, TurnActionKind.Ability);
+            else pending.OnFinished?.Invoke();
+            return;
+        }
+
         CancelAbility(pending.Asker, pending.Card, endAttackerTurn);
     }
     private IEnumerator BombasticPickTimeoutRoutine(PendingBombastic pending, int stage)

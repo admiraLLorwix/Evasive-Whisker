@@ -12,6 +12,7 @@ public partial class GameManager
     {
         public ulong Defender;
         public ulong Attacker;
+        public int Picks = 2;
     }
 
     private QueuedCounter queuedEyeForAnEye;
@@ -21,7 +22,12 @@ public partial class GameManager
         queuedEyeForAnEye = new QueuedCounter { Defender = defenderId, Attacker = attackerId };
 
     public void QueueCopyCat(ulong defenderId, ulong attackerId) =>
-        queuedCopyCat = new QueuedCounter { Defender = defenderId, Attacker = attackerId };
+        queuedCopyCat = new QueuedCounter
+        {
+            Defender = defenderId,
+            Attacker = attackerId,
+            Picks = pendingBombastic != null ? pendingBombastic.PicksTotal : 2
+        };
 
     private bool TryRunQueuedCounterFollowUp(TurnActionKind kind, System.Action resume)
     {
@@ -43,8 +49,8 @@ public partial class GameManager
 
         return false;
     }
+    private void TriggerStolenTrapNow(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone)
 
-    private void TriggerStolenTrap(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone)
     {
         string thiefName = GetPlayerName(thiefId);
         string victimName = GetPlayerName(victimId);
@@ -190,6 +196,6 @@ public partial class GameManager
     {
         LockShuffle(q.Attacker);
         SendNotice(q.Attacker, $"<color=red>Copy Cat! {GetPlayerName(q.Defender)} reflects the peek back at you</color>");
-        BeginBombastic(q.Defender, q.Attacker, default, onFinished, reflected: true);
+        BeginBombastic(q.Defender, q.Attacker, default, onFinished, reflected: true, maxPicks: q.Picks);
     }
 }
