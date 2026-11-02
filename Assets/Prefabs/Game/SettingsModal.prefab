@@ -761,6 +761,7 @@ GameObject:
   - component: {fileID: 5428403012557911837}
   - component: {fileID: 5422970927029015797}
   - component: {fileID: 1376208262705553214}
+  - component: {fileID: 3277045822084894021}
   m_Layer: 5
   m_Name: LeaveMatchButton
   m_TagString: Untagged
@@ -870,6 +871,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &3277045822084894021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2433422214212198110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc7377402e9084a459bd2b767326a8f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIButtonAnimation
+  hoverScale: 1.08
+  hoverSpeed: 16
+  punchScale: 0.92
+  clickAudioSource: {fileID: 0}
 --- !u!1 &2433496479179661413
 GameObject:
   m_ObjectHideFlags: 0
@@ -1055,6 +1072,7 @@ GameObject:
   - component: {fileID: 244142789317486246}
   - component: {fileID: 4733562694954872786}
   - component: {fileID: 1395332844233780175}
+  - component: {fileID: 6975539517428438255}
   m_Layer: 5
   m_Name: RulebookButton
   m_TagString: Untagged
@@ -1164,6 +1182,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &6975539517428438255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3133354580122628858}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc7377402e9084a459bd2b767326a8f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIButtonAnimation
+  hoverScale: 1.08
+  hoverSpeed: 16
+  punchScale: 0.92
+  clickAudioSource: {fileID: 0}
 --- !u!1 &3218567872588838196
 GameObject:
   m_ObjectHideFlags: 0
@@ -1251,6 +1285,7 @@ GameObject:
   - component: {fileID: 3320830373177497362}
   - component: {fileID: 8580688298292508778}
   - component: {fileID: 9055105752298164244}
+  - component: {fileID: 5059997545025049579}
   m_Layer: 5
   m_Name: CloseButton
   m_TagString: Untagged
@@ -1359,6 +1394,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &5059997545025049579
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3359582935322355311}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc7377402e9084a459bd2b767326a8f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIButtonAnimation
+  hoverScale: 1.08
+  hoverSpeed: 16
+  punchScale: 0.92
+  clickAudioSource: {fileID: 0}
 --- !u!1 &3389105296970542294
 GameObject:
   m_ObjectHideFlags: 0
@@ -2582,6 +2633,8 @@ GameObject:
   - component: {fileID: 7616836625873192987}
   - component: {fileID: 7720473253281327161}
   - component: {fileID: 1569156201880640115}
+  - component: {fileID: 5778627724154565135}
+  - component: {fileID: 8538022464186665548}
   m_Layer: 5
   m_Name: SettingsPanel
   m_TagString: Untagged
@@ -2653,6 +2706,65 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!225 &5778627724154565135
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5355517155249877025}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
+--- !u!114 &8538022464186665548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5355517155249877025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d38287400440f8c4fbfab142e9e88938, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIModalAnimation
+  openDuration: 0.28
+  popCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.7
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.6
+      value: 1.06
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  dimBackground: {fileID: 0}
 --- !u!1 &5844329450887265325
 GameObject:
   m_ObjectHideFlags: 0

@@ -8,8 +8,8 @@ using EvasiveWhisker.Cards;
 public partial class GameManager
 {
     public const float ReactionWindowSeconds = 3f;
-    public const float ReactionResultSeconds = 2.5f;
-    private const float CounterplayResultWait = 2.6f;
+    public const float ReactionResultSeconds = 2f;
+    private const float CounterplayResultWait = 2f;
     private static readonly string[] StealReactionTags = { "Steal" };
 
     private static string[] AbilityReactionTags(string cardId) =>

@@ -467,13 +467,13 @@ public partial class GameManager : NetworkBehaviour
         if (CardSpotlightController.Instance != null)
         {
             Color glow = isSpectator ? new Color(0.6f, 0.4f, 1f, 1f) : new Color(0.2f, 1f, 0.4f, 1f);
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 2.0f, isSpectator);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 1.0f, isSpectator);
         }
     }
 
     private IEnumerator ResolveDrawAfterSpotlightRoutine(ulong drawerId, NetworkCard drawnCard)
     {
-        yield return new WaitForSeconds(2.0f);
+        yield return new WaitForSeconds(1.3f);
 
         playerHands[drawerId].Add(drawnCard);
 
@@ -485,6 +485,7 @@ public partial class GameManager : NetworkBehaviour
         //upd
         ReceiveDrawnCardClientRpc(drawnCard, drawerParams);
         UpdateOpponentHandCountClientRpc(drawerId, playerHands[drawerId].Count); ClearShuffleLocks();
+        yield return new WaitForSeconds(0.45f);
         CheckHandLimitOrProceedToAction(drawerId);
     }
 
@@ -666,7 +667,7 @@ public partial class GameManager : NetworkBehaviour
     {
         if (targetId == NoTarget || card.CardId == "BombasticCatEyes")
         {
-            yield return new WaitForSeconds(2.5f);
+            yield return new WaitForSeconds(1.7f);
             RunAbilityEffect(senderId, targetId, card);
             yield break;
         }
@@ -713,7 +714,7 @@ public partial class GameManager : NetworkBehaviour
 
     private IEnumerator ResolveTrapAfterSpotlightRoutine(ulong thiefId, ulong victimId, NetworkCard trapCard, bool thiefImmune, System.Action onDone)
     {
-        yield return new WaitForSeconds(2.5f);
+        yield return new WaitForSeconds(2f);
 
         if (thiefImmune)
         {

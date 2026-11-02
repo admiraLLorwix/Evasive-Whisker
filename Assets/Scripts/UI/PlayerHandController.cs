@@ -20,7 +20,8 @@ public class PlayerHandController : MonoBehaviour
     [SerializeField] private TMP_Text confirmPromptText;
     [SerializeField] private Button confirmDiscardBtn;
     [SerializeField] private Button cancelDiscardBtn;
-
+    //testing for card flight
+    [SerializeField] private Transform drawDeckFlightSource;
     [SerializeField] private float cardSpacingX = 140f;
 
     private List<NetworkCard> currentCards = new List<NetworkCard>();
@@ -132,7 +133,25 @@ public class PlayerHandController : MonoBehaviour
     public void AddCard(NetworkCard card)
     {
         currentCards.Add(card);
-        SpawnCardObject(card);
+
+        Sprite cardSprite = CardDatabase.Instance != null
+            ? CardDatabase.Instance.GetCardSprite(card.CardId)
+            : null;
+
+        Vector3 startPos = drawDeckFlightSource != null ? drawDeckFlightSource.position : transform.position + new Vector3(0, 300, 0);
+        Vector3 targetPos = handCardContainer.position;
+
+        if (CardFlightManager.Instance != null)
+        {
+            CardFlightManager.Instance.FlyCard(startPos, targetPos, cardSprite, () =>
+            {
+                SpawnCardObject(card);
+            });
+        }
+        else
+        {
+            SpawnCardObject(card);
+        }
     }
 
     private void SpawnCardObject(NetworkCard netCard)
