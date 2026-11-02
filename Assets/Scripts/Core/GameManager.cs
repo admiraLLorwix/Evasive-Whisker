@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Netcode;
+using System.Linq;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -119,13 +120,52 @@ public partial class GameManager : NetworkBehaviour
         if (keyboard.f3Key.wasPressedThisFrame)
         {
             Debug.Log("<color=blue>[dev] force trigger GameOverModal</color>");
-            GameOverUI.Instance?.ShowWinner("Detective (Debug)", "Testing the Game Over Screen");
+            if (IsServer)
+            {
+                CurrentState.Value = GameState.GameOver;
+                DebugTriggerGameOverClientRpc();
+            }
+            else
+            {
+                DebugTriggerGameOverServerRpc();
+            }
         }
 #endif
+    }
+    [Rpc(SendTo.Server)]
+    private void DebugTriggerGameOverServerRpc(RpcParams rpcParams = default)
+    {
+        CurrentState.Value = GameState.GameOver;
+        DebugTriggerGameOverClientRpc();
+    }
+
+    [ClientRpc]
+    private void DebugTriggerGameOverClientRpc()
+    {
+        _matchEnded = true;
+        GameOverUI.Instance?.ShowWinner("Detective (Debug)", "Testing the Game Over Screen");
     }
 
     public override void OnNetworkSpawn()
     {
+        if (IsServer)
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback += HandleServerClientDisconnect;
+            CurrentState.OnValueChanged += HandleStateChangedServer;
+        }
+        else
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback += HandleClientConnectionLost;
+        }
+
+        if (OnlineLobbyManager.Instance != null && OnlineLobbyManager.Instance.CurrentLobby != null)
+        {
+            MatchContext.PreviousLobbyId = OnlineLobbyManager.Instance.CurrentLobby.Id;
+            MatchContext.PreviousLobbyName = OnlineLobbyManager.Instance.CurrentLobby.Name;
+            MatchContext.PreviousLobbyCode = OnlineLobbyManager.Instance.CurrentLobby.LobbyCode;
+            MatchContext.PreviousMaxPlayers = OnlineLobbyManager.Instance.CurrentLobby.MaxPlayers;
+        }
+
         string myName = (OnlineLobbyManager.Instance != null && !string.IsNullOrEmpty(OnlineLobbyManager.Instance.LocalPlayerName))
             ? OnlineLobbyManager.Instance.LocalPlayerName
             : $"Detective_{Random.Range(100, 999)}";
@@ -134,6 +174,15 @@ public partial class GameManager : NetworkBehaviour
         SubmitPlayerNameServerRpc(myName);
     }
 
+    public override void OnNetworkDespawn()
+    {
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback -= HandleServerClientDisconnect;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientConnectionLost;
+        }
+        CurrentState.OnValueChanged -= HandleStateChangedServer;
+    }
 
     [Rpc(SendTo.Server)]
     public void SubmitPlayerNameServerRpc(string playerName, RpcParams rpcParams = default)
@@ -1223,6 +1272,7 @@ public partial class GameManager : NetworkBehaviour
     [ClientRpc]
     private void AnnounceWinnerClientRpc(ulong winnerId, string reason)
     {
+        _matchEnded = true; 
         string winnerName = GetPlayerName(winnerId);
         Debug.Log($"<color=yellow>GAME OVER | Winner: {winnerName} | Reason: {reason}</color>");
 

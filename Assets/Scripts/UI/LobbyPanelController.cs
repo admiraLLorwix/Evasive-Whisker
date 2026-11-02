@@ -27,7 +27,10 @@ public class LobbyPanelController : MonoBehaviour
     [SerializeField] private Button startMatchButton;
     [SerializeField] private Button leaveButton;
 
-//testing only
+    [SerializeField] private Button lockLobbyButton;
+    [SerializeField] private TMP_Text lockLobbyButtonText;
+
+    //testing only
     [Header("match settings")]
     [SerializeField] private int minPlayersToStart = 3;
 
@@ -38,6 +41,8 @@ public class LobbyPanelController : MonoBehaviour
         readyButton.onClick.AddListener(OnReadyButtonClicked);
         startMatchButton.onClick.AddListener(OnStartMatchClicked);
         leaveButton.onClick.AddListener(OnLeaveButtonClicked);
+
+        if (lockLobbyButton != null) lockLobbyButton.onClick.AddListener(OnLockLobbyClicked);
 
         if (OnlineLobbyManager.Instance != null)
         {
@@ -151,6 +156,24 @@ public class LobbyPanelController : MonoBehaviour
             startMatchButton.gameObject.SetActive(isHostPlayer);
             startMatchButton.interactable = isHostPlayer && (connectedCount >= minPlayersToStart) && allPlayersReady;
         }
+
+        if (startMatchButton != null)
+        {
+            startMatchButton.gameObject.SetActive(isHostPlayer);
+            startMatchButton.interactable = isHostPlayer && (connectedCount >= minPlayersToStart) && allPlayersReady;
+        }
+
+        if (lockLobbyButton != null)
+        {
+            lockLobbyButton.gameObject.SetActive(isHostPlayer);
+
+            bool isLocked = lobby.Data != null && lobby.Data.ContainsKey("IsLocked") && lobby.Data["IsLocked"].Value == "True";
+
+            if (lockLobbyButtonText != null)
+            {
+                lockLobbyButtonText.text = isLocked ? "Unlock" : "Lock";
+            }
+        }
     }
 
     private async void OnReadyButtonClicked()
@@ -200,6 +223,22 @@ public class LobbyPanelController : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowPlayScreen();
+        }
+    }
+
+    private async void OnLockLobbyClicked()
+    {
+        if (OnlineLobbyManager.Instance != null && OnlineLobbyManager.Instance.CurrentLobby != null && OnlineLobbyManager.Instance.IsHost())
+        {
+            lockLobbyButton.interactable = false;
+
+            var lobbyData = OnlineLobbyManager.Instance.CurrentLobby.Data;
+            bool currentLockState = lobbyData != null &&
+                                    lobbyData.ContainsKey("IsLocked") &&
+                                    lobbyData["IsLocked"].Value == "True";
+
+            await OnlineLobbyManager.Instance.ToggleLobbyLockAsync(!currentLockState);
+            lockLobbyButton.interactable = true;
         }
     }
 }
