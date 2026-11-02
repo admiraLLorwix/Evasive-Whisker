@@ -6519,7 +6519,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.000061035156, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &782513770
@@ -9202,7 +9202,7 @@ MonoBehaviour:
   detectiveCatVisuals:
   - catType: 0
     islandProfileSprite: {fileID: 21300000, guid: f1bde605b87a05f4ca9d0e607c87a15c, type: 3}
-    localHandCardSprite: {fileID: 21300000, guid: c178c413930f3a947b99c577c6df1293, type: 3}
+    localHandCardSprite: {fileID: 21300000, guid: 9a29bf3ba6b5e1e4b82d69b07edc36d7, type: 3}
   - catType: 1
     islandProfileSprite: {fileID: 21300000, guid: 5861b890b0fa4e746b7bba88e4bbde6e, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: 3212992629844fe4c87cf8eda1aafe64, type: 3}
@@ -9211,13 +9211,13 @@ MonoBehaviour:
     localHandCardSprite: {fileID: 21300000, guid: 04d4eb56f2bf26d4b955313a8dcc4e87, type: 3}
   - catType: 3
     islandProfileSprite: {fileID: 21300000, guid: 4b0ff933eed4a7d47a0987b305723e3f, type: 3}
-    localHandCardSprite: {fileID: 21300000, guid: 6f9e05c7866d2474bb7c19ca9245d45a, type: 3}
+    localHandCardSprite: {fileID: 21300000, guid: 2ceb8a2cc18b7ee4caa38e0cdb145d05, type: 3}
   - catType: 4
     islandProfileSprite: {fileID: 21300000, guid: 01a04824edb1df647b53acdda3cf2917, type: 3}
-    localHandCardSprite: {fileID: 21300000, guid: 1ea8bd9cc228a3d449029a4a58659d5a, type: 3}
+    localHandCardSprite: {fileID: 21300000, guid: 5953cf7b64da7484e8fc9ea402c514e4, type: 3}
   - catType: 5
     islandProfileSprite: {fileID: 21300000, guid: e17c4956a82e1224d9bfbf62cfb23bde, type: 3}
-    localHandCardSprite: {fileID: 21300000, guid: a000dcdf3ad075c4faaa226d32c738d8, type: 3}
+    localHandCardSprite: {fileID: 21300000, guid: 07d00d21929dc7b449b87a829ed637ba, type: 3}
   - catType: 6
     islandProfileSprite: {fileID: 21300000, guid: 0aeddb6d9f8e49d4ea3505d7d5c3b00d, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: ec459e0ce52976640b5fa4ce9edd8228, type: 3}
@@ -9227,7 +9227,7 @@ MonoBehaviour:
   cardArtList:
   - cardID: WhiskerBlower
     cardType: 3
-    cardSprite: {fileID: 21300000, guid: d063e87632724fd4ca0ebd2a5dca0be8, type: 3}
+    cardSprite: {fileID: 21300000, guid: 010ee4e48759b12418d7b98cee9f7474, type: 3}
   - cardID: BombasticCatEyes
     cardType: 0
     cardSprite: {fileID: 21300000, guid: 582807d17e0b5114c889d150cf500849, type: 3}
@@ -9236,25 +9236,25 @@ MonoBehaviour:
     cardSprite: {fileID: 21300000, guid: 9dba954b93ce41a49b8ec0b09a8a8e9a, type: 3}
   - cardID: Declaw
     cardType: 0
-    cardSprite: {fileID: 21300000, guid: 6d394d7afb58ddb4c9532758e53a36b2, type: 3}
+    cardSprite: {fileID: 21300000, guid: f8406a6b3550777458106a269ec3d003, type: 3}
   - cardID: NineLives
     cardType: 0
-    cardSprite: {fileID: 21300000, guid: 69875dd9bd42a584f89bb6b513acec96, type: 3}
+    cardSprite: {fileID: 21300000, guid: 3d58cf1b08ad5d248b66bd3a10c38a80, type: 3}
   - cardID: Scatter
     cardType: 0
-    cardSprite: {fileID: 21300000, guid: 421f85e64a9d77648a410cfddf28b51a, type: 3}
+    cardSprite: {fileID: 21300000, guid: b3e6984f405ccf24e96242103039bde4, type: 3}
   - cardID: Zoomies
     cardType: 0
-    cardSprite: {fileID: 21300000, guid: d26bc20950cd7074f8bce65ca9c79900, type: 3}
+    cardSprite: {fileID: 21300000, guid: 18ddf15f2bc4e3d4eacaf4059095bb70, type: 3}
   - cardID: CopyCat
     cardType: 1
-    cardSprite: {fileID: 21300000, guid: f6b271acf9035d64e8f99ef1610a9b39, type: 3}
+    cardSprite: {fileID: 21300000, guid: b78cdb84af0122d4fbdd2f2fd8e1e401, type: 3}
   - cardID: EyeForAnEye
     cardType: 1
     cardSprite: {fileID: 21300000, guid: 028227bcb831f7a409b527421f172c82, type: 3}
   - cardID: Hiss
     cardType: 1
-    cardSprite: {fileID: 21300000, guid: 34ccea0d2ac40e442a9860a7c9d2eada, type: 3}
+    cardSprite: {fileID: 21300000, guid: 25738393e1587244f962ff63619faa7d, type: 3}
   - cardID: InformantMiley
     cardType: 4
     cardSprite: {fileID: 21300000, guid: 028227bcb831f7a409b527421f172c82, type: 3}
@@ -9272,16 +9272,16 @@ MonoBehaviour:
     cardSprite: {fileID: 21300000, guid: e7c15ee74fd296d43a096a31a4db0d76, type: 3}
   - cardID: CatFlash
     cardType: 2
-    cardSprite: {fileID: 21300000, guid: 5ca82153a6eaa984e9b74456bba290bb, type: 3}
+    cardSprite: {fileID: 21300000, guid: 94e8462c8cad6c5489d90da0ccbb7fd3, type: 3}
   - cardID: CatNap
     cardType: 2
-    cardSprite: {fileID: 21300000, guid: ac728d62039049244ac58d60d390d45c, type: 3}
+    cardSprite: {fileID: 21300000, guid: 93f85b97bf1cdbb469ac7b348885bb5d, type: 3}
   - cardID: RobinPaw
     cardType: 2
     cardSprite: {fileID: 21300000, guid: c1bac40ba416de046bc7530df2686e26, type: 3}
   - cardID: Swipe
     cardType: 2
-    cardSprite: {fileID: 21300000, guid: b488d58ee30f7814b8a542a96770952d, type: 3}
+    cardSprite: {fileID: 21300000, guid: ec651597405b36e48a995c281da12351, type: 3}
 --- !u!1 &1255227922
 GameObject:
   m_ObjectHideFlags: 0
@@ -9342,8 +9342,8 @@ MonoBehaviour:
   resultTitleText: {fileID: 1942120820}
   resultCardImage: {fileID: 436046595}
   resultCaptionText: {fileID: 516223764}
-  yesSprite: {fileID: 21300000, guid: 93d997adf259c2e49942e2ad6602f43e, type: 3}
-  noSprite: {fileID: 21300000, guid: 2784e053908ceeb4fa48206c88a909c0, type: 3}
+  yesSprite: {fileID: 21300000, guid: 429a6af6b85ca7148bf8a473202ea722, type: 3}
+  noSprite: {fileID: 21300000, guid: 2688f3d37da3fa54a9394674c12f0a2c, type: 3}
 --- !u!1 &1255779053
 GameObject:
   m_ObjectHideFlags: 0
@@ -16142,7 +16142,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6967334659968384717, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0.000061035156
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6967334659968384717, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
       propertyPath: m_AnchoredPosition.y
