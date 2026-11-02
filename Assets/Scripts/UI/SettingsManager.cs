@@ -138,18 +138,31 @@ public class SettingsManager : MonoBehaviour
         }
     }
 
-    private void OnLeaveMatchClicked()
+    private async void OnLeaveMatchClicked()
     {
         CloseSettings();
+
+        if (GameManager.Instance != null && GameManager.Instance.IsSpawned)
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            {
+                await GameManager.Instance.HostLeaveMatchAsync();
+            }
+            else
+            {
+                GameManager.Instance.LeaveMatchClient();
+            }
+        }
+
         if (OnlineLobbyManager.Instance != null)
         {
-            OnlineLobbyManager.Instance.LeaveLobby();
+            await OnlineLobbyManager.Instance.LeaveAllAsync();
         }
         else if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.Shutdown();
-            SceneManager.LoadScene("MainMenu");
         }
+        SceneManager.LoadScene("MainMenu");
     }
 
     private void OnRulebookClicked()

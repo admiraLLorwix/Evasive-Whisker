@@ -36,7 +36,7 @@ public class CardSpotlightController : MonoBehaviour
         PlaySpotlight("", bannerMessage, glowColor, duration, false, sprite);
     }
 
-    public void PlaySpotlight(string cardId, string bannerMessage, Color glowColor, float duration = 2.8f, bool showBackface = false, Sprite overrideSprite = null)
+    public void PlaySpotlight(string cardId, string bannerMessage, Color glowColor, float duration = 2.4f, bool showBackface = false, Sprite overrideSprite = null)
     {
         gameObject.SetActive(true);
         if (spotlightRoot != null) spotlightRoot.SetActive(true);
