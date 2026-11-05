@@ -39,7 +39,7 @@ public class OpponentInfoModal : MonoBehaviour
         string pName = !string.IsNullOrEmpty(directName) ? directName : $"Detective #{opponentId}";
 
         if (playerNameText != null) playerNameText.text = pName;
-        if (cardCountText != null) cardCountText.text = $"Cards in Hand: {cardCount}";
+        if (cardCountText != null) cardCountText.text = $"{cardCount}";
 
         if (peekingCatAvatar != null && CardDatabase.Instance != null)
         {
