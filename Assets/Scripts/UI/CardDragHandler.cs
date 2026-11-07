@@ -7,6 +7,7 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 {
     public NetworkCard CardData { get; private set; }
     public bool IsDraggable { get; set; } = false;
+    public bool IsDragging { get; private set; } = false; 
 
     private RectTransform rectTransform;
     private Canvas canvas;
@@ -67,6 +68,7 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
                 return;
             }
         }
+        IsDragging = true;
 
         originalPosition = rectTransform.anchoredPosition;
         originalParent = transform.parent;
@@ -86,6 +88,7 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        IsDragging = false;
         canvasGroup.blocksRaycasts = true;
 
         if (PlayerHandController.Instance != null && PlayerHandController.Instance.IsScatterPickActive)

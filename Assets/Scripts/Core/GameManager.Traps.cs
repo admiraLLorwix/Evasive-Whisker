@@ -12,6 +12,7 @@ public partial class GameManager
 
     public void BeginCatFlash(ulong thiefId, ulong victimId, NetworkCard trapCard, System.Action onFinished)
     {
+        LogActionClientRpc($"{GetPlayerName(victimId)} triggered a Cat Flash Trap!");
         if (!IsServer) return;
 
         string thiefName = GetPlayerName(thiefId);

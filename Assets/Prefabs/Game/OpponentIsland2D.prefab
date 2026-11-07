@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 8710555354310441230}
   - component: {fileID: 8477322397980867197}
   - component: {fileID: 777179195587445890}
+  - component: {fileID: 5804850671983771508}
   m_Layer: 5
   m_Name: IslandImage
   m_TagString: Untagged
@@ -75,6 +76,21 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &5804850671983771508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 133357525977359858}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
+  m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
+  m_EffectDistance: {x: 4, y: 4}
+  m_UseGraphicAlpha: 1
 --- !u!1 &672473101469849276
 GameObject:
   m_ObjectHideFlags: 0
@@ -697,7 +713,6 @@ GameObject:
   - component: {fileID: 4981059358912034112}
   - component: {fileID: 8165410615975648571}
   - component: {fileID: 3292430298152801066}
-  - component: {fileID: 8856023462091634504}
   - component: {fileID: 4725580482159428018}
   - component: {fileID: 8405784518872711342}
   - component: {fileID: 4858041669432525653}
@@ -816,21 +831,6 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &8856023462091634504
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9148708501848704248}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
-  m_EffectColor: {r: 0, g: 0.83137256, b: 1, a: 0.5}
-  m_EffectDistance: {x: 6, y: -6}
-  m_UseGraphicAlpha: 1
 --- !u!114 &4725580482159428018
 MonoBehaviour:
   m_ObjectHideFlags: 0

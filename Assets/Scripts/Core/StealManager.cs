@@ -20,6 +20,7 @@ public class StealManager : NetworkBehaviour
     [SerializeField] private float cardSpacingX = 85f;
     [SerializeField] private float maxTiltAngle = 10f;
     [SerializeField] private float arcDropAmount = 14f;
+    [SerializeField] private GameObject globalDimPanel;
 
     private ulong currentStealTargetId;
     public bool IsSelectingTarget { get; set; } = false;
@@ -68,6 +69,7 @@ public class StealManager : NetworkBehaviour
     {
         isIslandPick = false;
         IsSelectingTarget = false;
+        if (globalDimPanel != null) globalDimPanel.SetActive(true);
         HighlightOpponentIslands(false);
         if (stealModal != null) stealModal.SetActive(false);
     }
@@ -94,6 +96,7 @@ public class StealManager : NetworkBehaviour
     {
         IsSelectingTarget = true;
         isAccusingCustodian = false;
+        if (globalDimPanel != null) globalDimPanel.SetActive(true);
         HighlightOpponentIslands(true, new Color(0f, 0.8f, 1f, 1f));
     }
 
@@ -101,6 +104,7 @@ public class StealManager : NetworkBehaviour
     {
         IsSelectingTarget = true;
         isAccusingCustodian = true;
+        if (globalDimPanel != null) globalDimPanel.SetActive(true);
         HighlightOpponentIslands(true, new Color(1f, 0.2f, 0.2f, 1f));
     }
 
@@ -109,11 +113,10 @@ public class StealManager : NetworkBehaviour
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
             if (client.ClientId == NetworkManager.Singleton.LocalClientId) continue;
-
             var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(client.ClientId) : null;
             if (island != null)
             {
-                island.SetIslandGlow(enable, glowColor);
+                island.SetTargetable(enable);
             }
         }
     }
@@ -136,7 +139,7 @@ public class StealManager : NetworkBehaviour
         }
 
         IsSelectingTarget = false;
-
+        if (globalDimPanel != null) globalDimPanel.SetActive(false);
         if (isAccusingCustodian)
         {
             GameManager.Instance.SubmitCustodyGuessServerRpc(targetId);

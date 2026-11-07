@@ -17,7 +17,7 @@ public class PlayerIslandUI : MonoBehaviour
     [SerializeField] private GameObject cardBackPrefab;
     [SerializeField] private TMP_Text cardCountText;
     [SerializeField] private GameObject guessImmunityBadge; //need new asset for badge
-
+    //[SerializeField] private Image highlightBorderImage;
     [SerializeField] private float miniCardSpacingX = 42f; [SerializeField] private float miniMaxTiltZ = 9f;
     [SerializeField] private float miniArcDropY = 4f;
     public string PlayerName { get; private set; }
@@ -32,11 +32,23 @@ public class PlayerIslandUI : MonoBehaviour
     private List<Vector2> restPositions = new List<Vector2>();
     private List<Quaternion> restRotations = new List<Quaternion>();
     private Coroutine shuffleRoutine;
-
+    private Outline islandOutline;
+    private Coroutine highlightRoutine;
+    private Vector3 _originalScale;
+    private bool _isTargetable = false;
+    private bool _isActiveTurn = false;
     public void Initialize(ulong clientId, string playerName, Sprite islandSprite)
     {
         OwnerClientId = clientId;
         PlayerName = playerName;
+        _originalScale = transform.localScale;
+
+        if (islandBackgroundImage != null)
+        {
+            islandOutline = islandBackgroundImage.GetComponent<Outline>();
+            if (islandOutline != null) islandOutline.enabled = false;
+        }
+
 
         if (opponentNameText != null) opponentNameText.text = playerName;
         if (islandBackgroundImage != null && islandSprite != null) islandBackgroundImage.sprite = islandSprite;
@@ -77,6 +89,67 @@ public class PlayerIslandUI : MonoBehaviour
         SetGuessImmune(false);
         UpdateCardCount(3);
     }
+
+    public void SetActiveTurn(bool isActiveTurn)
+    {
+        _isActiveTurn = isActiveTurn;
+        UpdateVisualState();
+    }
+
+    public void SetTargetable(bool isTargetable)
+    {
+        _isTargetable = isTargetable;
+        UpdateVisualState();
+    }
+
+    private void UpdateVisualState()
+    {
+        if (highlightRoutine != null)
+        {
+            StopCoroutine(highlightRoutine);
+            highlightRoutine = null;
+        }
+
+        if (_isTargetable)
+        {
+            if (islandOutline != null) islandOutline.enabled = true;
+            highlightRoutine = StartCoroutine(PulseOutlineRoutine(new Color(1f, 0.3f, 0.2f, 1f), true));
+        }
+        else if (_isActiveTurn)
+        {
+            if (islandOutline != null) islandOutline.enabled = true;
+            highlightRoutine = StartCoroutine(PulseOutlineRoutine(new Color(1f, 0.85f, 0.2f, 1f), false));
+        }
+        else
+        {
+            transform.localScale = _originalScale;
+            if (islandOutline != null) islandOutline.enabled = false;
+        }
+    }
+
+    private IEnumerator PulseOutlineRoutine(Color baseColor, bool pulseScale)
+    {
+        //Color baseColor = new Color(1f, 0.3f, 0.2f, 1f);
+        while (true)
+        {
+            float lerp = (Mathf.Sin(Time.time * 6f) + 1f) / 2f;
+
+            if (pulseScale)
+            {
+                float scaleMultiplier = Mathf.Lerp(1f, 1.05f, lerp);
+                transform.localScale = _originalScale * scaleMultiplier;
+            }
+
+            if (islandOutline != null)
+            {
+                Color c = baseColor;
+                c.a = Mathf.Lerp(0.4f, 1f, lerp);
+                islandOutline.effectColor = c;
+            }
+            yield return null;
+        }
+    }
+
     //for wrong accusation
     public void SetGuessImmune(bool immune)
     {
@@ -271,11 +344,19 @@ public class PlayerIslandUI : MonoBehaviour
     }
     public void SetIslandGlow(bool enable, Color glowColor = default)
     {
-        Outline outline = GetComponent<Outline>();
-        if (outline != null)
-        {
-            outline.effectColor = glowColor;
-            outline.enabled = enable;
-        }
+        if (enable) SetTargetable(true);
+        else SetTargetable(false);
     }
+
+    //private System.Collections.IEnumerator PulseOutlineRoutine(Outline outline)
+    //{
+    //    Color baseColor = new Color(1f, 0.6f, 0f, 1f);
+    //    while (true)
+    //    {
+    //        float lerp = (Mathf.Sin(Time.time * 6f) + 1f) / 2f;
+    //        baseColor.a = Mathf.Lerp(0.2f, 1f, lerp);
+    //        outline.effectColor = baseColor;
+    //        yield return null;
+    //    }
+    //}
 }

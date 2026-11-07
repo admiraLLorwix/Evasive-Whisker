@@ -445,6 +445,11 @@ public partial class GameManager : NetworkBehaviour
         {
             Debug.LogError("[gm] null turnactionui");
         }
+
+        if (BoardLayoutManager.Instance != null)
+        {
+            BoardLayoutManager.Instance.HighlightActivePlayer(activePlayerId);
+        }
     }
 
     [ClientRpc]
@@ -465,6 +470,7 @@ public partial class GameManager : NetworkBehaviour
     {
         CancelDecisionTimer();
         NetworkCard? drawn = DeckManager.Instance.DrawCard();
+        LogActionClientRpc($"{GetPlayerName(senderId)} drew a card.");
         if (drawn.HasValue)
         {
             NetworkCard drawnCard = drawn.Value;
@@ -679,7 +685,7 @@ public partial class GameManager : NetworkBehaviour
             RejectCardRequest(senderId, card, error);
             return;
         }
-
+        LogActionClientRpc($"{GetPlayerName(senderId)} played {card.CardId}.");
         CurrentState.Value = GameState.PlayerTurn_Resolving;
         CancelDecisionTimer();
         if (card.CardId == "Scatter") LockShuffleForEveryone();
@@ -848,6 +854,8 @@ public partial class GameManager : NetworkBehaviour
             RejectAction(thiefId, error);
             return;
         }
+        LogActionClientRpc($"{GetPlayerName(thiefId)} is stealing from {GetPlayerName(victimId)}.");
+        PlayVersusSpotlightClientRpc(thiefId, victimId, "is stealing from");
         CancelDecisionTimer();
         CurrentState.Value = GameState.PlayerTurn_Resolving;
 
@@ -886,7 +894,7 @@ public partial class GameManager : NetworkBehaviour
         //    OnProceed = () => ProceedSteal(thiefId, victimId, cardIndex, stolenCard),
         //    OnCancelled = endTurn => CancelSteal(thiefId, endTurn)
         //});
-        BeginStealReaction(thiefId, victimId, cardIndex, false);
+        StartCoroutine(DelayStealReaction(thiefId, victimId, cardIndex));
     }
     private void ProceedSteal(ulong thiefId, ulong victimId, int cardIndex, NetworkCard stolenCard)
     {
@@ -928,6 +936,11 @@ public partial class GameManager : NetworkBehaviour
             CardSpotlightController.Instance.PlaySpotlight(cardId, message, new Color(1f, 0.15f, 0.15f, 1f), 2.5f);
         }
     }
+    [ClientRpc]
+    private void PlayVersusSpotlightClientRpc(ulong attackerId, ulong victimId, string actionText)
+    {
+        CardSpotlightController.Instance?.PlayVersusSpotlight(attackerId, victimId, actionText, 2.5f);
+    }
 
     [ClientRpc]
     private void UnlockStealSelectionClientRpc(ClientRpcParams clientRpcParams = default)
@@ -958,6 +971,7 @@ public partial class GameManager : NetworkBehaviour
             RejectAction(guesserId, error);
             return;
         }
+        LogActionClientRpc($"{GetPlayerName(guesserId)} accused {GetPlayerName(accusedPlayerId)}!");
         CancelDecisionTimer();
         bool isCorrect = playerHands[accusedPlayerId].Exists(c => c.Type == CardType.WhiskerBlower);
 
@@ -1352,4 +1366,17 @@ public partial class GameManager : NetworkBehaviour
         }
     }
 
+    private IEnumerator DelayStealReaction(ulong thiefId, ulong victimId, int cardIndex)
+    {
+        yield return new WaitForSeconds(2.2f);
+        BeginStealReaction(thiefId, victimId, cardIndex, false);
+    }
+
+
+    //for action log
+    [ClientRpc]
+    public void LogActionClientRpc(string message)
+    {
+        ActionLogUI.Instance?.AddLog(message);
+    }
 }

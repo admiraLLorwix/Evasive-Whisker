@@ -6,7 +6,14 @@ using EvasiveWhisker.Cards;
 
 public partial class GameManager
 {
-    public const float DecisionSeconds = 10f;
+    public const float TimeoutDraw = 5f;
+    public const float TimeoutActionMenu = 5f;
+    public const float TimeoutTargetSelection = 10f;
+    public const float TimeoutCardSelection = 10f;
+    public const float TimeoutDiscard = 5f;
+    
+    public const float DecisionSeconds = 10f; 
+
     public enum DecisionStep { ChooseAction = 1, PickAbility = 2, StealOpponent = 3, AccuseTarget = 4, AbilityTarget = 5 }
 
     private int decisionTimerToken;
@@ -43,45 +50,10 @@ public partial class GameManager
     private bool IsActionPhaseOf(ulong playerId) =>
         ActiveTurnPlayerId.Value == playerId && CurrentState.Value == GameState.PlayerTurn_Action;
 
-    private List<ulong> GetEligibleOpponents(ulong playerId, bool requireCards)
-    {
-        var list = new List<ulong>();
-        foreach (ulong id in turnOrder)
-        {
-            if (id == playerId || IsGuessImmune(id)) continue;
-            if (requireCards && (!playerHands.TryGetValue(id, out var hand) || hand.Count == 0)) continue;
-            list.Add(id);
-        }
-        return list;
-    }
-
-    private List<NetworkCard> GetPlayableAbilityCards(ulong playerId)
-    {
-        var result = new List<NetworkCard>();
-        if (!playerHands.TryGetValue(playerId, out var hand)) return result;
-
-        bool slotFull = GetPlayerActiveAbilityId(playerId) != null;
-        bool hasTarget = GetEligibleOpponents(playerId, false).Count > 0;
-
-        foreach (NetworkCard card in hand)
-        {
-            if (card.Type != CardType.Ability) continue;
-            if (!CardEffectRegistry.HasAbility(card.CardId)) continue;
-            if (CardEffectRegistry.OccupiesSlot(card.CardId) && slotFull) continue;
-            if (CardEffectRegistry.RequiresTarget(card.CardId) && !hasTarget) continue;
-            result.Add(card);
-        }
-        return result;
-    }
-
-    private bool HandHasPlayableAbility(ulong playerId) =>
-        GetPlayableAbilityCards(playerId).Count > 0 ||
-        (IsCatAvailable(playerId, DetectiveCatType.DetectiveNido, CurrentRound.Value) && GetEligibleOpponents(playerId, true).Count > 0);
-
-    private void StartDraftTimer(ulong chooserId) => StartDecisionTimer(chooserId, () => AutoPickCat(chooserId));
-    private void StartDrawTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoDraw(playerId));
-    private void StartActionTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoChooseAction(playerId));
-    private void BeginDiscardTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoDiscard(playerId));
+    private void StartDraftTimer(ulong chooserId) => StartDecisionTimer(chooserId, () => AutoPickCat(chooserId), 10f);
+    private void StartDrawTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoDraw(playerId), TimeoutDraw);
+    private void StartActionTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoChooseAction(playerId), TimeoutActionMenu);
+    private void BeginDiscardTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoDiscard(playerId), TimeoutDiscard);
 
     [Rpc(SendTo.Server)]
     public void ReportDecisionStepServerRpc(int step, string cardId, RpcParams rpcParams = default)
@@ -94,11 +66,21 @@ public partial class GameManager
 
         switch ((DecisionStep)step)
         {
-            case DecisionStep.ChooseAction: StartActionTimer(sender); break;
-            case DecisionStep.PickAbility: StartDecisionTimer(sender, () => AutoPlayAbility(sender)); break;
-            case DecisionStep.StealOpponent: StartDecisionTimer(sender, () => AutoStealOpponent(sender)); break;
-            case DecisionStep.AccuseTarget: StartDecisionTimer(sender, () => AutoAccuseStep(sender)); break;
-            case DecisionStep.AbilityTarget: StartDecisionTimer(sender, () => AutoAbilityTarget(sender, cardId)); break;
+            case DecisionStep.ChooseAction: 
+                StartActionTimer(sender); 
+                break;
+            case DecisionStep.PickAbility: 
+                StartDecisionTimer(sender, () => AutoPlayAbility(sender), TimeoutCardSelection); 
+                break;
+            case DecisionStep.StealOpponent: 
+                StartDecisionTimer(sender, () => AutoStealOpponent(sender), TimeoutTargetSelection); 
+                break;
+            case DecisionStep.AccuseTarget: 
+                StartDecisionTimer(sender, () => AutoAccuseStep(sender), TimeoutTargetSelection); 
+                break;
+            case DecisionStep.AbilityTarget: 
+                StartDecisionTimer(sender, () => AutoAbilityTarget(sender, cardId), TimeoutTargetSelection); 
+                break;
         }
     }
 
@@ -107,6 +89,8 @@ public partial class GameManager
         ReleaseStealTargetLock(thiefId);
         if (IsActionPhaseOf(thiefId)) StartActionTimer(thiefId);
     }
+    
+
     private void AutoPickCat(ulong chooserId)
     {
         if (CurrentState.Value != GameState.DraftingDetectiveCats || availableCatPool.Count == 0) return;
@@ -292,6 +276,7 @@ public partial class GameManager
         RemoveCardsFromHandClientRpc(new[] { card }, SingleTarget(playerId));
         ProcessDiscard(playerId, card);
     }
+    
     [ClientRpc]
     private void ForceCloseTurnUIClientRpc(ClientRpcParams clientRpcParams = default)
     {
@@ -314,4 +299,38 @@ public partial class GameManager
     {
         DecisionTimerUI.Instance?.Hide();
     }
+    private List<ulong> GetEligibleOpponents(ulong playerId, bool requireCards)
+    {
+        var list = new List<ulong>();
+        foreach (ulong id in turnOrder)
+        {
+            if (id == playerId || IsGuessImmune(id)) continue;
+            if (requireCards && (!playerHands.TryGetValue(id, out var hand) || hand.Count == 0)) continue;
+            list.Add(id);
+        }
+        return list;
+    }
+
+    private List<NetworkCard> GetPlayableAbilityCards(ulong playerId)
+    {
+        var result = new List<NetworkCard>();
+        if (!playerHands.TryGetValue(playerId, out var hand)) return result;
+
+        bool slotFull = GetPlayerActiveAbilityId(playerId) != null;
+        bool hasTarget = GetEligibleOpponents(playerId, false).Count > 0;
+
+        foreach (NetworkCard card in hand)
+        {
+            if (card.Type != CardType.Ability) continue;
+            if (!CardEffectRegistry.HasAbility(card.CardId)) continue;
+            if (CardEffectRegistry.OccupiesSlot(card.CardId) && slotFull) continue;
+            if (CardEffectRegistry.RequiresTarget(card.CardId) && !hasTarget) continue;
+            result.Add(card);
+        }
+        return result;
+    }
+
+    private bool HandHasPlayableAbility(ulong playerId) =>
+        GetPlayableAbilityCards(playerId).Count > 0 ||
+        (IsCatAvailable(playerId, DetectiveCatType.DetectiveNido, CurrentRound.Value) && GetEligibleOpponents(playerId, true).Count > 0);
 }

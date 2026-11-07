@@ -79,7 +79,7 @@ public class DraftPanelController : MonoBehaviour
 
         if (waitingText != null)
         {
-            waitingText.text = $"Waiting for <color=yellow>{chooserPlayerName}</color> to choose a Detective Cat...";
+            waitingText.text = $"Waiting for <color=blue>{chooserPlayerName}</color> to choose a Detective Cat...";
         }
     }
 

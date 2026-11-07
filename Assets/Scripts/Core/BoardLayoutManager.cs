@@ -93,9 +93,22 @@ public class BoardLayoutManager : MonoBehaviour
         Debug.Log($"[BoardLayout] placed {opponentCount} isladns on: {string.Join(", ", targetAnchorIndices)}");
     }
 
-
     public PlayerIslandUI GetOpponentIsland(ulong clientId)
     {
         return spawnedOpponentIslands.TryGetValue(clientId, out var island) ? island : null;
+    }
+
+    public void HighlightActivePlayer(ulong activePlayerId)
+    {
+        ulong localId = NetworkManager.Singleton.LocalClientId;
+
+        foreach (var pair in spawnedOpponentIslands)
+        {
+            if (pair.Value != null)
+            {
+                bool isTargetActive = (pair.Key == activePlayerId) && (activePlayerId != localId);
+                pair.Value.SetActiveTurn(isActiveTurn: isTargetActive);
+            }
+        }
     }
 }

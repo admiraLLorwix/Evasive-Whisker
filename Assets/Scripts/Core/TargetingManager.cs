@@ -9,9 +9,12 @@ public class TargetingManager : MonoBehaviour
     private NetworkCard pendingAbilityCard;
     private GameObject pendingCardObj;
 
+    [SerializeField] private GameObject globalDimPanel; 
+
     private void Awake()
     {
         Instance = this;
+        if (globalDimPanel != null) globalDimPanel.SetActive(false);
     }
 
     public void StartTargeting(NetworkCard card, GameObject cardObj)
@@ -20,6 +23,7 @@ public class TargetingManager : MonoBehaviour
         pendingAbilityCard = card;
         pendingCardObj = cardObj;
 
+        if (globalDimPanel != null) globalDimPanel.SetActive(true);
         TurnActionUI.Instance?.ShowTemporaryNotification($"<color=yellow>Click an opponent's island to target with {card.CardId}</color>", 8f);
 
         HighlightIslands(true);
@@ -30,6 +34,7 @@ public class TargetingManager : MonoBehaviour
     {
         if (!IsTargeting) return;
         IsTargeting = false;
+        if (globalDimPanel != null) globalDimPanel.SetActive(false);
         HighlightIslands(false);
 
         Debug.Log($"[targeting mngr] target #{targetId} confirmed for {pendingAbilityCard.CardId}!");
@@ -48,12 +53,14 @@ public class TargetingManager : MonoBehaviour
     {
         if (!IsTargeting) return;
         IsTargeting = false;
+        if (globalDimPanel != null) globalDimPanel.SetActive(false);
         HighlightIslands(false);
     }
 
     public void CancelTargeting()
     {
         IsTargeting = false;
+        if (globalDimPanel != null) globalDimPanel.SetActive(false);
         HighlightIslands(false);
         TurnActionUI.Instance?.ShowActionPrompt();
     }
@@ -63,11 +70,10 @@ public class TargetingManager : MonoBehaviour
         foreach (var client in Unity.Netcode.NetworkManager.Singleton.ConnectedClientsList)
         {
             if (client.ClientId == Unity.Netcode.NetworkManager.Singleton.LocalClientId) continue;
-
             var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(client.ClientId) : null;
             if (island != null)
             {
-                island.SetIslandGlow(enable, new Color(1f, 0.5f, 0f, 1f));
+                island.SetTargetable(enable);
             }
         }
     }

@@ -187,7 +187,7 @@ public partial class GameManager
         }
 
         if (!playerHands.TryGetValue(senderId, out var hand) || !hand.Remove(card)) return;
-
+        LogActionClientRpc($"{GetPlayerName(senderId)} countered with {card.CardId}!");
         pending.CounterCard = card;
         pending.CounterPlayed = true;
 

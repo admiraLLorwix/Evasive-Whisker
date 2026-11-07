@@ -76,7 +76,7 @@ public partial class GameManager
         string defenderName = GetPlayerName(defender);
         DetectiveCatType cat = pending.CatKind;
         string catName = DetectiveCatRules.DisplayName(cat);
-
+        LogActionClientRpc($"{defenderName} reacted with {catName}!");
         Debug.Log($"<color=red>[reaction] {defenderName} reacts with {catName}</color>");
 
         switch (cat)
@@ -230,6 +230,8 @@ public partial class GameManager
 
         string thiefName = GetPlayerName(thiefId);
         string victimName = GetPlayerName(victimId);
+
+        if (!redirected) PlayVersusSpotlightClientRpc(thiefId, victimId, "is attempting to steal from");
 
         ReactionRequest request = null;
         request = new ReactionRequest

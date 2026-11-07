@@ -45,9 +45,12 @@ public class PlayerHandController : MonoBehaviour
 
     private Coroutine reorderRoutine;
     public bool IsActiveAbilitySlotOccupied => myActiveAbilitySlot != null && myActiveAbilitySlot.gameObject.activeSelf;
+    private Dictionary<GameObject, Coroutine> activePulses = new Dictionary<GameObject, Coroutine>();
+
     private void OnDisable()
     {
         reorderRoutine = null;
+        StopAllPulses();
     }
     private void Awake()
     {
@@ -207,6 +210,7 @@ public class PlayerHandController : MonoBehaviour
             if (dragHandler != null && dragHandler.CardData.Equals(card))
             {
                 Transform cardTransform = handCardContainer.GetChild(i);
+                StopCardPulse(cardTransform.gameObject);
                 cardTransform.SetParent(null);
                 Destroy(cardTransform.gameObject);
                 break;
@@ -221,6 +225,7 @@ public class PlayerHandController : MonoBehaviour
 
         if (cardObj != null)
         {
+            StopCardPulse(cardObj);
             cardObj.transform.SetParent(null);
             Destroy(cardObj);
         }
@@ -268,11 +273,14 @@ public class PlayerHandController : MonoBehaviour
                 {
                     dragHandler.IsDraggable = playable;
                     dragHandler.SetHighlighted(playable);
+                    if (playable) StartCardPulse(handCardContainer.GetChild(i).gameObject);
+                    else StopCardPulse(handCardContainer.GetChild(i).gameObject);
                 }
                 else
                 {
                     dragHandler.IsDraggable = false;
                     dragHandler.SetHighlighted(false);
+                    StopCardPulse(handCardContainer.GetChild(i).gameObject); 
                 }
             }
         }
@@ -534,4 +542,49 @@ public class PlayerHandController : MonoBehaviour
     public bool HasAbilityCards() => currentCards.Exists(c => c.Type == CardType.Ability);
     public bool HasPlayableAbilityCards() => currentCards.Exists(c =>
         c.Type == CardType.Ability && !(CardEffectRegistry.OccupiesSlot(c.CardId) && IsActiveAbilitySlotOccupied));
+
+
+    private void StartCardPulse(GameObject cardObj)
+    {
+        if (cardObj == null || activePulses.ContainsKey(cardObj)) return;
+        activePulses[cardObj] = StartCoroutine(PulseRoutine(cardObj));
+    }
+
+    private void StopCardPulse(GameObject cardObj)
+    {
+        if (cardObj == null) return;
+        if (activePulses.ContainsKey(cardObj))
+        {
+            if (activePulses[cardObj] != null) StopCoroutine(activePulses[cardObj]);
+            activePulses.Remove(cardObj);
+            
+            if (cardObj != null) cardObj.transform.localScale = Vector3.one; 
+        }
+    }
+
+    private void StopAllPulses()
+    {
+        foreach (var pulse in activePulses.Values)
+        {
+            if (pulse != null) StopCoroutine(pulse);
+        }
+        activePulses.Clear();
+    }
+
+    private IEnumerator PulseRoutine(GameObject cardObj)
+    {
+        while (true)
+        {
+            var dragHandler = cardObj.GetComponent<CardDragHandler>();
+            bool isBusy = dragHandler != null && dragHandler.IsDragging;
+
+            if (!isBusy)
+            {
+                float pulse = 1.0f + (Mathf.Sin(Time.time * 3f) * 0.015f);
+                cardObj.transform.localScale = new Vector3(pulse, pulse, 1f);
+            }
+
+            yield return null;
+        }
+    }
 }
