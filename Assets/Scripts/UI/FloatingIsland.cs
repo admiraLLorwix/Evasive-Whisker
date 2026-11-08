@@ -10,6 +10,8 @@ public class FloatingIsland : MonoBehaviour
     [Header("tilt Settings")]
     [SerializeField] private bool enableTilt = true;
     [SerializeField] private float maxTiltAngle = 1.5f;
+    [SerializeField] private bool useRandomOffset = true;
+    [SerializeField] private float manualTimeOffset = 0f;
 
     private RectTransform rectTransform;
     private Vector2 startAnchoredPos;
@@ -23,15 +25,14 @@ public class FloatingIsland : MonoBehaviour
         isUI = rectTransform != null;
 
         if (isUI)
-        {
             startAnchoredPos = rectTransform.anchoredPosition;
-        }
         else
-        {
             startLocalPos = transform.localPosition;
-        }
 
-        timeOffset = Random.Range(0f, 10f);
+        if (useRandomOffset)
+            timeOffset = Random.Range(0f, 10f);
+        else
+            timeOffset = manualTimeOffset;
     }
 
     private void Update()

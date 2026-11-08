@@ -19,7 +19,7 @@ public class TurnActionUI : MonoBehaviour
     [SerializeField] private Button cancelActionButton;
 
     [SerializeField] private Button endTurnButton;
-
+    [SerializeField] private GameObject globalDimPanel;
     private bool lastAbilityOnly = false;
     private bool lastAllowSkip = false;
 
@@ -67,14 +67,15 @@ public class TurnActionUI : MonoBehaviour
         {
             if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
             if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card";
-
+            if (globalDimPanel != null) globalDimPanel.SetActive(true);
             DrawDeckClick.Instance?.SetGlow(true);
         }
         else
         {
             if (turnText != null) turnText.text = $"{activePlayerName}'s Turn";
             if (instructionText != null) instructionText.text = $"Waiting for {activePlayerName} to draw...";
-            DrawDeckClick.Instance?.SetGlow(false);
+            if (globalDimPanel != null) globalDimPanel.SetActive(false);
+            DrawDeckClick.Instance?.SetGlow(false); 
         }
     }
 
@@ -82,6 +83,7 @@ public class TurnActionUI : MonoBehaviour
     {
         HideAllActionPanels();
         DrawDeckClick.Instance?.SetGlow(false);
+        if (globalDimPanel != null) globalDimPanel.SetActive(true);
 
         if (turnText != null)
             turnText.text = "<color=red><b>DISCARD REQUIRED</b></color>";
@@ -183,6 +185,7 @@ public class TurnActionUI : MonoBehaviour
         if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
         if (endTurnButton != null) endTurnButton.gameObject.SetActive(false);
+        if (globalDimPanel != null) globalDimPanel.SetActive(false);
     }
 
     public void ShowActionPrompt() => ShowActionPhaseModal(lastAbilityOnly, lastAllowSkip);
