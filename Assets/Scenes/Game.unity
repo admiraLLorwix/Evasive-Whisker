@@ -1374,7 +1374,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000030517578}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &176307970
@@ -10699,28 +10699,28 @@ MonoBehaviour:
   allCards: []
   detectiveCatVisuals:
   - catType: 0
-    islandProfileSprite: {fileID: 21300000, guid: f1bde605b87a05f4ca9d0e607c87a15c, type: 3}
+    islandProfileSprite: {fileID: 21300000, guid: 5990bd31c5cd40146b00397f3bd6c957, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: 9a29bf3ba6b5e1e4b82d69b07edc36d7, type: 3}
   - catType: 1
-    islandProfileSprite: {fileID: 21300000, guid: 5861b890b0fa4e746b7bba88e4bbde6e, type: 3}
+    islandProfileSprite: {fileID: 21300000, guid: 7ecd4085b3ca69d4e8f38108567f34f8, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: 3212992629844fe4c87cf8eda1aafe64, type: 3}
   - catType: 2
-    islandProfileSprite: {fileID: 21300000, guid: 501032a67b77b134ea70f85e5c16ea4e, type: 3}
+    islandProfileSprite: {fileID: 21300000, guid: e934ac567ca438f4e81cf0bf8f02ca4d, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: 04d4eb56f2bf26d4b955313a8dcc4e87, type: 3}
   - catType: 3
-    islandProfileSprite: {fileID: 21300000, guid: 4b0ff933eed4a7d47a0987b305723e3f, type: 3}
+    islandProfileSprite: {fileID: 21300000, guid: 75da96650119df348b7465553c278b79, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: 2ceb8a2cc18b7ee4caa38e0cdb145d05, type: 3}
   - catType: 4
-    islandProfileSprite: {fileID: 21300000, guid: 01a04824edb1df647b53acdda3cf2917, type: 3}
+    islandProfileSprite: {fileID: 21300000, guid: 36634e602fa80cc41b807b6e4a17a7bc, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: 5953cf7b64da7484e8fc9ea402c514e4, type: 3}
   - catType: 5
-    islandProfileSprite: {fileID: 21300000, guid: e17c4956a82e1224d9bfbf62cfb23bde, type: 3}
+    islandProfileSprite: {fileID: 21300000, guid: 7566ebaaeb1d01b4c98c333323b15ef0, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: 07d00d21929dc7b449b87a829ed637ba, type: 3}
   - catType: 6
-    islandProfileSprite: {fileID: 21300000, guid: 0aeddb6d9f8e49d4ea3505d7d5c3b00d, type: 3}
+    islandProfileSprite: {fileID: 21300000, guid: 326a72f6ee94ed64b8ddde822f3b63cc, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: ec459e0ce52976640b5fa4ce9edd8228, type: 3}
   - catType: 7
-    islandProfileSprite: {fileID: 21300000, guid: 32472d26ce50ba341a7049786b6cd37c, type: 3}
+    islandProfileSprite: {fileID: 21300000, guid: d7ba6ed30fdbdc44a82dde97e8a1ffed, type: 3}
     localHandCardSprite: {fileID: 21300000, guid: 9585c3cf7a82b1f4b8003cb7fbd5f778, type: 3}
   cardArtList:
   - cardID: WhiskerBlower
