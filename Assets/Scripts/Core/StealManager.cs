@@ -69,7 +69,7 @@ public class StealManager : NetworkBehaviour
     {
         isIslandPick = false;
         IsSelectingTarget = false;
-        if (globalDimPanel != null) globalDimPanel.SetActive(true);
+        UIFocusManager.Instance?.ClearFocus();
         HighlightOpponentIslands(false);
         if (stealModal != null) stealModal.SetActive(false);
     }
@@ -96,7 +96,7 @@ public class StealManager : NetworkBehaviour
     {
         IsSelectingTarget = true;
         isAccusingCustodian = false;
-        if (globalDimPanel != null) globalDimPanel.SetActive(true);
+        UIFocusManager.Instance?.FocusOn(FocusTarget.Opponents);
         HighlightOpponentIslands(true, new Color(0f, 0.8f, 1f, 1f));
     }
 
@@ -104,7 +104,7 @@ public class StealManager : NetworkBehaviour
     {
         IsSelectingTarget = true;
         isAccusingCustodian = true;
-        if (globalDimPanel != null) globalDimPanel.SetActive(true);
+        UIFocusManager.Instance?.FocusOn(FocusTarget.Opponents);
         HighlightOpponentIslands(true, new Color(1f, 0.2f, 0.2f, 1f));
     }
 
@@ -139,6 +139,7 @@ public class StealManager : NetworkBehaviour
         }
 
         IsSelectingTarget = false;
+        UIFocusManager.Instance?.ClearFocus();
         if (globalDimPanel != null) globalDimPanel.SetActive(false);
         if (isAccusingCustodian)
         {
@@ -183,7 +184,7 @@ public class StealManager : NetworkBehaviour
         for (int i = 0; i < cardCount; i++) allIndices.Add(i);
 
         OpenFanModal(victimId, victimName, victimCat,
-            $"Stealing from <color=yellow>{victimName}</color>",
+            $"Stealing from <color=red>{victimName}</color>",
             allIndices, OnStealCardSelected, true);
     }
 
@@ -194,7 +195,7 @@ public class StealManager : NetworkBehaviour
         IsSelectingTarget = false;
 
         OpenFanModal(victimId, victimName, victimCat,
-            $"Peeking at <color=yellow>{victimName}</color>'s cards ({pickNumber}/{pickTotal})",
+            $"Peeking at <color=red>{victimName}</color>'s cards ({pickNumber}/{pickTotal})",
             new List<int>(remainingVictimIndices), OnPeekCardSelected, false);
     }
 
@@ -270,7 +271,7 @@ public class StealManager : NetworkBehaviour
         for (int i = 0; i < cardCount; i++) allIndices.Add(i);
 
         OpenFanModal(thiefId, thiefName, thiefCat,
-            $"<color=orange>Eye For An Eye!</color> Steal a card back from <color=yellow>{thiefName}</color>",
+            $"<color=orange>Eye For An Eye!</color> Steal a card back from <color=red>{thiefName}</color>",
             allIndices, OnCounterStealSelected, false);
     }
 

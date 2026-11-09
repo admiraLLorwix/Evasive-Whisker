@@ -23,8 +23,8 @@ public class TargetingManager : MonoBehaviour
         pendingAbilityCard = card;
         pendingCardObj = cardObj;
 
-        if (globalDimPanel != null) globalDimPanel.SetActive(true);
-        TurnActionUI.Instance?.ShowTemporaryNotification($"<color=yellow>Click an opponent's island to target with {card.CardId}</color>", 8f);
+        UIFocusManager.Instance?.FocusOn(FocusTarget.Opponents);
+        TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>Click an opponent's island to target with {card.CardId}</color>", 8f);
 
         HighlightIslands(true);
         GameManager.Instance?.ReportDecisionStepServerRpc((int)GameManager.DecisionStep.AbilityTarget, card.CardId);
@@ -53,7 +53,7 @@ public class TargetingManager : MonoBehaviour
     {
         if (!IsTargeting) return;
         IsTargeting = false;
-        if (globalDimPanel != null) globalDimPanel.SetActive(false);
+        UIFocusManager.Instance?.ClearFocus();
         HighlightIslands(false);
     }
 

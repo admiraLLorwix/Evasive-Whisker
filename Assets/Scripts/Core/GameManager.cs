@@ -96,6 +96,7 @@ public partial class GameManager : NetworkBehaviour
     private void Update()
     {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (_matchEnded) return;
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
 
@@ -135,6 +136,7 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     private void DebugTriggerGameOverServerRpc(RpcParams rpcParams = default)
     {
+        if (_matchEnded) return;
         CurrentState.Value = GameState.GameOver;
         DebugTriggerGameOverClientRpc();
     }
@@ -187,7 +189,14 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitPlayerNameServerRpc(string playerName, RpcParams rpcParams = default)
     {
+        if (_matchEnded) return;
         ulong senderId = rpcParams.Receive.SenderClientId;
+        if (CurrentState.Value != GameState.WaitingToStart)
+        {
+            Debug.LogWarning($"[Server] kick player #{senderId}, game is already in progress");
+            NetworkManager.Singleton.DisconnectClient(senderId);
+            return;
+        }
         if (string.IsNullOrWhiteSpace(playerName)) playerName = $"Detective_{Random.Range(100, 999)}";
 
         playerNamesMap[senderId] = playerName;
@@ -322,6 +331,7 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitChosenCatServerRpc(DetectiveCatType catType, RpcParams rpcParams = default)
     {
+        if (_matchEnded) return;
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (CurrentState.Value != GameState.DraftingDetectiveCats) return;
         if (ActiveDraftIndex.Value >= draftOrder.Count || draftOrder[ActiveDraftIndex.Value] != senderId) return;
@@ -461,6 +471,7 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void RequestDrawCardServerRpc(RpcParams rpcParams = default)
     {
+        if (_matchEnded) return;
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (senderId != ActiveTurnPlayerId.Value || CurrentState.Value != GameState.PlayerTurn_Draw) return;
         PerformDraw(senderId);
@@ -479,7 +490,7 @@ public partial class GameManager : NetworkBehaviour
         else
         {
             Debug.LogWarning("[gm] draw deck is empty - skipping the draw");
-            SendNotice(senderId, "<color=yellow>The draw deck is empty - no card drawn</color>");
+            SendNotice(senderId, "<color=red>The draw deck is empty - no card drawn</color>");
             CheckHandLimitOrProceedToAction(senderId);
         }
     }
@@ -601,6 +612,7 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitDiscardServerRpc(NetworkCard cardToDiscard, RpcParams rpcParams = default)
     {
+        if (_matchEnded) return;
         ProcessDiscard(rpcParams.Receive.SenderClientId, cardToDiscard);
     }
 
@@ -675,6 +687,7 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitPlayAbilityCardServerRpc(NetworkCard card, ulong targetId = NoTarget, RpcParams rpcParams = default)
     {
+        if (_matchEnded) return;
         ProcessPlayAbility(rpcParams.Receive.SenderClientId, card, targetId);
     }
     private void ProcessPlayAbility(ulong senderId, NetworkCard card, ulong targetId)
@@ -960,6 +973,7 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitCustodyGuessServerRpc(ulong accusedPlayerId, RpcParams rpcParams = default)
     {
+        if (_matchEnded) return;
         ProcessCustodyGuess(rpcParams.Receive.SenderClientId, accusedPlayerId);
     }
 
@@ -977,7 +991,6 @@ public partial class GameManager : NetworkBehaviour
 
         if (isCorrect)
         {
-            CurrentState.Value = GameState.GameOver;
             CloseThiefStealUIClientRpc(SingleTarget(guesserId));
             StartCoroutine(ResolveCorrectGuessRoutine(guesserId, accusedPlayerId));
         }
@@ -991,6 +1004,7 @@ public partial class GameManager : NetworkBehaviour
     [Rpc(SendTo.Server)]
     public void SubmitEndTurnServerRpc(RpcParams rpcParams = default)
     {
+        if (_matchEnded) return;
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (senderId != ActiveTurnPlayerId.Value || CurrentState.Value != GameState.PlayerTurn_Action) return;
         if (!firstActionKind.HasValue) return;
@@ -1179,7 +1193,7 @@ public partial class GameManager : NetworkBehaviour
 
     public void AdvanceToNextTurn()
     {
-        if (!IsServer) return;
+        if (!IsServer || _matchEnded || CurrentState.Value == GameState.GameOver) return;
 
         ulong endingPlayerId = ActiveTurnPlayerId.Value;
 
@@ -1224,7 +1238,7 @@ public partial class GameManager : NetworkBehaviour
         if (TurnActionUI.Instance != null)
         {
             TurnActionUI.Instance.ShowTemporaryNotification(
-                $"<color=yellow>ROUND {round}: DISCARD PILE RESHUFFLED INTO MAIN DECK</color>",
+                $"<color=red>ROUND {round}: DISCARD PILE RESHUFFLED INTO MAIN DECK</color>",
                 3.5f
             );
         }
@@ -1232,8 +1246,6 @@ public partial class GameManager : NetworkBehaviour
 
     private void ResolveRound10EndGame()
     {
-        CurrentState.Value = GameState.GameOver;
-
         ulong winnerId = 0;
         foreach (var pair in playerHands)
         {
@@ -1244,8 +1256,14 @@ public partial class GameManager : NetworkBehaviour
             }
         }
 
+        if (winnerId == 0 && turnOrder.Count > 0)
+        {
+            winnerId = turnOrder[Random.Range(0, turnOrder.Count)];
+        }
+
         string winnerName = GetPlayerName(winnerId);
-        AnnounceWinnerClientRpc(winnerId, $"{winnerName} held the WhiskerBlower at Round 10");
+
+        TriggerGameOver(winnerId, $"{winnerName} held the WhiskerBlower at Round 10");
     }
 
     private IEnumerator RetryUpdateIslandCount(ulong playerId, int newCount)
@@ -1288,7 +1306,7 @@ public partial class GameManager : NetworkBehaviour
     {
         _matchEnded = true; 
         string winnerName = GetPlayerName(winnerId);
-        Debug.Log($"<color=yellow>GAME OVER | Winner: {winnerName} | Reason: {reason}</color>");
+        Debug.Log($"<color=green>GAME OVER | Winner: {winnerName} | Reason: {reason}</color>");
 
         if (GameOverUI.Instance != null)
         {
@@ -1378,5 +1396,16 @@ public partial class GameManager : NetworkBehaviour
     public void LogActionClientRpc(string message)
     {
         ActionLogUI.Instance?.AddLog(message);
+    }
+
+    private void TriggerGameOver(ulong winnerId, string reason)
+    {
+        if (_matchEnded) return;
+        _matchEnded = true;
+        CurrentState.Value = GameState.GameOver;
+
+        StopAllCoroutines();
+        CancelDecisionTimer();
+        AnnounceWinnerClientRpc(winnerId, reason);
     }
 }

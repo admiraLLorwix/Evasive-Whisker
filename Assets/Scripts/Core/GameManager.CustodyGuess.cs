@@ -79,7 +79,7 @@ public partial class GameManager
         RevealAccusedHandClientRpc(accusedName, playerHands[accusedId].ToArray());
         yield return new WaitForSeconds(GuessRevealSeconds + 0.5f);
 
-        AnnounceWinnerClientRpc(guesserId, $"{winnerName} correctly guessed the Custodian with 3 Custody cards");
+        TriggerGameOver(guesserId, $"{winnerName} correctly guessed the Custodian with 3 Custody cards");
     }
     private IEnumerator ResolveWrongGuessRoutine(ulong guesserId, ulong accusedId)
     {
@@ -100,7 +100,7 @@ public partial class GameManager
     [ClientRpc]
     private void RevealAccusedHandClientRpc(string accusedName, NetworkCard[] hand)
     {
-        string title = $"<color=yellow>{accusedName}</color> was holding the WhiskerBlower!";
+        string title = $"<color=blue>{accusedName}</color> was holding the WhiskerBlower!";
         if (HandRevealUI.Instance != null) HandRevealUI.Instance.ShowTimed(title, hand, GuessRevealSeconds);
     }
 

@@ -205,10 +205,11 @@ public class LobbyPanelController : MonoBehaviour
         //}
     }
 
-    private void OnStartMatchClicked()
+    private async void OnStartMatchClicked()
     {
         if (OnlineLobbyManager.Instance != null && OnlineLobbyManager.Instance.IsHost())
         {
+            await OnlineLobbyManager.Instance.ToggleLobbyLockAsync(true);
             NetworkManager.Singleton.SceneManager.LoadScene("Game", UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }

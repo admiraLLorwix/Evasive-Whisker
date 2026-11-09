@@ -48,7 +48,7 @@ public class CatInstinctUI : MonoBehaviour
         if (questionPanel == null) return;
 
         if (questionTitleText != null)
-            questionTitleText.text = $"<color=yellow>{askerName}</color> is asking if you hold the WhiskerBlower";
+            questionTitleText.text = $"<color=red>{askerName}</color> is asking if you hold the WhiskerBlower";
 
         if (yesButton != null) yesButton.interactable = true;
         if (noButton != null) noButton.interactable = true;
@@ -95,7 +95,7 @@ public class CatInstinctUI : MonoBehaviour
         if (resultPanel == null) return;
 
         if (resultTitleText != null)
-            resultTitleText.text = $"<color=yellow>{targetName}</color> answered:";
+            resultTitleText.text = $"<color=red>{targetName}</color> answered:";
 
         if (resultCardImage != null)
         {

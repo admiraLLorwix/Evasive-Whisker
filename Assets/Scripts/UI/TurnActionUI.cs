@@ -67,14 +67,14 @@ public class TurnActionUI : MonoBehaviour
         {
             if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
             if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card";
-            if (globalDimPanel != null) globalDimPanel.SetActive(true);
+            UIFocusManager.Instance?.FocusOn(FocusTarget.DrawDeck);
             DrawDeckClick.Instance?.SetGlow(true);
         }
         else
         {
             if (turnText != null) turnText.text = $"{activePlayerName}'s Turn";
             if (instructionText != null) instructionText.text = $"Waiting for {activePlayerName} to draw...";
-            if (globalDimPanel != null) globalDimPanel.SetActive(false);
+            UIFocusManager.Instance?.ClearFocus();
             DrawDeckClick.Instance?.SetGlow(false); 
         }
     }
@@ -83,7 +83,7 @@ public class TurnActionUI : MonoBehaviour
     {
         HideAllActionPanels();
         DrawDeckClick.Instance?.SetGlow(false);
-        if (globalDimPanel != null) globalDimPanel.SetActive(true);
+        UIFocusManager.Instance?.FocusOn(FocusTarget.Hand);
 
         if (turnText != null)
             turnText.text = "<color=red><b>DISCARD REQUIRED</b></color>";
@@ -185,7 +185,7 @@ public class TurnActionUI : MonoBehaviour
         if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
         if (endTurnButton != null) endTurnButton.gameObject.SetActive(false);
-        if (globalDimPanel != null) globalDimPanel.SetActive(false);
+        UIFocusManager.Instance?.ClearFocus();
     }
 
     public void ShowActionPrompt() => ShowActionPhaseModal(lastAbilityOnly, lastAllowSkip);

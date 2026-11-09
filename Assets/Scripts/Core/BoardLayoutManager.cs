@@ -111,4 +111,78 @@ public class BoardLayoutManager : MonoBehaviour
             }
         }
     }
+
+
+
+
+
+    //island debugging
+
+    [ContextMenu("layout: 1 opp")]
+    public void TestLayout1() => SpawnDebugIslands(1);
+
+    [ContextMenu("layout: 2 opps")]
+    public void TestLayout2() => SpawnDebugIslands(2);
+
+    [ContextMenu("layout: 3 opps")]
+    public void TestLayout3() => SpawnDebugIslands(3);
+
+    [ContextMenu("layout: 4 opps")]
+    public void TestLayout4() => SpawnDebugIslands(4);
+
+    [ContextMenu("layout: 5 opps")]
+    public void TestLayout5() => SpawnDebugIslands(5);
+
+    [ContextMenu("clear")]
+    public void ClearDebugIslands()
+    {
+        foreach (var pair in spawnedOpponentIslands)
+        {
+            if (pair.Value != null)
+            {
+                DestroyImmediate(pair.Value.gameObject);
+            }
+        }
+        spawnedOpponentIslands.Clear();
+        Debug.Log("[boardlayout] clear islands.");
+    }
+
+    private void SpawnDebugIslands(int opponentCount)
+    {
+        ClearDebugIslands();
+
+        int[] targetAnchorIndices;
+        switch (opponentCount)
+        {
+            case 1: targetAnchorIndices = new int[] { 2 }; break;
+            case 2: targetAnchorIndices = new int[] { 1, 3 }; break;
+            case 3: targetAnchorIndices = new int[] { 1, 2, 3 }; break;
+            case 4: targetAnchorIndices = new int[] { 0, 1, 3, 4 }; break;
+            default: targetAnchorIndices = new int[] { 0, 1, 2, 3, 4 }; break;
+        }
+
+        for (int i = 0; i < opponentCount; i++)
+        {
+            int anchorIdx = targetAnchorIndices[i];
+            if (anchorIdx >= opponentIslandAnchorPoints.Length || opponentIslandAnchorPoints[anchorIdx] == null) continue;
+
+            Transform anchor = opponentIslandAnchorPoints[anchorIdx];
+            GameObject islandObj = Instantiate(opponentIslandPrefab, anchor);
+            islandObj.transform.localPosition = Vector3.zero;
+
+            PlayerIslandUI islandUI = islandObj.GetComponent<PlayerIslandUI>();
+            if (islandUI == null) continue;
+
+            ulong mockId = (ulong)(i + 1);
+            spawnedOpponentIslands[mockId] = islandUI;
+
+            Sprite islandSprite = (islandSprites != null && islandSprites.Length > 0)
+                ? islandSprites[i % islandSprites.Length]
+                : null;
+
+            islandUI.Initialize(mockId, $"test opp {i + 1}", islandSprite);
+        }
+
+        Debug.Log($"[boardlayout] spawned {opponentCount} test islands");
+    }
 }

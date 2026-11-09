@@ -14,7 +14,7 @@ public partial class GameManager
         List<ulong> targets = GetEligibleOpponents(playerId, true);
         if (targets.Count == 0)
         {
-            SendNotice(playerId, "<color=yellow>No opponent with cards to inspect</color>");
+            SendNotice(playerId, "<color=red>No opponent with cards to inspect</color>");
             return;
         }
 

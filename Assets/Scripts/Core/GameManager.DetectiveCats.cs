@@ -62,7 +62,7 @@ public partial class GameManager
         IDetectiveCatTrait trait = CardEffectRegistry.GetDetective(cat);
         if (trait == null)
         {
-            SendNotice(sender, $"<color=yellow>{catName} isn't available yet</color>");
+            SendNotice(sender, $"<color=blue>{catName} isn't available yet</color>");
             return;
         }
 
@@ -81,7 +81,7 @@ public partial class GameManager
         NetworkCard[] pile = DeckManager.Instance.GetDiscardPile();
         if (pile.Length == 0)
         {
-            SendNotice(playerId, "<color=yellow>The discard pile is empty</color>");
+            SendNotice(playerId, "<color=red>The discard pile is empty</color>");
             return;
         }
 
@@ -91,7 +91,7 @@ public partial class GameManager
     {
         if (DeckManager.Instance.RemainingDrawCount < 2)
         {
-            SendNotice(playerId, "<color=yellow>The draw deck needs at least 2 cards</color>");
+            SendNotice(playerId, "<color=red>The draw deck needs at least 2 cards</color>");
             return;
         }
 

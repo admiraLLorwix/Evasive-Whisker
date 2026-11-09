@@ -60,7 +60,7 @@ public class GameOverUI : MonoBehaviour
             else
             {
                 winnerText.gameObject.SetActive(true);
-                winnerText.text = $"<color=yellow>{winnerName}</color>";
+                winnerText.text = $"<color=green>{winnerName}</color>";
             }
         }
         if (reasonText != null) reasonText.text = reason;

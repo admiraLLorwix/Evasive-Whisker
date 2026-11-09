@@ -295,7 +295,7 @@ public class PlayerHandController : MonoBehaviour
             discardConfirmModal.SetActive(true);
             if (confirmPromptText != null)
             {
-                confirmPromptText.text = $"Are you sure you want to discard <color=yellow>{card.CardId}</color>?";
+                confirmPromptText.text = $"Are you sure you want to discard <color=blue>{card.CardId}</color>?";
             }
         }
     }
@@ -308,6 +308,7 @@ public class PlayerHandController : MonoBehaviour
             confirmIsScatter = false;
             scatterPickSubmitted = true;
             SetAllCardsHighlighted(false);
+            UIFocusManager.Instance?.ClearFocus();
             if (passIsTrapGive)
             {
                 TurnActionUI.Instance?.SetInstructionText("Passing your card...", passLabel);
@@ -352,7 +353,8 @@ public class PlayerHandController : MonoBehaviour
         SetAbilityCardsPlayable(false);
         TurnActionUI.Instance?.HideAllActions();
         SetAllCardsHighlighted(true);
-        TurnActionUI.Instance?.SetInstructionText($"Drag a card up to pass it to <color=yellow>{recipientName}</color>", label);
+        UIFocusManager.Instance?.FocusOn(FocusTarget.Hand);
+        TurnActionUI.Instance?.SetInstructionText($"Drag a card up to pass it to <color=blue>{recipientName}</color>", label);
     }
 
     public void PromptScatterConfirmation(NetworkCard card)
@@ -365,7 +367,7 @@ public class PlayerHandController : MonoBehaviour
             discardConfirmModal.SetActive(true);
             if (confirmPromptText != null)
             {
-                confirmPromptText.text = $"Pass <color=yellow>{card.CardId}</color> to <color=yellow>{scatterNeighborName}</color>?";
+                confirmPromptText.text = $"Pass <color=blue>{card.CardId}</color> to <color=red>{scatterNeighborName}</color>?";
             }
         }
     }
@@ -382,6 +384,7 @@ public class PlayerHandController : MonoBehaviour
         if (confirmIsScatter && discardConfirmModal != null) discardConfirmModal.SetActive(false);
         confirmIsScatter = false;
         SetAllCardsHighlighted(false);
+        UIFocusManager.Instance?.ClearFocus();
     }
     
     //hand shuffle from game 7: repo#13
@@ -521,9 +524,10 @@ public class PlayerHandController : MonoBehaviour
                 if (dragHandler != null) dragHandler.SetHighlighted(IsValidReactionCard(dragHandler.CardData));
             }
         }
+        UIFocusManager.Instance?.FocusOn(FocusTarget.Hand);
 
         TurnActionUI.Instance?.ShowTemporaryNotification(
-            $"<color=red>{description}!</color> Drag <color=yellow>{string.Join(" / ", names)}</color> up to respond", seconds);
+            $"<color=red>{description}!</color> Drag <color=blue>{string.Join(" / ", names)}</color> up to respond", seconds);
     }
 
     public void EndReaction()
@@ -532,6 +536,7 @@ public class PlayerHandController : MonoBehaviour
         if (reactionValidIds == null) return;
         reactionValidIds = null;
         SetAllCardsHighlighted(false);
+        UIFocusManager.Instance?.ClearFocus();
     }
     public void CommitReaction(NetworkCard card)
     {
@@ -585,6 +590,89 @@ public class PlayerHandController : MonoBehaviour
             }
 
             yield return null;
+        }
+    }
+
+
+
+
+
+
+
+
+    //hand test
+
+    [ContextMenu("test hand")]
+    public void TestSpawnHand()
+    {
+        ClearTestHand();
+
+        List<NetworkCard> testCards = new List<NetworkCard>
+        {
+            new NetworkCard("WhiskerBlower", CardType.WhiskerBlower),
+            new NetworkCard("Declaw", CardType.Ability),
+            new NetworkCard("Zoomies", CardType.Ability),
+            new NetworkCard("Swipe", CardType.Trap),
+            new NetworkCard("InformantMiley", CardType.Custody)
+        };
+
+        foreach (var card in testCards)
+        {
+            SpawnCardObject(card);
+        }
+
+        ApplyInstantFanLayout();
+
+        Debug.Log("[ph] spawn test hand.");
+    }
+
+    [ContextMenu("clear")]
+    public void ClearTestHand()
+    {
+        if (handCardContainer == null) return;
+
+        for (int i = handCardContainer.childCount - 1; i >= 0; i--)
+        {
+            GameObject child = handCardContainer.GetChild(i).gameObject;
+            if (Application.isPlaying) Destroy(child);
+            else DestroyImmediate(child);
+        }
+
+        currentCards.Clear();
+        Debug.Log("[ph] clear test hand");
+    }
+
+    private void ApplyInstantFanLayout()
+    {
+        int total = handCardContainer.childCount;
+        for (int i = 0; i < total; i++)
+        {
+            var cardTransform = handCardContainer.GetChild(i) as RectTransform;
+            var cardVisual = handCardContainer.GetChild(i).GetComponent<CardVisualInteraction>();
+
+            if (cardTransform != null)
+            {
+                float t = (total <= 1) ? 0f : ((float)i / (total - 1) * 2f) - 1f;
+                float xOffset = t * (cardSpacingX * (total - 1) * 0.5f);
+
+                cardTransform.anchoredPosition = new Vector2(xOffset, 0f);
+            }
+
+            if (cardVisual != null)
+            {
+                cardVisual.SetFanPosition(i, total);
+
+                Transform visualRoot = cardTransform.Find("VisualRoot");
+                if (visualRoot != null)
+                {
+                    float t = (total <= 1) ? 0f : ((float)i / (total - 1) * 2f) - 1f;
+                    float zTilt = -t * 9f;
+                    float yDrop = -(t * t) * 14f;
+
+                    visualRoot.localRotation = Quaternion.Euler(0, 0, zTilt);
+                    visualRoot.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, yDrop);
+                }
+            }
         }
     }
 }

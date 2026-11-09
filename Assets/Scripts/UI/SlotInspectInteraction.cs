@@ -16,6 +16,7 @@ public class SlotInspectInteraction : MonoBehaviour,
     private bool isHovered = false; private bool isHolding = false;
     private bool isInspecting = false; private float holdTimer = 0f;
     private int originalSiblingIndex; private Canvas mainCanvas;
+    [SerializeField] private Vector2 inspectOffset = new Vector2(0f, -100f);
 
     private void Awake()
     {
@@ -103,11 +104,15 @@ public class SlotInspectInteraction : MonoBehaviour,
         isInspecting = true;
         transform.SetAsLastSibling();
 
-        if (mainCanvas != null)
+        Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
+        RectTransform parentRect = transform.parent as RectTransform;
+        Vector2 localPoint;
+
+        Camera cam = (mainCanvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : mainCanvas.worldCamera;
+
+        if (parentRect != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenCenter, cam, out localPoint))
         {
-            Vector3 screenCenterWorld = mainCanvas.transform.position;
-            Vector3 localCenter = transform.parent.InverseTransformPoint(screenCenterWorld);
-            targetPos = new Vector2(localCenter.x, localCenter.y);
+            targetPos = localPoint + inspectOffset;
         }
         else
         {

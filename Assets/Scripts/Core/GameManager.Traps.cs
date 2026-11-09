@@ -95,7 +95,7 @@ public partial class GameManager
         if (recipientId == thiefId || !playerHands.TryGetValue(thiefId, out var thiefHand) || thiefHand.Count == 0)
         {
             Debug.Log($"[trap] {trapCard.CardId} fizzles: thief has no card to give");
-            SendNotice(thiefId, $"<color=yellow>{trapCard.CardId}: you have no cards to give</color>");
+            SendNotice(thiefId, $"<color=red>{trapCard.CardId}: you have no cards to give</color>");
             DeckManager.Instance.Discard(trapCard);
             onFinished?.Invoke();
             return;

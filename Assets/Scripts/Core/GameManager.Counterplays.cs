@@ -86,14 +86,14 @@ public partial class GameManager
 
         if (IsGuessImmune(q.Attacker))
         {
-            SendNotice(q.Defender, $"<color=yellow>{GuessImmuneMessage(q.Attacker)} - Eye For An Eye fizzles</color>");
+            SendNotice(q.Defender, $"<color=red>{GuessImmuneMessage(q.Attacker)} - Eye For An Eye fizzles</color>");
             onFinished?.Invoke();
             return;
         }
 
         if (!playerHands.TryGetValue(q.Attacker, out var thiefHand) || thiefHand.Count == 0)
         {
-            SendNotice(q.Defender, $"<color=yellow>{thiefName} has no cards to steal back</color>");
+            SendNotice(q.Defender, $"<color=red>{thiefName} has no cards to steal back</color>");
             onFinished?.Invoke();
             return;
         }

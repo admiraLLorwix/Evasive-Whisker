@@ -46,7 +46,7 @@ public partial class GameManager
         Debug.Log($"<color=cyan>[cat instinct] {askerName} asks {targetName} if they hold the WhiskerBlower</color>");
 
         OpenCatInstinctPromptClientRpc(askerName, CatInstinctAnswerSeconds, SingleTarget(targetId));
-        SendNotice(askerId, $"<color=yellow>Waiting for {targetName} to answer...</color>");
+        SendNotice(askerId, $"<color=blue>Waiting for {targetName} to answer...</color>");
 
         StartCoroutine(CatInstinctTimeoutRoutine(pending));
     }

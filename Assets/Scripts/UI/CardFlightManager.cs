@@ -17,6 +17,7 @@ public class CardFlightManager : MonoBehaviour
         Instance = this;
         mainCanvas = GetComponentInParent<Canvas>();
     }
+
     public void FlyCard(Vector3 startScreenPos, Vector3 targetScreenPos, Sprite cardSprite, System.Action onComplete = null)
     {
         StartCoroutine(FlightRoutine(startScreenPos, targetScreenPos, cardSprite, onComplete));
@@ -26,8 +27,13 @@ public class CardFlightManager : MonoBehaviour
     {
         if (mainCanvas == null) yield break;
 
-        GameObject dummy = new GameObject("FlyingCardDummy", typeof(RectTransform), typeof(Image));
+        GameObject dummy = new GameObject("FlyingCardDummy", typeof(RectTransform), typeof(Image), typeof(Canvas));
         dummy.transform.SetParent(mainCanvas.transform, false);
+
+        Canvas dummyCanvas = dummy.GetComponent<Canvas>();
+        dummyCanvas.overrideSorting = true;
+        dummyCanvas.sortingOrder = 50;
+
         dummy.transform.SetAsLastSibling();
 
         RectTransform rt = dummy.GetComponent<RectTransform>();

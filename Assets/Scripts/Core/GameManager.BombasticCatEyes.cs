@@ -34,7 +34,7 @@ public partial class GameManager
         if (!playerHands.TryGetValue(targetId, out var targetHand) || targetHand.Count == 0)
         {
             Debug.Log("[bombastic] target has no cards, fizzling");
-            SendNotice(askerId, $"<color=yellow>{GetPlayerName(targetId)} has no cards to peek at</color>");
+            SendNotice(askerId, $"<color=red>{GetPlayerName(targetId)} has no cards to peek at</color>");
             if (!reflected && !fromCat) DeckManager.Instance.Discard(card);
             onFinished?.Invoke();
             return;

@@ -12,6 +12,8 @@ public class DiscardPile2D : MonoBehaviour
 
     [SerializeField] private float maxRotationTilt = 16f;
     [SerializeField] private float maxPositionJitter = 10f;
+    [SerializeField] private float carduiwidth = 200f;
+    [SerializeField] private float carduiheight = 250f;
 
     private List<GameObject> pileCards = new List<GameObject>();
     private List<NetworkCard> pileData = new List<NetworkCard>();
@@ -51,7 +53,19 @@ public class DiscardPile2D : MonoBehaviour
         if (discardContainer == null || cardUIPrefab == null) return;
 
         GameObject cardObj = Instantiate(cardUIPrefab, discardContainer);
+
         RectTransform rt = cardObj.GetComponent<RectTransform>();
+        Transform visualRoot = cardObj.transform.Find("VisualRoot");
+        RectTransform visualRt = visualRoot != null ? visualRoot.GetComponent<RectTransform>() : null;
+
+        if (visualRt != null)
+        {
+            visualRt.sizeDelta = new Vector2(carduiwidth, carduiheight);
+        }
+        if (rt != null)
+        {
+            rt.sizeDelta = new Vector2(carduiwidth, carduiheight);
+        }
 
         float randomAngle = Random.Range(-maxRotationTilt, maxRotationTilt);
         float jitterX = Random.Range(-maxPositionJitter, maxPositionJitter);
@@ -105,5 +119,13 @@ public class DiscardPile2D : MonoBehaviour
             Destroy(pileCards[0]);
             pileCards.RemoveAt(0);
         }
+    }
+
+    [ContextMenu("test discard")]
+    public void TestSpawnCard()
+    {
+        NetworkCard dummyCard = new NetworkCard("Swipe", CardType.Trap);
+
+        AddCardToDiscard(dummyCard);
     }
 }

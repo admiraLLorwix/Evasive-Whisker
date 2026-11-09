@@ -141,7 +141,7 @@ public partial class GameManager
             if (turnOrder.Count == 1 && !_matchEnded && CurrentState.Value != GameState.DraftingDetectiveCats)
             {
                 _matchEnded = true;
-                AnnounceWinnerClientRpc(turnOrder[0], "Last player standing");
+                TriggerGameOver(turnOrder[0], "Last player standing");
             }
         }
         finally

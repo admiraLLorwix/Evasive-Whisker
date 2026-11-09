@@ -27,7 +27,8 @@ Properties {
 	_ScaleRatioB		("Scale RatioB", float) = 1
 	_ScaleRatioC		("Scale RatioC", float) = 1
 
-	_MainTex			("Font Atlas", 2D) = "white" {}
+	_MainTex			("Font Atlas", 2D) = "
+" {}
 	_TextureWidth		("Texture Width", float) = 512
 	_TextureHeight		("Texture Height", float) = 512
 	_GradientScale		("Gradient Scale", float) = 5
