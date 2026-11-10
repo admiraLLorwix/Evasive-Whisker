@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class CardVisualInteraction : MonoBehaviour,
     IPointerEnterHandler, IPointerExitHandler,
@@ -14,7 +15,7 @@ public class CardVisualInteraction : MonoBehaviour,
     [SerializeField] private float hoverLiftY = 35f;
 
     [SerializeField] private float inspectScale = 1.6f;
-    [SerializeField] private float holdDurationToInspect = 0.25f;
+    [SerializeField] private float holdDurationToInspect = 0.25f; [SerializeField] private float inspectYOffset = -100f;
 
     private Vector2 targetPos = Vector2.zero;
     private Quaternion targetRot = Quaternion.identity;
@@ -27,7 +28,7 @@ public class CardVisualInteraction : MonoBehaviour,
     private bool isHolding = false;
     private bool isInspecting = false;
     private float holdTimer = 0f;
-
+    private Canvas cardCanvas;
     private Canvas mainGameCanvas;
 
     private void Awake()
@@ -37,6 +38,15 @@ public class CardVisualInteraction : MonoBehaviour,
             visualRoot = transform.GetChild(0).GetComponent<RectTransform>();
         }
         mainGameCanvas = GetComponentInParent<Canvas>();
+        cardCanvas = gameObject.GetComponent<Canvas>();
+        if (cardCanvas == null)
+        {
+            cardCanvas = gameObject.AddComponent<Canvas>();
+            gameObject.AddComponent<GraphicRaycaster>();
+        }
+        cardCanvas.overrideSorting = true;
+        cardCanvas.sortingOrder = 10;
+
     }
 
     private void Update()
@@ -118,6 +128,7 @@ public class CardVisualInteraction : MonoBehaviour,
         if (isInspecting)
         {
             isInspecting = false;
+            cardCanvas.sortingOrder = 10;
             targetPos = isHovered ? (defaultArcPos + new Vector2(0, hoverLiftY)) : defaultArcPos;
             targetRot = isHovered ? Quaternion.identity : defaultArcRot;
             targetScale = isHovered ? (Vector3.one * hoverScale) : Vector3.one;
@@ -127,15 +138,26 @@ public class CardVisualInteraction : MonoBehaviour,
     private void TriggerInspect()
     {
         isInspecting = true;
-        if (mainGameCanvas != null)
+        cardCanvas.sortingOrder = 100;
+        Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
+        Vector2 localPoint;
+        RectTransform parentRect = transform.parent as RectTransform;
+        RectTransform cardRect = transform as RectTransform;
+
+        if (parentRect != null && mainGameCanvas != null && cardRect != null)
         {
-            Vector3 screenCenterWorld = mainGameCanvas.transform.position;
-            Vector3 localCenter = transform.InverseTransformPoint(screenCenterWorld);
-            targetPos = new Vector2(localCenter.x, localCenter.y);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                parentRect,
+                screenCenter,
+                mainGameCanvas.worldCamera,
+                out localPoint
+            );
+            localPoint.y += inspectYOffset;
+            targetPos = localPoint - cardRect.anchoredPosition;
         }
         else
         {
-            targetPos = new Vector2(0, 250);
+            targetPos = new Vector2(0, 250f);
         }
 
         targetRot = Quaternion.identity;

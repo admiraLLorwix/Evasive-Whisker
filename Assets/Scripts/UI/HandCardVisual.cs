@@ -19,7 +19,7 @@ public class HandCardVisual : MonoBehaviour,
     [Header("hold inspect settings")]
     [SerializeField] private float inspectScale = 1.6f;
     [SerializeField] private float holdDuration = 0.25f;
-
+    [SerializeField] private float inspectYOffset = -100f;
 
 
 
@@ -135,12 +135,21 @@ public class HandCardVisual : MonoBehaviour,
     private void TriggerInspect()
     {
         isInspecting = true;
+        Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
+        Vector2 localPoint;
+        RectTransform parentRect = transform.parent as RectTransform;
+        RectTransform cardRect = transform as RectTransform;
 
-        if (mainCanvas != null)
+        if (parentRect != null && mainCanvas != null && cardRect != null)
         {
-            Vector3 screenCenterWorld = mainCanvas.transform.position;
-            Vector3 localCenter = transform.InverseTransformPoint(screenCenterWorld);
-            targetPos = new Vector2(localCenter.x, localCenter.y);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                parentRect,
+                screenCenter,
+                mainCanvas.worldCamera,
+                out localPoint
+            );
+            localPoint.y += inspectYOffset;
+            targetPos = localPoint - cardRect.anchoredPosition;
         }
         else
         {

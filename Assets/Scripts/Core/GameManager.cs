@@ -533,13 +533,13 @@ public partial class GameManager : NetworkBehaviour
         if (CardSpotlightController.Instance != null)
         {
             Color glow = isSpectator ? new Color(0.6f, 0.4f, 1f, 1f) : new Color(0.2f, 1f, 0.4f, 1f);
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 1.0f, isSpectator);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 2.5f, isSpectator);
         }
     }
 
     private IEnumerator ResolveDrawAfterSpotlightRoutine(ulong drawerId, NetworkCard drawnCard)
     {
-        yield return new WaitForSeconds(1.3f);
+        yield return new WaitForSeconds(2.8f);
 
         playerHands[drawerId].Add(drawnCard);
 
@@ -708,7 +708,7 @@ public partial class GameManager : NetworkBehaviour
         UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
 
         string actorName = GetPlayerName(senderId);
-        float spotlightSeconds = (targetId != NoTarget && card.CardId != "BombasticCatEyes") ? ReactionWindowSeconds : 2.5f;
+        float spotlightSeconds = (targetId != NoTarget && card.CardId != "BombasticCatEyes") ? ReactionWindowSeconds : 3.5f;
         BroadcastAbilitySpotlightClientRpc(card.CardId.ToString(), $"{actorName} played {card.CardId}!", spotlightSeconds);
 
 
@@ -735,7 +735,7 @@ public partial class GameManager : NetworkBehaviour
     {
         if (targetId == NoTarget || card.CardId == "BombasticCatEyes")
         {
-            yield return new WaitForSeconds(1.7f);
+            yield return new WaitForSeconds(3f);
             RunAbilityEffect(senderId, targetId, card);
             yield break;
         }
@@ -782,7 +782,7 @@ public partial class GameManager : NetworkBehaviour
 
     private IEnumerator ResolveTrapAfterSpotlightRoutine(ulong thiefId, ulong victimId, NetworkCard trapCard, bool thiefImmune, System.Action onDone)
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(3.8f);
 
         if (thiefImmune)
         {
@@ -946,7 +946,7 @@ public partial class GameManager : NetworkBehaviour
     {
         if (CardSpotlightController.Instance != null)
         {
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, new Color(1f, 0.15f, 0.15f, 1f), 2.5f);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, message, new Color(1f, 0.15f, 0.15f, 1f), 3.5f);
         }
     }
     [ClientRpc]

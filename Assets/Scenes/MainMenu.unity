@@ -6641,7 +6641,7 @@ MonoBehaviour:
   lockLobbyButtonImage: {fileID: 566274292}
   lockedSprite: {fileID: 21300000, guid: 0b192643aab405542a12ddbdc2432751, type: 3}
   unlockedSprite: {fileID: 21300000, guid: 6f9d6408a02231648b9c5c7cc8e0442d, type: 3}
-  minPlayersToStart: 3
+  minPlayersToStart: 1
 --- !u!114 &962913073
 MonoBehaviour:
   m_ObjectHideFlags: 0

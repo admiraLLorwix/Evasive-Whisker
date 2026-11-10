@@ -31,7 +31,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
     private Vector2 _canvasOriginalPos;
     private Vector2 _attackerOriginalPos;
     private Vector2 _victimOriginalPos;
-    private Vector3 _actionOriginalScale;
+    private Vector3 _actionOriginalScale; [SerializeField] private float cardBaseScale = 0.85f;
     private void Awake()
     {
         Instance = this;
@@ -116,10 +116,12 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         RectTransform cardRT = spotlightCardImage.rectTransform;
         Vector2 finalPos = cardRT.anchoredPosition;
         Vector2 startPos = finalPos + new Vector2(0, 500f);
-        cardRT.anchoredPosition = startPos;
-        cardRT.localScale = Vector3.one * 1.3f;
         float startRotZ = Random.Range(-10f, 10f);
         float endRotZ = Random.Range(-2f, 2f);
+        Vector3 endScale = Vector3.one * cardBaseScale;
+        Vector3 startScale = endScale * 1.3f;
+        cardRT.anchoredPosition = startPos;
+        cardRT.localScale = startScale;
 
         if (vignetteDimGroup != null)
         {
@@ -142,17 +144,17 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
             dropTimer += Time.deltaTime;
             float t = dropTimer / dropDuration;
 
-            float curveT = t*t;
+            float curveT = t * t;
             cardRT.anchoredPosition = Vector2.Lerp(startPos, finalPos, curveT);
             cardRT.localRotation = Quaternion.Euler(0, 0, Mathf.Lerp(startRotZ, endRotZ, curveT));
-            cardRT.localScale = Vector3.Lerp(Vector3.one * 1.3f, Vector3.one, curveT);
+            cardRT.localScale = Vector3.Lerp(startScale, endScale, curveT);
 
             yield return null;
         }
 
         cardRT.anchoredPosition = finalPos;
         cardRT.localRotation = Quaternion.Euler(0, 0, endRotZ);
-        cardRT.localScale = Vector3.one;
+        cardRT.localScale = endScale;
 
         if (canvasRoot != null) StartCoroutine(ScreenShakeRoutine());
 
@@ -161,10 +163,9 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         {
             elapsed += Time.deltaTime;
             float pulse = 1.0f + (Mathf.Sin(elapsed * 4.5f) * 0.015f);
-            cardRT.localScale = Vector3.one * pulse;
+            cardRT.localScale = endScale * pulse;
             yield return null;
         }
-
         HideSpotlight();
     }
     private IEnumerator ScreenShakeRoutine()

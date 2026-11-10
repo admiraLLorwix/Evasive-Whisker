@@ -139,8 +139,9 @@ MonoBehaviour:
   arcDropAmount: 14
   hoverScale: 1.15
   hoverLiftY: 35
-  inspectScale: 1.6
+  inspectScale: 1.5
   holdDurationToInspect: 0.25
+  inspectYOffset: -20
 --- !u!114 &8392851264611215345
 MonoBehaviour:
   m_ObjectHideFlags: 0
