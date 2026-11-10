@@ -548,7 +548,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 324.44, y: -728.25476}
+  m_AnchoredPosition: {x: 324.44, y: -643.88525}
   m_SizeDelta: {x: 321.4, y: 60.669983}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &53991268
@@ -915,6 +915,7 @@ RectTransform:
   m_Children:
   - {fileID: 43358185}
   - {fileID: 1377492448}
+  - {fileID: 566274289}
   m_Father: {fileID: 962913070}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
@@ -2065,7 +2066,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 324.44, y: -594.3772}
+  m_AnchoredPosition: {x: 324.44, y: -510.00775}
   m_SizeDelta: {x: 415.816, y: 157.085}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &243618767
@@ -3286,7 +3287,6 @@ RectTransform:
   m_LocalScale: {x: 1.0000114, y: 1.0000114, z: 1.0000114}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 566274289}
   - {fileID: 978304010}
   - {fileID: 243618766}
   - {fileID: 53991267}
@@ -3999,6 +3999,7 @@ GameObject:
   - component: {fileID: 566274291}
   - component: {fileID: 566274295}
   - component: {fileID: 566274294}
+  - component: {fileID: 566274296}
   m_Layer: 5
   m_Name: LockButton
   m_TagString: Untagged
@@ -4015,16 +4016,16 @@ RectTransform:
   m_GameObject: {fileID: 566274288}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.99998856, y: 0.99998856, z: 0.99998856}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 783450874}
-  m_Father: {fileID: 519080887}
+  m_Father: {fileID: 130483809}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 324.44, y: -175.59125}
-  m_SizeDelta: {x: 300, y: 143.739}
+  m_AnchoredPosition: {x: 1016.9, y: -154.66998}
+  m_SizeDelta: {x: 91.775, y: 83.558}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &566274291
 MonoBehaviour:
@@ -4102,7 +4103,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: b88e79ebbe82809419316f36890a160b, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 6f9d6408a02231648b9c5c7cc8e0442d, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -4165,6 +4166,26 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
+--- !u!114 &566274296
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 566274288}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.LayoutElement
+  m_IgnoreLayout: 1
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: -1
+  m_PreferredHeight: -1
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &587415213
 GameObject:
   m_ObjectHideFlags: 0
@@ -5374,7 +5395,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &783450874
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5530,7 +5551,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 324.44, y: -831.36725}
+  m_AnchoredPosition: {x: 324.44, y: -746.99774}
   m_SizeDelta: {x: 326.102, y: 95.555}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &827242372
@@ -6617,7 +6638,9 @@ MonoBehaviour:
   startMatchButton: {fileID: 978304011}
   leaveButton: {fileID: 228243485}
   lockLobbyButton: {fileID: 566274291}
-  lockLobbyButtonText: {fileID: 783450875}
+  lockLobbyButtonImage: {fileID: 566274292}
+  lockedSprite: {fileID: 21300000, guid: 0b192643aab405542a12ddbdc2432751, type: 3}
+  unlockedSprite: {fileID: 21300000, guid: 6f9d6408a02231648b9c5c7cc8e0442d, type: 3}
   minPlayersToStart: 3
 --- !u!114 &962913073
 MonoBehaviour:
@@ -6833,7 +6856,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 324.44, y: -381.64777}
+  m_AnchoredPosition: {x: 324.44, y: -297.27826}
   m_SizeDelta: {x: 648.88, y: 218.374}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &978304011

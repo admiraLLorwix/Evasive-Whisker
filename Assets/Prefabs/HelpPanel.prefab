@@ -4426,7 +4426,7 @@ MonoBehaviour:
   outlineDistance: {x: 3, y: 3}
   previewFadeDuration: 0.05
   audioSource: {fileID: 0}
-  cardClickSound: {fileID: 8300000, guid: 1394ed28308e10342a110868dda11915, type: 3}
+  cardClickSound: {fileID: 8300000, guid: c566190628c83184badef5a040488fd0, type: 3}
   clickVolume: 1
 --- !u!1 &4596350373520335268
 GameObject:

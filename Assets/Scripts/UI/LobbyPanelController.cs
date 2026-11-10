@@ -28,7 +28,9 @@ public class LobbyPanelController : MonoBehaviour
     [SerializeField] private Button leaveButton;
 
     [SerializeField] private Button lockLobbyButton;
-    [SerializeField] private TMP_Text lockLobbyButtonText;
+    [SerializeField] private Image lockLobbyButtonImage;
+    [SerializeField] private Sprite lockedSprite;
+    [SerializeField] private Sprite unlockedSprite;
 
     //testing only
     [Header("match settings")]
@@ -169,9 +171,9 @@ public class LobbyPanelController : MonoBehaviour
 
             bool isLocked = lobby.Data != null && lobby.Data.ContainsKey("IsLocked") && lobby.Data["IsLocked"].Value == "True";
 
-            if (lockLobbyButtonText != null)
+            if (lockLobbyButtonImage != null)
             {
-                lockLobbyButtonText.text = isLocked ? "Unlock" : "Lock";
+                lockLobbyButtonImage.sprite = isLocked ? lockedSprite : unlockedSprite;
             }
         }
     }
