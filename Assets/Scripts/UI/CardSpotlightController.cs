@@ -11,7 +11,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
 
     [SerializeField] private GameObject spotlightRoot; [SerializeField] private GameObject cardRevealGroup;
     [SerializeField] private Image spotlightCardImage; [SerializeField] private Sprite defaultCardBackSprite;
-    [SerializeField] private TMP_Text actionTitleText;
+    //[SerializeField] private TMP_Text actionTitleText;
     [SerializeField] private Outline cardGlowOutline;
     //optional but better if set
     //necessary lang para di matakpan player hand
@@ -25,6 +25,11 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
     [SerializeField] private RectTransform canvasRoot;
     [SerializeField] private float shakeDuration = 0.15f;
     [SerializeField] private float shakeMagnitude = 8f;
+
+    [SerializeField] private CanvasGroup headerBannerGroup;
+    [SerializeField] private Image headerAvatar;
+    [SerializeField] private TMP_Text headerPlayerName;
+    [SerializeField] private TMP_Text headerActionText;
 
     private Coroutine activeSpotlightRoutine;
     private bool _skipRequested = false;
@@ -52,13 +57,13 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         if (eventData.clickCount == 2) _skipRequested = true;
     }
 
-    public void PlayCatSpotlight(DetectiveCatType cat, string bannerMessage, Color glowColor, float duration = 2.5f)
+    public void PlayCatSpotlight(DetectiveCatType cat, ulong playerId, string bannerMessage, Color glowColor, float duration = 2.5f)
     {
         Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetLocalHandCardSprite(cat) : null;
-        PlaySpotlight("", bannerMessage, glowColor, duration, false, sprite);
+        PlaySpotlight("", playerId, bannerMessage, glowColor, duration, false, sprite);
     }
 
-    public void PlaySpotlight(string cardId, string bannerMessage, Color glowColor, float duration = 2.4f, bool showBackface = false, Sprite overrideSprite = null)
+    public void PlaySpotlight(string cardId, ulong playerId, string actionMessage, Color glowColor, float duration = 3f, bool showBackface = false, Sprite overrideSprite = null)
     {
         if (activeSpotlightRoutine != null) StopCoroutine(activeSpotlightRoutine);
         _skipRequested = false;
@@ -67,6 +72,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
 
         if (cardRevealGroup != null) cardRevealGroup.SetActive(true);
         if (versusGroup != null) versusGroup.SetActive(false);
+        UpdateHeaderBanner(playerId, actionMessage);
 
         transform.SetAsLastSibling();
         if (keepInFront != null)
@@ -75,9 +81,27 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
                 if (front != null && front.parent == transform.parent) front.SetAsLastSibling();
         }
 
-        activeSpotlightRoutine = StartCoroutine(CardRevealRoutine(cardId, bannerMessage, glowColor, duration, showBackface, overrideSprite));
+        activeSpotlightRoutine = StartCoroutine(CardRevealRoutine(cardId, actionMessage, glowColor, duration, showBackface, overrideSprite));
     }
+    private void UpdateHeaderBanner(ulong playerId, string actionMessage)
+    {
+        if (headerBannerGroup != null)
+        {
+            headerBannerGroup.gameObject.SetActive(true);
+            headerBannerGroup.alpha = 1f;
+        }
 
+        if (GameManager.Instance != null && CardDatabase.Instance != null)
+        {
+            string pName = GameManager.Instance.GetPlayerName(playerId);
+            DetectiveCatType cat = GameManager.Instance.GetPlayerDetective(playerId);
+            Sprite sprite = CardDatabase.Instance.GetIslandProfileSprite(cat);
+
+            if (headerPlayerName != null) headerPlayerName.text = pName;
+            if (headerAvatar != null && sprite != null) headerAvatar.sprite = sprite;
+            if (headerActionText != null) headerActionText.text = actionMessage;
+        }
+    }
     private IEnumerator CardRevealRoutine(string cardId, string bannerMessage, Color glowColor, float duration, bool showBackface, Sprite overrideSprite)
     {
         if (spotlightRoot == null) yield break;
@@ -109,8 +133,6 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
             spotlightCardImage.sprite = cardSprite != null ? cardSprite : defaultCardBackSprite;
             spotlightCardImage.color = new Color(1, 1, 1, 0);
         }
-
-        if (actionTitleText != null) actionTitleText.text = bannerMessage;
         if (cardGlowOutline != null) cardGlowOutline.effectColor = glowColor;
 
         RectTransform cardRT = spotlightCardImage.rectTransform;
@@ -285,6 +307,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
 
     private void HideSpotlight()
     {
+        if (headerBannerGroup != null) headerBannerGroup.gameObject.SetActive(false);
         if (vignetteDimGroup != null) vignetteDimGroup.gameObject.SetActive(false);
         if (spotlightCardImage != null) spotlightCardImage.gameObject.SetActive(false);
         if (versusGroup != null) versusGroup.SetActive(false);

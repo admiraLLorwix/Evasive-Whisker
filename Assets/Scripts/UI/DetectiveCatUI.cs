@@ -1,155 +1,88 @@
-﻿using UnityEngine;
-using UnityEngine.EventSystems;
+﻿using EvasiveWhisker.Cards;
 using TMPro;
 using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.UI;
 
-public class DetectiveCatUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class DetectiveCatUI : MonoBehaviour
 {
     public static DetectiveCatUI Instance { get; private set; }
-
-    [SerializeField] private TMP_Text badgeText;
-    [SerializeField] private GameObject readyGlow;
-    [SerializeField] private Color readyColor = new Color(0.3f, 1f, 0.4f, 1f);
-    [SerializeField] private Color idleColor = new Color(1f, 1f, 1f, 0.85f);
+    [SerializeField] private Image avatarImage;
+    [SerializeField] private TMP_Text playerNameText; [SerializeField] private TMP_Text catNameText;
+    [SerializeField] private Button profileCardButton; 
+    [SerializeField] private Button activateButton;
+    [SerializeField] private TMP_Text activateButtonText;
 
     private bool hasCat;
     private DetectiveCatType cat;
     private int lastUsedRound = 0;
-    private RectTransform rectTransform;
-    private Canvas canvas;
-    private Vector2 originalPosition;
-    private Transform originalParent;
-    private int originalSiblingIndex;
-    private bool dragging;
-    private bool reactionActive;
-    private string lastBadge;
-    private bool lastReady;
+    private string localPlayerName = "Detective";
 
     private void Awake()
     {
         Instance = this;
-        rectTransform = GetComponent<RectTransform>();
-        canvas = GetComponentInParent<Canvas>();
-        if (readyGlow != null) readyGlow.SetActive(false);
-        if (badgeText != null) badgeText.gameObject.SetActive(false);
+
+        if (activateButton != null) activateButton.onClick.AddListener(OnActivateClicked);
+        if (profileCardButton != null) profileCardButton.onClick.AddListener(OnProfileCardClicked);
     }
 
-    public void SetCat(DetectiveCatType catType)
+    public void SetCat(DetectiveCatType catType, string playerName)
     {
         cat = catType;
         hasCat = true;
         lastUsedRound = 0;
-    }
+        localPlayerName = playerName;
 
+        if (playerNameText != null) playerNameText.text = playerName;
+        if (catNameText != null) catNameText.text = DetectiveCatRules.DisplayName(cat);
+        if (activateButtonText != null) activateButtonText.text = "ACTIVATE";
+
+        if (avatarImage != null && CardDatabase.Instance != null)
+        {
+            Sprite sprite = CardDatabase.Instance.GetIslandProfileSprite(cat);
+            if (sprite != null) avatarImage.sprite = sprite;
+        }
+    }
     public void SetLastUsedRound(int round) => lastUsedRound = round;
-    public void BeginReaction() => reactionActive = true;
-    public void EndReaction() => reactionActive = false;
-    private bool InUsablePhase()
+    private void OnActivateClicked()
     {
-        GameManager gm = GameManager.Instance;
-        if (gm == null || NetworkManager.Singleton == null) return false;
-        if (gm.ActiveTurnPlayerId.Value != NetworkManager.Singleton.LocalClientId) return false;
-
-        switch (DetectiveCatRules.Timing(cat))
-        {
-            case CatTiming.DrawPhase: return gm.CurrentState.Value == GameState.PlayerTurn_Draw;
-            case CatTiming.ActionPhase: return gm.CurrentState.Value == GameState.PlayerTurn_Action;
-            default: return false;
-        }
-    }
-    private bool EvaluateReady(out string badge)
-    {
-        badge = null;
-        if (!hasCat || GameManager.Instance == null) return false;
-
-        if (reactionActive)
-        {
-            badge = "REACT - drag up";
-            return true;
-        }
-
+        if (!hasCat || GameManager.Instance == null) return;
         int round = GameManager.Instance.CurrentRound.Value;
         string reason = DetectiveCatRules.UnavailableReason(cat, round, lastUsedRound);
+        bool isMyTurn = NetworkManager.Singleton.LocalClientId == GameManager.Instance.ActiveTurnPlayerId.Value;
+
+        if (DetectiveCatRules.Timing(cat) == CatTiming.Passive)
+        {
+            reason = "This cat is passive and triggers automatically.";
+        }
+        else if (reason == null && isMyTurn)
+        {
+            if (DetectiveCatRules.Timing(cat) == CatTiming.DrawPhase && GameManager.Instance.CurrentState.Value != GameState.PlayerTurn_Draw)
+                reason = "Can only be used during your Draw Phase.";
+            else if (DetectiveCatRules.Timing(cat) == CatTiming.ActionPhase && GameManager.Instance.CurrentState.Value != GameState.PlayerTurn_Action)
+                reason = "Can only be used during your Action Phase.";
+        }
+        else if (reason == null && !isMyTurn)
+        {
+            reason = "It is not your turn.";
+        }
+
         if (reason != null)
         {
-            badge = DetectiveCatRules.Timing(cat) == CatTiming.Passive ? "Passive" : reason;
-            return false;
-        }
-
-        if (!InUsablePhase())
-        {
-            badge = DetectiveCatRules.PhaseHint(cat);
-            return false;
-        }
-
-        badge = "READY - drag up";
-        return true;
-    }
-    private void Update()
-    {
-        bool ready = EvaluateReady(out string badge);
-        if (ready == lastReady && badge == lastBadge) return;
-        lastReady = ready;
-        lastBadge = badge;
-
-        if (readyGlow != null) readyGlow.SetActive(ready);
-        if (badgeText != null)
-        {
-            badgeText.gameObject.SetActive(!string.IsNullOrEmpty(badge));
-            badgeText.text = badge;
-            badgeText.color = ready ? readyColor : idleColor;
-        }
-    }
-
-
-
-
-    public void OnBeginDrag(PointerEventData eventData)
-    {
-        if (!EvaluateReady(out string badge))
-        {
-            eventData.pointerDrag = null;
-            if (!string.IsNullOrEmpty(badge))
-                TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>{DetectiveCatRules.DisplayName(cat)}: {badge}</color>", 2.5f);
+            TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>{reason}</color>", 3f);
             return;
         }
-
-        dragging = true;
-        originalPosition = rectTransform.anchoredPosition;
-        originalParent = transform.parent;
-        originalSiblingIndex = transform.GetSiblingIndex();
-        if (canvas != null) transform.SetParent(canvas.transform, true);
+        GameManager.Instance.ActivateDetectiveServerRpc();
     }
-    public void OnDrag(PointerEventData eventData)
+
+    private void OnProfileCardClicked()
     {
-        if (!dragging || canvas == null) return;
-        rectTransform.anchoredPosition += eventData.delta / canvas.scaleFactor;
-    }
-    public void OnEndDrag(PointerEventData eventData)
-    {
-        if (!dragging) return;
-        dragging = false;
-
-        bool draggedUp = transform.position.y > Screen.height * 0.35f;
-        ReturnHome();
-
-        if (!draggedUp) return;
-
-        if (reactionActive)
+        if (OpponentInfoModal.Instance != null && GameManager.Instance != null)
         {
-            reactionActive = false;
-            GameManager.Instance?.SubmitCatReactionServerRpc();
+            ulong myId = NetworkManager.Singleton.LocalClientId;
+            int myCardCount = PlayerHandController.Instance != null ? PlayerHandController.Instance.HandCount : 0;
+            string myActiveAbility = GameManager.Instance.GetPlayerActiveAbilityId(myId);
+            OpponentInfoModal.Instance.ShowOpponentInfoModal(myId, localPlayerName, cat, myCardCount, myActiveAbility);
         }
-        else
-        {
-            GameManager.Instance?.ActivateDetectiveServerRpc();
-        }
-    }
-    private void ReturnHome()
-    {
-        if (originalParent == null) return;
-        transform.SetParent(originalParent, true);
-        transform.SetSiblingIndex(originalSiblingIndex);
-        rectTransform.anchoredPosition = originalPosition;
     }
 }

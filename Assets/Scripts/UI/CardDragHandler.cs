@@ -132,8 +132,7 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             {
                 string playedId = CardData.CardId;
 
-                if (CardEffectRegistry.OccupiesSlot(playedId) &&
-                    PlayerHandController.Instance != null && PlayerHandController.Instance.IsActiveAbilitySlotOccupied)
+                if (CardEffectRegistry.OccupiesSlot(playedId) && ActiveAbilitySlotUI.Instance != null && ActiveAbilitySlotUI.Instance.HasAbility)
                 {
                     ReturnToHand();
                     TurnActionUI.Instance?.ShowTemporaryNotification("<color=red>Your Active Ability slot is full</color>", 2.5f);

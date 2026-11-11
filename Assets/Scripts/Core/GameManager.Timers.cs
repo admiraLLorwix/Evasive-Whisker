@@ -290,14 +290,13 @@ public partial class GameManager
     [ClientRpc]
     private void ShowDecisionTimerClientRpc(ulong playerId, string playerName, float seconds)
     {
-        bool isMe = NetworkManager.Singleton != null && NetworkManager.Singleton.LocalClientId == playerId;
-        DecisionTimerUI.Instance?.Show(isMe, playerName, seconds);
+        RoundStatusUI.Instance?.ShowTimer(seconds);
     }
 
     [ClientRpc]
     private void HideDecisionTimerClientRpc()
     {
-        DecisionTimerUI.Instance?.Hide();
+        RoundStatusUI.Instance?.HideTimer();
     }
     private List<ulong> GetEligibleOpponents(ulong playerId, bool requireCards)
     {

@@ -83,7 +83,7 @@ public partial class GameManager
         {
             case DetectiveCatType.AgentPutol:
                 MarkCatUsed(defender);
-                BroadcastCatSpotlightClientRpc(cat, $"{defenderName} uses {catName} - the reveal is blocked!", CounterplayResultWait);
+                BroadcastCatSpotlightClientRpc(cat, defender, $"{defenderName} uses {catName} - the reveal is blocked!", CounterplayResultWait);
                 yield return new WaitForSeconds(CounterplayResultWait);
                 req.OnCancelled?.Invoke(false);
                 yield break;
@@ -116,7 +116,7 @@ public partial class GameManager
         ulong defender = req.Defender;
         string defenderName = GetPlayerName(defender);
 
-        BroadcastCatSpotlightClientRpc(DetectiveCatType.SleightOfPawShadow, $"{defenderName} uses Sleight of Paw Shadow!", CatSpotlightSeconds);
+        BroadcastCatSpotlightClientRpc(DetectiveCatType.SleightOfPawShadow, defender, $"{defenderName} uses Sleight of Paw Shadow!", CatSpotlightSeconds);
         yield return new WaitForSeconds(CatSpotlightSeconds);
 
         List<NetworkCard> hand = playerHands[defender];
@@ -163,7 +163,7 @@ public partial class GameManager
         ulong defender = req.Defender;
         string defenderName = GetPlayerName(defender);
 
-        BroadcastCatSpotlightClientRpc(DetectiveCatType.DecoyMokang, $"{defenderName} uses Decoy Mokang!", CatSpotlightSeconds);
+        BroadcastCatSpotlightClientRpc(DetectiveCatType.DecoyMokang, defender, $"{defenderName} uses Decoy Mokang!", CatSpotlightSeconds);
         yield return new WaitForSeconds(CatSpotlightSeconds);
 
         List<ulong> targets = GetRedirectTargets(req);
@@ -318,14 +318,14 @@ public partial class GameManager
     {
         StealManager.Instance?.EndIslandPick();
     }
-
     [ClientRpc]
-    private void BroadcastCatSpotlightClientRpc(DetectiveCatType cat, string message, float duration)
+    private void BroadcastCatSpotlightClientRpc(DetectiveCatType cat, ulong playerId, string message, float duration)
     {
         Color glow = new Color(1f, 0.6f, 0.2f, 1f);
         CardSpotlightController spotlight = CardSpotlightController.Instance != null
             ? CardSpotlightController.Instance
             : FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
-        spotlight?.PlayCatSpotlight(cat, message, glow, duration);
+
+        spotlight?.PlayCatSpotlight(cat, playerId, message, glow, duration);
     }
 }

@@ -8,8 +8,8 @@ public class TurnActionUI : MonoBehaviour
 
     [Header("hud")]
     [SerializeField] private TMP_Text instructionText;
-    [SerializeField] private TMP_Text roundText;
-    [SerializeField] private TMP_Text turnText;
+    //[SerializeField] private TMP_Text roundText;
+    //[SerializeField] private TMP_Text turnText;
 
     [Header("action btns")]
     [SerializeField] private GameObject actionChoiceModal;
@@ -37,14 +37,9 @@ public class TurnActionUI : MonoBehaviour
         HideAllActionPanels();
     }
 
-    public void UpdateRoundDisplay(int roundNumber)
-    {
-        if (roundText != null) roundText.text = $"ROUND {roundNumber} / 10";
-    }
     public void SetInstructionText(string instruction, string turnLabel = null)
     {
         if (instructionText != null) instructionText.text = instruction;
-        if (turnLabel != null && turnText != null) turnText.text = turnLabel;
     }
     public void ShowTemporaryNotification(string message, float duration = 3.5f)
     {
@@ -65,14 +60,12 @@ public class TurnActionUI : MonoBehaviour
 
         if (isMyTurn)
         {
-            if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
             if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card";
             UIFocusManager.Instance?.FocusOn(FocusTarget.DrawDeck);
             DrawDeckClick.Instance?.SetGlow(true);
         }
         else
         {
-            if (turnText != null) turnText.text = $"{activePlayerName}'s Turn";
             if (instructionText != null) instructionText.text = $"Waiting for {activePlayerName} to draw...";
             UIFocusManager.Instance?.ClearFocus();
             DrawDeckClick.Instance?.SetGlow(false); 
@@ -85,9 +78,6 @@ public class TurnActionUI : MonoBehaviour
         DrawDeckClick.Instance?.SetGlow(false);
         UIFocusManager.Instance?.FocusOn(FocusTarget.Hand);
 
-        if (turnText != null)
-            turnText.text = "<color=red><b>DISCARD REQUIRED</b></color>";
-
         if (instructionText != null)
             instructionText.text = $"<color=red>HAND LIMIT EXCEEDED ({currentCount}/{maxLimit}) DRAG A CARD UP TO DISCARD IT</color>";
     }
@@ -99,7 +89,6 @@ public class TurnActionUI : MonoBehaviour
 
         DrawDeckClick.Instance?.SetGlow(false);
 
-        if (turnText != null) turnText.text = "<color=green>YOUR TURN</color>";
         if (instructionText != null)
         {
             instructionText.text = abilityOnly ? "Second action: you can only play an Ability now"

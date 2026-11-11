@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Netcode;
 using System.Linq;
+using Unity.Services.Lobbies.Models;
+
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -115,7 +117,6 @@ public partial class GameManager : NetworkBehaviour
         {
             Debug.Log("<color=blue>[dev] ff to Round 10</color>");
             CurrentRound.Value = 10;
-            if (TurnActionUI.Instance != null) TurnActionUI.Instance.UpdateRoundDisplay(10);
             AdvanceToNextTurn();
         }
         if (keyboard.f3Key.wasPressedThisFrame)
@@ -362,9 +363,9 @@ public partial class GameManager : NetworkBehaviour
             opponentIsland.SetDetectiveCat(catType);
         }
 
-        if (playerId == NetworkManager.Singleton.LocalClientId && PlayerHandController.Instance != null)
+        if (playerId == NetworkManager.Singleton.LocalClientId)
         {
-            PlayerHandController.Instance.SetLocalDetectiveCat(catType);
+            DetectiveCatUI.Instance?.SetCat(catType, GetPlayerName(playerId));
         }
     }
 
@@ -445,10 +446,13 @@ public partial class GameManager : NetworkBehaviour
     private void UpdateTurnUIClientRpc(ulong activePlayerId, string activePlayerName, int roundNumber)
     {
         bool isMe = NetworkManager.Singleton.LocalClientId == activePlayerId;
+        if (RoundStatusUI.Instance != null)
+        {
+            RoundStatusUI.Instance.UpdateTurnUI(activePlayerId, activePlayerName, roundNumber);
+        }
 
         if (TurnActionUI.Instance != null)
         {
-            TurnActionUI.Instance.UpdateRoundDisplay(roundNumber);
             TurnActionUI.Instance.ShowDrawPrompt(isMe, activePlayerName);
         }
         else
@@ -504,7 +508,7 @@ public partial class GameManager : NetworkBehaviour
         {
             Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { playerId } }
         };
-        ShowDrawSpotlightClientRpc(card.CardId.ToString(), ownMessage, false, playerParams);
+        ShowDrawSpotlightClientRpc(card.CardId.ToString(), playerId, ownMessage, false, playerParams);
 
 
         List<ulong> spectatorIds = new List<ulong>();
@@ -519,7 +523,7 @@ public partial class GameManager : NetworkBehaviour
             {
                 Send = new ClientRpcSendParams { TargetClientIds = spectatorIds.ToArray() }
             };
-            ShowDrawSpotlightClientRpc(publicCard ? card.CardId.ToString() : "", othersMessage, !publicCard, spectatorParams);
+            ShowDrawSpotlightClientRpc(publicCard ? card.CardId.ToString() : "", playerId, othersMessage, !publicCard, spectatorParams);
         }
 
         UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
@@ -527,19 +531,19 @@ public partial class GameManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void ShowDrawSpotlightClientRpc(string cardId, string message, bool isSpectator, ClientRpcParams clientRpcParams = default)
+    private void ShowDrawSpotlightClientRpc(string cardId, ulong drawerId, string message, bool isSpectator, ClientRpcParams clientRpcParams = default)
     {
         DrawDeckClick.Instance?.SetGlow(false);
         if (CardSpotlightController.Instance != null)
         {
             Color glow = isSpectator ? new Color(0.6f, 0.4f, 1f, 1f) : new Color(0.2f, 1f, 0.4f, 1f);
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 2.5f, isSpectator);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, drawerId, message, glow, 3.0f, isSpectator);
         }
     }
 
     private IEnumerator ResolveDrawAfterSpotlightRoutine(ulong drawerId, NetworkCard drawnCard)
     {
-        yield return new WaitForSeconds(2.8f);
+        yield return new WaitForSeconds(3.2f);
 
         playerHands[drawerId].Add(drawnCard);
 
@@ -671,11 +675,27 @@ public partial class GameManager : NetworkBehaviour
     [ClientRpc]
     private void SetPlayerActiveAbilityClientRpc(ulong playerId, string cardId)
     {
-        if (playerId == NetworkManager.Singleton.LocalClientId && PlayerHandController.Instance != null)
+        if (playerId == NetworkManager.Singleton.LocalClientId)
         {
-            PlayerHandController.Instance.SetActiveAbility(cardId);
-        }
+            if (CardFlightManager.Instance != null && ActiveAbilitySlotUI.Instance != null)
+            {
+                Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(cardId) : null;
 
+                Vector3 startPos = CardSpotlightController.Instance != null
+                    ? ((RectTransform)CardSpotlightController.Instance.transform).position
+                    : new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
+
+                Vector3 targetPos = ActiveAbilitySlotUI.Instance.transform.position;
+                CardFlightManager.Instance.FlyCard(startPos, targetPos, sprite, () =>
+                {
+                    ActiveAbilitySlotUI.Instance?.SetAbility(cardId);
+                });
+            }
+            else
+            {
+                ActiveAbilitySlotUI.Instance?.SetAbility(cardId);
+            }
+        }
         var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
         if (island != null)
         {
@@ -708,34 +728,35 @@ public partial class GameManager : NetworkBehaviour
         UpdateOpponentHandCountClientRpc(senderId, playerHands[senderId].Count);
 
         string actorName = GetPlayerName(senderId);
-        float spotlightSeconds = (targetId != NoTarget && card.CardId != "BombasticCatEyes") ? ReactionWindowSeconds : 3.5f;
-        BroadcastAbilitySpotlightClientRpc(card.CardId.ToString(), $"{actorName} played {card.CardId}!", spotlightSeconds);
-
-
-        StartCoroutine(ResolveAbilityAfterSpotlightRoutine(senderId, targetId, card));
-    }
-
-    [ClientRpc]
-    private void BroadcastAbilitySpotlightClientRpc(string cardId, string message, float duration)
-    {
-        Color glow = new Color(1f, 0.85f, 0.2f, 1f);
-        if (CardSpotlightController.Instance != null)
+        string actionMessage;
+        if (targetId != NoTarget && card.CardId != "BombasticCatEyes")
         {
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, duration);
+            string targetName = GetPlayerName(targetId);
+            actionMessage = $"{actorName} played {card.CardId} on {targetName}!";
         }
         else
         {
-            var spotlight = FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
-            spotlight?.PlaySpotlight(cardId, message, glow, duration);
-            //(cardId, message, new Color(1f, 0.85f, 0.2f, 1f), 2.5f);
+            actionMessage = $"{actorName} played {card.CardId}!";
         }
+
+        float spotlightSeconds = (targetId != NoTarget && card.CardId != "BombasticCatEyes") ? ReactionWindowSeconds : 3.5f;
+
+        BroadcastAbilitySpotlightClientRpc(card.CardId.ToString(), senderId, actionMessage, spotlightSeconds);
+
+        StartCoroutine(ResolveAbilityAfterSpotlightRoutine(senderId, targetId, card));
+    }
+    [ClientRpc]
+    private void BroadcastAbilitySpotlightClientRpc(string cardId, ulong actorId, string message, float duration)
+    {
+        Color glow = new Color(1f, 0.85f, 0.2f, 1f);
+        CardSpotlightController.Instance?.PlaySpotlight(cardId, actorId, message, glow, 3.0f);
     }
 
     private IEnumerator ResolveAbilityAfterSpotlightRoutine(ulong senderId, ulong targetId, NetworkCard card)
     {
         if (targetId == NoTarget || card.CardId == "BombasticCatEyes")
         {
-            yield return new WaitForSeconds(3f);
+            yield return new WaitForSeconds(3.2f);
             RunAbilityEffect(senderId, targetId, card);
             yield break;
         }
@@ -813,9 +834,9 @@ public partial class GameManager : NetworkBehaviour
     [ClientRpc]
     private void ClearPlayerActiveAbilityClientRpc(ulong playerId)
     {
-        if (playerId == NetworkManager.Singleton.LocalClientId && PlayerHandController.Instance != null)
+        if (playerId == NetworkManager.Singleton.LocalClientId)
         {
-            PlayerHandController.Instance.ClearActiveAbility();
+            ActiveAbilitySlotUI.Instance?.ClearAbility();
         }
 
         var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
@@ -836,12 +857,12 @@ public partial class GameManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void ShowStealSpotlightClientRpc(string cardId, string message, bool isSpectator, float duration, ClientRpcParams clientRpcParams = default)
+    private void ShowStealSpotlightClientRpc(string cardId, ulong playerId, string message, bool isSpectator, float duration, ClientRpcParams clientRpcParams = default)
     {
         if (CardSpotlightController.Instance != null)
         {
             Color glow = isSpectator ? new Color(0.6f, 0.4f, 1f, 1f) : new Color(0f, 0.85f, 1f, 1f);
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, duration, isSpectator);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, playerId, message, glow, duration, isSpectator);
         }
     }
     [ClientRpc]
@@ -942,12 +963,10 @@ public partial class GameManager : NetworkBehaviour
     //for broadcasting to client
 
     [ClientRpc]
-    private void BroadcastTrapSpotlightClientRpc(string cardId, string message, string thiefName, string victimName)
+    private void BroadcastTrapSpotlightClientRpc(string cardId, ulong thiefId, string message, string thiefName, string victimName)
     {
-        if (CardSpotlightController.Instance != null)
-        {
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, new Color(1f, 0.15f, 0.15f, 1f), 3.5f);
-        }
+        Color glow = new Color(1f, 0.15f, 0.15f, 1f);
+        CardSpotlightController.Instance?.PlaySpotlight(cardId, thiefId, message, glow, 3.0f);
     }
     [ClientRpc]
     private void PlayVersusSpotlightClientRpc(ulong attackerId, ulong victimId, string actionText)

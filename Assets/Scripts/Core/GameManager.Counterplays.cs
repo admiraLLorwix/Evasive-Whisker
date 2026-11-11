@@ -61,12 +61,12 @@ public partial class GameManager
         {
             string reason = HasTrapImmunity(thiefId) ? "Nine Lives" : "Accusation Protection";
             Debug.Log($"<color=green>[immunity] {thiefName} was immune to traps ({reason}), {stolenCard.CardId} will be discarded</color>");
-            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), $"TRAP IMMUNITY: {stolenCard.CardId} ({reason})", thiefName, victimName);
+            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP IMMUNITY: {stolenCard.CardId} ({reason})", thiefName, victimName);
         }
         else
         {
             Debug.Log($"<color=red>[trap] Thief {thiefName} triggered {stolenCard.CardId} from {victimName}</color>");
-            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), $"TRAP TRIGGERED: {stolenCard.CardId}", thiefName, victimName);
+            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP TRIGGERED: {stolenCard.CardId}", thiefName, victimName);
         }
 
         StartCoroutine(ResolveTrapAfterSpotlightRoutine(thiefId, victimId, stolenCard, thiefImmune, onDone));

@@ -11,10 +11,6 @@ public class PlayerHandController : MonoBehaviour
 
     [SerializeField] private Transform handCardContainer;
     [SerializeField] private GameObject handCardPrefab;
-
-    [SerializeField] private Image myDetectiveSlot;
-    [SerializeField] private Image myActiveAbilitySlot;
-
     [Header("confirm modl")]
     [SerializeField] private GameObject discardConfirmModal;
     [SerializeField] private TMP_Text confirmPromptText;
@@ -44,7 +40,7 @@ public class PlayerHandController : MonoBehaviour
     public bool IsValidReactionCard(NetworkCard card) => reactionValidIds != null && reactionValidIds.Contains(card.CardId);
 
     private Coroutine reorderRoutine;
-    public bool IsActiveAbilitySlotOccupied => myActiveAbilitySlot != null && myActiveAbilitySlot.gameObject.activeSelf;
+    //public bool IsActiveAbilitySlotOccupied => myActiveAbilitySlot != null && myActiveAbilitySlot.gameObject.activeSelf;
     private Dictionary<GameObject, Coroutine> activePulses = new Dictionary<GameObject, Coroutine>();
 
     private void OnDisable()
@@ -56,60 +52,60 @@ public class PlayerHandController : MonoBehaviour
     {
         Instance = this;
 
-        if (myActiveAbilitySlot != null) myActiveAbilitySlot.gameObject.SetActive(false);
+        //if (myActiveAbilitySlot != null) myActiveAbilitySlot.gameObject.SetActive(false);
 
         if (confirmDiscardBtn != null) confirmDiscardBtn.onClick.AddListener(OnConfirmDiscardClicked);
         if (cancelDiscardBtn != null) cancelDiscardBtn.onClick.AddListener(OnCancelDiscardClicked);
         if (discardConfirmModal != null) discardConfirmModal.SetActive(false);
     }
 
-    public void SetLocalDetectiveCat(DetectiveCatType catType)
-    {
-        Sprite sprite = CardDatabase.Instance != null
-            ? CardDatabase.Instance.GetLocalHandCardSprite(catType)
-            : null;
+    //public void SetLocalDetectiveCat(DetectiveCatType catType)
+    //{
+    //    Sprite sprite = CardDatabase.Instance != null
+    //        ? CardDatabase.Instance.GetLocalHandCardSprite(catType)
+    //        : null;
 
-        if (sprite != null && myDetectiveSlot != null)
-        {
-            myDetectiveSlot.sprite = sprite;
-            myDetectiveSlot.color = Color.white;
-            myDetectiveSlot.gameObject.SetActive(true);
-        }
+    //    if (sprite != null && myDetectiveSlot != null)
+    //    {
+    //        myDetectiveSlot.sprite = sprite;
+    //        myDetectiveSlot.color = Color.white;
+    //        myDetectiveSlot.gameObject.SetActive(true);
+    //    }
 
-        DetectiveCatUI catUi = DetectiveCatUI.Instance != null ? DetectiveCatUI.Instance 
-            : FindAnyObjectByType<DetectiveCatUI>(FindObjectsInactive.Include);
-        if (catUi != null) catUi.SetCat(catType);
-    }
+    //    DetectiveCatUI catUi = DetectiveCatUI.Instance != null ? DetectiveCatUI.Instance 
+    //        : FindAnyObjectByType<DetectiveCatUI>(FindObjectsInactive.Include);
+    //    if (catUi != null) catUi.SetCat(catType);
+    //}
 
-    public void SetActiveAbility(string cardId)
-    {
-        if (myActiveAbilitySlot == null) return;
+    //public void SetActiveAbility(string cardId)
+    //{
+    //    if (myActiveAbilitySlot == null) return;
 
-        Sprite sprite = CardDatabase.Instance != null
-            ? CardDatabase.Instance.GetCardSprite(cardId)
-            : null;
+    //    Sprite sprite = CardDatabase.Instance != null
+    //        ? CardDatabase.Instance.GetCardSprite(cardId)
+    //        : null;
 
-        if (sprite != null)
-        {
-            myActiveAbilitySlot.sprite = sprite;
-            myActiveAbilitySlot.color = Color.white;
-            myActiveAbilitySlot.gameObject.SetActive(true);
-            Debug.Log($"<color=green>[Active Ability] displayed {cardId}</color>");
-        }
-        else
-        {
-            Debug.LogWarning($"[Active Ability] no sprite: {cardId}");
-        }
-    }
+    //    if (sprite != null)
+    //    {
+    //        myActiveAbilitySlot.sprite = sprite;
+    //        myActiveAbilitySlot.color = Color.white;
+    //        myActiveAbilitySlot.gameObject.SetActive(true);
+    //        Debug.Log($"<color=green>[Active Ability] displayed {cardId}</color>");
+    //    }
+    //    else
+    //    {
+    //        Debug.LogWarning($"[Active Ability] no sprite: {cardId}");
+    //    }
+    //}
 
-    public void ClearActiveAbility()
-    {
-        if (myActiveAbilitySlot != null)
-        {
-            myActiveAbilitySlot.sprite = null;
-            myActiveAbilitySlot.gameObject.SetActive(false);
-        }
-    }
+    //public void ClearActiveAbility()
+    //{
+    //    if (myActiveAbilitySlot != null)
+    //    {
+    //        myActiveAbilitySlot.sprite = null;
+    //        myActiveAbilitySlot.gameObject.SetActive(false);
+    //    }
+    //}
 
     public void SetHand(NetworkCard[] cards)
     {
@@ -532,7 +528,7 @@ public class PlayerHandController : MonoBehaviour
 
     public void EndReaction()
     {
-        DetectiveCatUI.Instance?.EndReaction();
+        //DetectiveCatUI.Instance?.EndReaction();
         if (reactionValidIds == null) return;
         reactionValidIds = null;
         SetAllCardsHighlighted(false);
@@ -546,7 +542,7 @@ public class PlayerHandController : MonoBehaviour
     public int GetCustodyCardCount() => currentCards.FindAll(c => c.Type == CardType.Custody).Count;
     public bool HasAbilityCards() => currentCards.Exists(c => c.Type == CardType.Ability);
     public bool HasPlayableAbilityCards() => currentCards.Exists(c =>
-        c.Type == CardType.Ability && !(CardEffectRegistry.OccupiesSlot(c.CardId) && IsActiveAbilitySlotOccupied));
+    c.Type == CardType.Ability && !(CardEffectRegistry.OccupiesSlot(c.CardId) && (ActiveAbilitySlotUI.Instance != null && ActiveAbilitySlotUI.Instance.HasAbility)));
 
 
     private void StartCardPulse(GameObject cardObj)

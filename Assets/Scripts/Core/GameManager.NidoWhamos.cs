@@ -53,7 +53,7 @@ public partial class GameManager
 
         string askerName = GetPlayerName(askerId);
         string targetName = GetPlayerName(targetId);
-        BroadcastCatSpotlightClientRpc(DetectiveCatType.DetectiveNido, $"{askerName} uses Detective Nido on {targetName}!", CatSpotlightSeconds);
+        BroadcastCatSpotlightClientRpc(DetectiveCatType.DetectiveNido, askerId, $"{askerName} uses Detective Nido on {targetName}!", CatSpotlightSeconds);
         yield return new WaitForSeconds(CatSpotlightSeconds);
 
         BeginBombastic(askerId, targetId, default, () => AfterAction(askerId, TurnActionKind.Ability),
@@ -91,7 +91,7 @@ public partial class GameManager
 
         string thiefName = GetPlayerName(thiefId);
         Debug.Log($"<color=cyan>[whamos] {thiefName} disarmed {trap.CardId}</color>");
-        BroadcastCatSpotlightClientRpc(DetectiveCatType.BombSquadWhamos, $"{thiefName} uses Bomb Squad Whamos - {trap.CardId} is disarmed!", ReactionResultSeconds);
+        BroadcastCatSpotlightClientRpc(DetectiveCatType.BombSquadWhamos, thiefId, $"{thiefName} uses Bomb Squad Whamos - {trap.CardId} is disarmed!", ReactionResultSeconds);
         yield return new WaitForSeconds(ReactionResultSeconds);
 
         onDone?.Invoke();

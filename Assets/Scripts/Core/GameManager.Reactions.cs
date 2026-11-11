@@ -96,7 +96,7 @@ public partial class GameManager
 
         string defenderName = GetPlayerName(req.Defender);
         Debug.Log($"<color=red>[reaction] {defenderName} counters with {pending.CounterCard.CardId}</color>");
-        BroadcastCounterplaySpotlightClientRpc(pending.CounterCard.CardId, $"{defenderName} played {pending.CounterCard.CardId}!", CounterplayResultWait);
+        BroadcastCounterplaySpotlightClientRpc(pending.CounterCard.CardId, req.Defender, $"{defenderName} played {pending.CounterCard.CardId}!", CounterplayResultWait);
         yield return new WaitForSeconds(CounterplayResultWait);
 
         counteredReaction = pending;
@@ -131,10 +131,10 @@ public partial class GameManager
         ReactionReveal r = req.Reveal;
         string cardId = r.Card.CardId;
 
-        ShowStealSpotlightClientRpc(result ? cardId : "", result ? r.AttackerResultMsg : r.AttackerWindowMsg,
+        ShowStealSpotlightClientRpc(result ? cardId : "", req.Attacker, result ? r.AttackerResultMsg : r.AttackerWindowMsg,
             !result, seconds, SingleTarget(req.Attacker));
 
-        ShowStealSpotlightClientRpc(cardId, result ? r.DefenderResultMsg : r.DefenderWindowMsg,
+        ShowStealSpotlightClientRpc(cardId, req.Defender, result ? r.DefenderResultMsg : r.DefenderWindowMsg,
             false, seconds, SingleTarget(req.Defender));
 
         var spectatorIds = new List<ulong>();
@@ -144,7 +144,7 @@ public partial class GameManager
         }
         if (spectatorIds.Count > 0)
         {
-            ShowStealSpotlightClientRpc("", result ? r.SpectatorResultMsg : r.SpectatorWindowMsg, true, seconds,
+            ShowStealSpotlightClientRpc("", req.Defender, result ? r.SpectatorResultMsg : r.SpectatorWindowMsg, true, seconds,
                 new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = spectatorIds.ToArray() } });
         }
     }
@@ -220,7 +220,7 @@ public partial class GameManager
     private void OpenReactionPromptClientRpc(string description, NetworkCard[] legalCards, float seconds, string catName, ClientRpcParams clientRpcParams = default)
     {
         PlayerHandController.Instance?.BeginReaction(description, legalCards, seconds, catName);
-        if (!string.IsNullOrEmpty(catName)) DetectiveCatUI.Instance?.BeginReaction();
+        //if (!string.IsNullOrEmpty(catName)) DetectiveCatUI.Instance?.BeginReaction();
     }
 
     [ClientRpc]
@@ -228,20 +228,19 @@ public partial class GameManager
     {
         PlayerHandController.Instance?.EndReaction();
     }
-
     [ClientRpc]
-    private void BroadcastCounterplaySpotlightClientRpc(string cardId, string message, float duration)
+    private void BroadcastCounterplaySpotlightClientRpc(string cardId, ulong playerId, string message, float duration)
     {
         Color glow = new Color(1f, 0.3f, 0.3f, 1f);
 
         if (CardSpotlightController.Instance != null)
         {
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, duration);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, playerId, message, glow, duration);
         }
         else
         {
             var spotlight = FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
-            spotlight?.PlaySpotlight(cardId, message, glow, duration);
+            spotlight?.PlaySpotlight(cardId, playerId, message, glow, duration);
         }
     }
 }

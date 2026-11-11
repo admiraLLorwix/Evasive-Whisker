@@ -10,26 +10,24 @@ public class CardVisualInteraction : MonoBehaviour,
 
     [SerializeField] private float maxTiltAngle = 8f;
     [SerializeField] private float arcDropAmount = 14f;
-
     [SerializeField] private float hoverScale = 1.15f;
     [SerializeField] private float hoverLiftY = 35f;
-
     [SerializeField] private float inspectScale = 1.6f;
-    [SerializeField] private float holdDurationToInspect = 0.25f; [SerializeField] private float inspectYOffset = -100f;
+    [SerializeField] private float holdDurationToInspect = 0.25f;
+    [SerializeField] private float inspectYOffset = -100f;
 
     private Vector2 targetPos = Vector2.zero;
     private Quaternion targetRot = Quaternion.identity;
     private Vector3 targetScale = Vector3.one;
-
     private Vector2 defaultArcPos = Vector2.zero;
     private Quaternion defaultArcRot = Quaternion.identity;
-
     private bool isHovered = false;
     private bool isHolding = false;
     private bool isInspecting = false;
     private float holdTimer = 0f;
-    private Canvas cardCanvas;
+    private int originalSiblingIndex;
     private Canvas mainGameCanvas;
+    private Canvas cardCanvas;
 
     private void Awake()
     {
@@ -44,9 +42,7 @@ public class CardVisualInteraction : MonoBehaviour,
             cardCanvas = gameObject.AddComponent<Canvas>();
             gameObject.AddComponent<GraphicRaycaster>();
         }
-        cardCanvas.overrideSorting = true;
-        cardCanvas.sortingOrder = 10;
-
+        cardCanvas.overrideSorting = false;
     }
 
     private void Update()
@@ -118,6 +114,7 @@ public class CardVisualInteraction : MonoBehaviour,
     {
         isHolding = true;
         holdTimer = 0f;
+        originalSiblingIndex = transform.GetSiblingIndex();
     }
 
     public void OnPointerUp(PointerEventData eventData)
@@ -128,7 +125,8 @@ public class CardVisualInteraction : MonoBehaviour,
         if (isInspecting)
         {
             isInspecting = false;
-            cardCanvas.sortingOrder = 10;
+            transform.SetSiblingIndex(originalSiblingIndex);
+            if (cardCanvas != null) cardCanvas.overrideSorting = false;
             targetPos = isHovered ? (defaultArcPos + new Vector2(0, hoverLiftY)) : defaultArcPos;
             targetRot = isHovered ? Quaternion.identity : defaultArcRot;
             targetScale = isHovered ? (Vector3.one * hoverScale) : Vector3.one;
@@ -138,7 +136,14 @@ public class CardVisualInteraction : MonoBehaviour,
     private void TriggerInspect()
     {
         isInspecting = true;
-        cardCanvas.sortingOrder = 100;
+        transform.SetAsLastSibling();
+
+        if (cardCanvas != null)
+        {
+            cardCanvas.overrideSorting = true;
+            cardCanvas.sortingOrder = 50;
+        }
+
         Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
         Vector2 localPoint;
         RectTransform parentRect = transform.parent as RectTransform;
@@ -147,10 +152,7 @@ public class CardVisualInteraction : MonoBehaviour,
         if (parentRect != null && mainGameCanvas != null && cardRect != null)
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                parentRect,
-                screenCenter,
-                mainGameCanvas.worldCamera,
-                out localPoint
+                parentRect, screenCenter, mainGameCanvas.worldCamera, out localPoint
             );
             localPoint.y += inspectYOffset;
             targetPos = localPoint - cardRect.anchoredPosition;

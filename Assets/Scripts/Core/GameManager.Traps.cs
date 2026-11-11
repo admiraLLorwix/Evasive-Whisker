@@ -148,8 +148,9 @@ public partial class GameManager
         UpdateOpponentHandCountClientRpc(pending.Recipient, playerHands[pending.Recipient].Count);
 
         Debug.Log($"<color=red>[trap] {GetPlayerName(pending.Thief)} gave {given.CardId} to {GetPlayerName(pending.Recipient)}</color>");
-        ScatterResultClientRpc(true, given, false, default, "", SingleTarget(pending.Thief));
-        ScatterResultClientRpc(false, default, true, given, GetPlayerName(pending.Thief), SingleTarget(pending.Recipient));
+
+        ScatterResultClientRpc(true, given, false, default, 0, SingleTarget(pending.Thief));
+        ScatterResultClientRpc(false, default, true, given, pending.Thief, SingleTarget(pending.Recipient));
 
         StartCoroutine(FinishTrapGiveRoutine(pending));
     }
@@ -198,25 +199,25 @@ public partial class GameManager
 
         string playerName = GetPlayerName(playerId);
         Debug.Log($"<color=cyan>[cat nap] {playerName}'s turn is skipped</color>");
-        ShowTurnSkippedClientRpc("CatNap", $"{playerName} is napping - turn skipped!");
+        ShowTurnSkippedClientRpc("CatNap", playerId, $"{playerName} is napping - turn skipped!");
 
         yield return new WaitForSeconds(TurnSkipSeconds);
         AdvanceToNextTurn();
     }
 
     [ClientRpc]
-    private void ShowTurnSkippedClientRpc(string cardId, string message)
+    private void ShowTurnSkippedClientRpc(string cardId, ulong playerId, string message)
     {
         Color glow = new Color(0.4f, 0.6f, 1f, 1f);
 
         if (CardSpotlightController.Instance != null)
         {
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, 2.5f);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, playerId, message, glow, 2.5f);
         }
         else
         {
             var spotlight = FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
-            spotlight?.PlaySpotlight(cardId, message, glow, 2.5f);
+            spotlight?.PlaySpotlight(cardId, playerId, message, glow, 2.5f);
         }
     }
 }

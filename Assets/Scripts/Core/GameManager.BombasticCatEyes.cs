@@ -218,18 +218,18 @@ public partial class GameManager
     }
 
     [ClientRpc]
-    private void ShowPeekRevealClientRpc(string cardId, string message, ClientRpcParams clientRpcParams = default)
+    private void ShowPeekRevealClientRpc(string cardId, ulong playerId, string message, ClientRpcParams clientRpcParams = default)
     {
         Color glow = new Color(0.75f, 0.35f, 1f, 1f);
 
         if (CardSpotlightController.Instance != null)
         {
-            CardSpotlightController.Instance.PlaySpotlight(cardId, message, glow, BombasticRevealSeconds);
+            CardSpotlightController.Instance.PlaySpotlight(cardId, playerId, message, glow, BombasticRevealSeconds);
         }
         else
         {
             var spotlight = FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
-            spotlight?.PlaySpotlight(cardId, message, glow, BombasticRevealSeconds);
+            spotlight?.PlaySpotlight(cardId, playerId, message, glow, BombasticRevealSeconds);
         }
     }
 }

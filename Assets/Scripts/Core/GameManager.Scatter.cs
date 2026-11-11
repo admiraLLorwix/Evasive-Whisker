@@ -110,9 +110,9 @@ public partial class GameManager
 
             bool gave = pending.Picks.TryGetValue(id, out NetworkCard passed);
             bool got = receivedCard.TryGetValue(id, out NetworkCard received);
-            string fromName = got ? GetPlayerName(receivedFrom[id]) : "";
+            ulong fromId = got ? receivedFrom[id] : 0;
 
-            ScatterResultClientRpc(gave, gave ? passed : default, got, got ? received : default, fromName, SingleTarget(id));
+            ScatterResultClientRpc(gave, gave ? passed : default, got, got ? received : default, fromId, SingleTarget(id));
         }
 
         Debug.Log("<color=orange>[scatter] cards passed</color>");
@@ -161,8 +161,7 @@ public partial class GameManager
     }
 
     [ClientRpc]
-    private void ScatterResultClientRpc(bool gave, NetworkCard passed, bool got, NetworkCard received, string fromName,
-                                        ClientRpcParams clientRpcParams = default)
+    private void ScatterResultClientRpc(bool gave, NetworkCard passed, bool got, NetworkCard received, ulong fromId, ClientRpcParams clientRpcParams = default)
     {
         PlayerHandController hand = PlayerHandController.Instance;
         hand?.EndScatterPick();
@@ -170,17 +169,18 @@ public partial class GameManager
 
         if (!got) return;
 
+        string fromName = GetPlayerName(fromId);
         string message = $"{fromName} passed you {received.CardId}";
         Color glow = new Color(1f, 0.6f, 0.2f, 1f);
 
         if (CardSpotlightController.Instance != null)
         {
-            CardSpotlightController.Instance.PlaySpotlight(received.CardId, message, glow, 2f);
+            CardSpotlightController.Instance.PlaySpotlight(received.CardId, fromId, message, glow, 3f);
         }
         else
         {
             var spotlight = FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
-            spotlight?.PlaySpotlight(received.CardId, message, glow, 2f);
+            spotlight?.PlaySpotlight(received.CardId, fromId, message, glow, 3f);
         }
     }
 }
