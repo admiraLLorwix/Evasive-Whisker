@@ -554,7 +554,10 @@ public partial class GameManager : NetworkBehaviour
 
         //upd
         ReceiveDrawnCardClientRpc(drawnCard, drawerParams);
-        UpdateOpponentHandCountClientRpc(drawerId, playerHands[drawerId].Count); ClearShuffleLocks();
+        AnimateDrawToIslandClientRpc(drawnCard.CardId, drawerId);
+        yield return new WaitForSeconds(0.6f);
+        UpdateOpponentHandCountClientRpc(drawerId, playerHands[drawerId].Count);
+        ClearShuffleLocks();
         yield return new WaitForSeconds(0.45f);
         CheckHandLimitOrProceedToAction(drawerId);
     }
@@ -709,6 +712,24 @@ public partial class GameManager : NetworkBehaviour
             else island?.SetActiveAbility(cardId);
         }
     }
+    [ClientRpc]
+    private void AnimateDrawToIslandClientRpc(string cardId, ulong drawerId)
+    {
+        if (NetworkManager.Singleton.LocalClientId == drawerId) return;
+
+        if (CardFlightManager.Instance == null || CardDatabase.Instance == null) return;
+        if (BoardLayoutManager.Instance == null) return;
+
+        var island = BoardLayoutManager.Instance.GetOpponentIsland(drawerId);
+        if (island == null) return;
+
+        Sprite sprite = CardDatabase.Instance.GetCardSprite(cardId);
+        if (sprite == null) return;
+
+        Vector3 startPos = new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
+        Vector3 targetPos = island.transform.position;
+        CardFlightManager.Instance.FlyCard(startPos, targetPos, sprite, null, 0.6f);
+    }
 
     [ClientRpc]
     public void PlayTargetedAbilityFlightClientRpc(string cardId, string victimActiveAbilityId, ulong targetId, bool sendToDiscard)
@@ -805,7 +826,7 @@ public partial class GameManager : NetworkBehaviour
 
         if (isUncounterable)
         {
-            PlayVersusSpotlightClientRpc(senderId, targetId, $"{GetPlayerName(senderId)} played {card.CardId} on {GetPlayerName(targetId)}", card.CardId, false);
+            PlayVersusSpotlightClientRpc(senderId, targetId, $"played {card.CardId} on", card.CardId, false);
             yield return new WaitForSeconds(2.5f);
             StopVersusSpotlightClientRpc();
             RunAbilityEffect(senderId, targetId, card);
@@ -817,7 +838,7 @@ public partial class GameManager : NetworkBehaviour
             Attacker = senderId,
             Defender = targetId,
             ActionTags = AbilityReactionTags(card.CardId),
-            Description = $"{GetPlayerName(senderId)} played {card.CardId} on {GetPlayerName(targetId)}",
+            Description = $"played {card.CardId} on",
             CardId = card.CardId,
             OnProceed = () => RunAbilityEffect(senderId, targetId, card),
             OnCancelled = endTurn => CancelAbility(senderId, card, endTurn)
@@ -954,7 +975,7 @@ public partial class GameManager : NetworkBehaviour
             Attacker = thiefId,
             Defender = victimId,
             ActionTags = StealReactionTags,
-            Description = $"{GetPlayerName(thiefId)} is stealing from {GetPlayerName(victimId)}",
+            Description = $"is stealing from",
             CardId = "",
             OnProceed = () => OpenStealModalForThief(thiefId, victimId),
             OnCancelled = endTurn => CancelSteal(thiefId, endTurn)
@@ -969,6 +990,7 @@ public partial class GameManager : NetworkBehaviour
         {
             ShowVictimHandClientRpc(victimHand.ToArray(), SingleTarget(victimId));
         }
+        StartDecisionTimer(thiefId, () => AutoStealCard(thiefId, victimId), TimeoutCardSelection);
     }
     [ClientRpc]
     private void ShowVictimHandClientRpc(NetworkCard[] cards, ClientRpcParams clientRpcParams = default)
@@ -981,6 +1003,7 @@ public partial class GameManager : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        CancelDecisionTimer();
         if (!playerHands.TryGetValue(victimId, out var victimHand) || cardIndex < 0 || cardIndex >= victimHand.Count)
         {
             RejectAction(thiefId, "Invalid card");
@@ -1007,10 +1030,7 @@ public partial class GameManager : NetworkBehaviour
     }
     private IEnumerator ResolveStealResultRoutine(ulong thiefId, ulong victimId, int cardIndex, NetworkCard stolenCard)
     {
-        yield return new WaitForSeconds(5.2f);
-        PlayStealResultSequenceClientRpc(thiefId, victimId, stolenCard.CardId);
-
-        yield return new WaitForSeconds(5.5f);
+        yield return new WaitForSeconds(5.2f); 
 
         List<NetworkCard> victimHand = playerHands[victimId];
         if (cardIndex >= 0 && cardIndex < victimHand.Count && victimHand[cardIndex].Equals(stolenCard)) victimHand.RemoveAt(cardIndex);
@@ -1019,6 +1039,8 @@ public partial class GameManager : NetworkBehaviour
         RemoveStolenCardClientRpc(stolenCard, SingleTarget(victimId));
         UpdateOpponentHandCountClientRpc(victimId, victimHand.Count);
 
+        PlayStealResultSequenceClientRpc(thiefId, victimId, stolenCard.CardId);
+        yield return new WaitForSeconds(5.0f);
         if (stolenCard.Type != CardType.Trap)
         {
             CompleteSteal(thiefId, stolenCard);

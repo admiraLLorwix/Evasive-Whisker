@@ -239,25 +239,27 @@ public partial class GameManager
 
         ForceCloseTurnUIClientRpc(SingleTarget(playerId));
 
-        if (StealManager.Instance != null && TryBeginStealTargeting(playerId, victim))
-            StealManager.Instance.ServerOpenStealModal(playerId, victim);
+        if (TryBeginStealTargeting(playerId, victim))
+        {
+            BeginStealSequence(playerId, victim);
+        }
     }
 
     private void AutoStealCard(ulong thiefId, ulong victimId)
     {
-        if (!IsActionPhaseOf(thiefId)) return;
+        if (CurrentState.Value != GameState.PlayerTurn_Resolving) return;
 
         CloseThiefStealUIClientRpc(SingleTarget(thiefId));
+        CloseVictimHandClientRpc(SingleTarget(victimId));
 
         if (!playerHands.TryGetValue(victimId, out var victimHand) || victimHand.Count == 0)
         {
-            ReleaseStealTargetLock(thiefId);
-            PromptActionPhase(thiefId);
             return;
         }
 
         int index = Random.Range(0, victimHand.Count);
         Debug.Log($"<color=orange>[timer] {GetPlayerName(thiefId)} auto-steals card #{index} from {GetPlayerName(victimId)}</color>");
+
         ExecuteSteal(thiefId, victimId, index);
     }
 

@@ -143,7 +143,7 @@ public partial class GameManager
         };
         pendingCatPick = pick;
 
-        OpenCatPickClientRpc("Sleight of Paw Shadow: choose a card to give up instead", pick.Offered, SingleTarget(defender));
+        OpenShadowFannedPickClientRpc("Sleight of Paw Shadow: choose a card to give up instead", pick.Offered, SingleTarget(defender));
         StartDecisionTimer(defender, () => AutoCatPick(pick));
 
         while (!finished) yield return null;
@@ -325,5 +325,14 @@ public partial class GameManager
             : FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
 
         spotlight?.PlayCatSpotlight(cat, playerId, message, glow, duration);
+    }
+
+    //shadow new 
+    [ClientRpc]
+    private void OpenShadowFannedPickClientRpc(string title, NetworkCard[] cards, ClientRpcParams clientRpcParams = default)
+    {
+        HandRevealUI.Instance?.ShowFannedPicker(title, cards,
+            index => Instance?.SubmitCatPickServerRpc(index),
+            () => Instance?.CancelCatPickServerRpc());
     }
 }

@@ -13,9 +13,10 @@ public class HandRevealUI : MonoBehaviour
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private RectTransform cardContainer;
     [SerializeField] private Button closeButton;
-    [SerializeField] private Vector2 cardSize = new Vector2(70f, 98f);
+    [SerializeField] private Vector2 cardSize = new Vector2(60f, 84f);
     [SerializeField] private float cardGap = 18f;
 
+    [SerializeField] private float cardScaleMultiplier = 0.8f;
     private readonly List<GameObject> spawnedCards = new List<GameObject>();
     private Coroutine autoHideRoutine;
     private System.Action<int> pickCallback;
@@ -82,7 +83,53 @@ public class HandRevealUI : MonoBehaviour
         panel.SetActive(true);
         panel.transform.SetAsLastSibling();
     }
+    public void ShowFannedPicker(string title, NetworkCard[] cards, System.Action<int> onPick, System.Action onCancel)
+    {
+        if (panel == null || cardContainer == null) return;
 
+        if (autoHideRoutine != null) { StopCoroutine(autoHideRoutine); autoHideRoutine = null; }
+        ClearCards();
+        pickCallback = onPick;
+        cancelCallback = onCancel;
+        if (titleText != null) titleText.text = title;
+
+        int count = cards != null ? cards.Length : 0;
+        if (count == 0) return;
+
+        float maxTiltAngle = 12f;
+        float arcDropAmount = 20f;
+        float cardSpacing = 70f;
+        if (count > 1) cardSpacing = Mathf.Min(70f, (cardContainer.rect.width - 80f) / (count - 1));
+
+        for (int i = 0; i < count; i++)
+        {
+            float t = (count <= 1) ? 0f : ((float)i / (count - 1) * 2f) - 1f;
+            float x = t * ((count - 1) * cardSpacing * 0.5f);
+            float y = -(t * t) * arcDropAmount;
+            float zRot = -t * maxTiltAngle;
+
+            GameObject obj = CreateCard(cards[i], new Vector2(x, y), zRot);
+            obj.transform.SetAsLastSibling();
+            RectTransform rt = obj.GetComponent<RectTransform>();
+            rt.sizeDelta = cardSize;
+            rt.localScale = Vector3.one * cardScaleMultiplier;
+            var fanVisual = obj.GetComponent<StealCardButton>();
+            if (fanVisual == null) fanVisual = obj.AddComponent<StealCardButton>();
+            fanVisual.SetArcPosition(new Vector2(x, y), Quaternion.Euler(0, 0, zRot));
+
+            var image = obj.GetComponent<Image>();
+            image.raycastTarget = true;
+            var btn = obj.AddComponent<Button>();
+            btn.targetGraphic = image;
+            int index = i;
+            btn.onClick.AddListener(() => OnPickClicked(index));
+
+            spawnedCards.Add(obj);
+        }
+
+        panel.SetActive(true);
+        panel.transform.SetAsLastSibling();
+    }
     private void OnPickClicked(int index)
     {
         var callback = pickCallback;

@@ -1,8 +1,8 @@
-using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement;
 using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class SettingsManager : MonoBehaviour
 {
@@ -29,9 +29,12 @@ public class SettingsManager : MonoBehaviour
     [Tooltip("ingame")]
     [SerializeField] private GameObject inGameOnlySection;
     [SerializeField] private Button leaveMatchButton;
-    [SerializeField] private Button rulebookButton; [SerializeField] private GameObject rulebookModalObject;
+    [SerializeField] private Button rulebookButton;
+    [SerializeField] private GameObject rulebookModalObject;
 
     private bool isInGameScene = false;
+    private CanvasGroup settingsCanvasGroup;
+    private CanvasGroup rulebookCanvasGroup;
 
     private void Awake()
     {
@@ -74,22 +77,59 @@ public class SettingsManager : MonoBehaviour
 
         ApplyAudioVolumes();
 
-        if (settingsModalRoot != null) settingsModalRoot.SetActive(false);
+        if (settingsModalRoot != null)
+        {
+            settingsCanvasGroup = settingsModalRoot.GetComponent<CanvasGroup>();
+            if (settingsCanvasGroup == null)
+                settingsCanvasGroup = settingsModalRoot.AddComponent<CanvasGroup>();
+
+            settingsCanvasGroup.alpha = 0f;
+            settingsCanvasGroup.blocksRaycasts = false;
+            settingsCanvasGroup.interactable = false;
+        }
+        if (rulebookModalObject != null)
+        {
+            rulebookCanvasGroup = rulebookModalObject.GetComponent<CanvasGroup>();
+            if (rulebookCanvasGroup == null)
+                rulebookCanvasGroup = rulebookModalObject.AddComponent<CanvasGroup>();
+
+            rulebookCanvasGroup.alpha = 0f;
+            rulebookCanvasGroup.blocksRaycasts = false;
+            rulebookCanvasGroup.interactable = false;
+        }
     }
 
     public void OpenSettings()
     {
-        if (settingsModalRoot != null)
+        if (settingsCanvasGroup != null)
         {
-            settingsModalRoot.SetActive(true);
+            settingsCanvasGroup.alpha = 1f;
+            settingsCanvasGroup.blocksRaycasts = true;
+            settingsCanvasGroup.interactable = true;
             settingsModalRoot.transform.SetAsLastSibling();
         }
     }
 
     public void CloseSettings()
     {
-        if (settingsModalRoot != null) settingsModalRoot.SetActive(false);
+        if (settingsCanvasGroup != null)
+        {
+            settingsCanvasGroup.alpha = 0f;
+            settingsCanvasGroup.blocksRaycasts = false;
+            settingsCanvasGroup.interactable = false;
+        }
         PlayerPrefs.Save();
+    }
+
+    private void OnRulebookClicked()
+    {
+        if (rulebookCanvasGroup != null)
+        {
+            rulebookCanvasGroup.alpha = 1f;
+            rulebookCanvasGroup.blocksRaycasts = true;
+            rulebookCanvasGroup.interactable = true;
+            rulebookModalObject.transform.SetAsLastSibling();
+        }
     }
 
     private void OnMasterVolumeChanged(float val)
@@ -163,14 +203,5 @@ public class SettingsManager : MonoBehaviour
             NetworkManager.Singleton.Shutdown();
         }
         SceneManager.LoadScene("MainMenu");
-    }
-
-    private void OnRulebookClicked()
-    {
-        if (rulebookModalObject != null)
-        {
-            rulebookModalObject.SetActive(true);
-            rulebookModalObject.transform.SetAsLastSibling();
-        }
     }
 }

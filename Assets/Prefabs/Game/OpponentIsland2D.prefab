@@ -231,7 +231,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Detective 6767
+  m_text: Stray Cat
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2c3fea1d0c372534fae7a8dc2e9ad4e3, type: 2}
   m_sharedMaterial: {fileID: -5926193775481069804, guid: 2c3fea1d0c372534fae7a8dc2e9ad4e3, type: 2}
