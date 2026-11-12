@@ -19,7 +19,10 @@ public class PlayerHandController : MonoBehaviour
     //testing for card flight
     [SerializeField] private Transform drawDeckFlightSource;
     [SerializeField] private float cardSpacingX = 140f;
-
+    //[SerializeField] private RectTransform localPlayerZone;
+    private Vector2 originalZonePos;
+    private Vector3 originalZoneScale;
+    private Coroutine handAnimationRoutine;
     private List<NetworkCard> currentCards = new List<NetworkCard>();
     private NetworkCard pendingDiscardCard;
 
@@ -42,7 +45,7 @@ public class PlayerHandController : MonoBehaviour
     private Coroutine reorderRoutine;
     //public bool IsActiveAbilitySlotOccupied => myActiveAbilitySlot != null && myActiveAbilitySlot.gameObject.activeSelf;
     private Dictionary<GameObject, Coroutine> activePulses = new Dictionary<GameObject, Coroutine>();
-
+    
     private void OnDisable()
     {
         reorderRoutine = null;
@@ -670,5 +673,13 @@ public class PlayerHandController : MonoBehaviour
                 }
             }
         }
+    }
+    public Vector3 GetHandCenterPosition()
+    {
+        return handCardContainer != null ? handCardContainer.position : transform.position;
+    }
+    public void SetHandVisibility(bool visible)
+    {
+        if (handCardContainer != null) handCardContainer.gameObject.SetActive(visible);
     }
 }

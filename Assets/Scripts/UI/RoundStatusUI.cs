@@ -32,7 +32,7 @@ public class RoundStatusUI : MonoBehaviour
         {
             playerNameText.text = playerName;
             bool isLocal = NetworkManager.Singleton.LocalClientId == activeId;
-            playerNameText.color = isLocal ? new Color(0.15f, 0.5f, 0.2f) : Color.white;
+            playerNameText.color = isLocal ? new Color(0.15f, 0.5f, 0.2f) : Color.black;
         }
 
         if (playerAvatar != null && CardDatabase.Instance != null && GameManager.Instance != null)

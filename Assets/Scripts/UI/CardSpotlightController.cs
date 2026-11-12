@@ -16,7 +16,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
     //optional but better if set
     //necessary lang para di matakpan player hand
     [SerializeField] private Transform[] keepInFront;
-
+    [SerializeField] private Image versusCardImage; [SerializeField] private TMP_Text versusTimerText;
     [SerializeField] private GameObject versusGroup;
     [SerializeField] private RectTransform attackerSide; [SerializeField] private Image attackerAvatar; [SerializeField] private TMP_Text versusAttackerText;
     [SerializeField] private RectTransform victimSide; [SerializeField] private Image victimAvatar; [SerializeField] private TMP_Text versusVictimText;
@@ -30,6 +30,8 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
     [SerializeField] private Image headerAvatar;
     [SerializeField] private TMP_Text headerPlayerName;
     [SerializeField] private TMP_Text headerActionText;
+    private ulong _currentAttackerId;
+    private ulong _currentVictimId;
 
     private Coroutine activeSpotlightRoutine;
     private bool _skipRequested = false;
@@ -136,12 +138,13 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         if (cardGlowOutline != null) cardGlowOutline.effectColor = glowColor;
 
         RectTransform cardRT = spotlightCardImage.rectTransform;
-        Vector2 finalPos = cardRT.anchoredPosition;
+        Vector2 finalPos = Vector2.zero;
         Vector2 startPos = finalPos + new Vector2(0, 500f);
         float startRotZ = Random.Range(-10f, 10f);
         float endRotZ = Random.Range(-2f, 2f);
         Vector3 endScale = Vector3.one * cardBaseScale;
         Vector3 startScale = endScale * 1.3f;
+
         cardRT.anchoredPosition = startPos;
         cardRT.localScale = startScale;
 
@@ -204,7 +207,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         canvasRoot.anchoredPosition = _canvasOriginalPos;
     }
 
-    public void PlayVersusSpotlight(ulong attackerId, ulong victimId, string actionText, float duration = 2.5f)
+    public void PlayVersusSpotlight(ulong attackerId, ulong victimId, string actionText, string cardId = "", bool showTimer = true)
     {
         if (activeSpotlightRoutine != null) StopCoroutine(activeSpotlightRoutine);
         _skipRequested = false;
@@ -213,56 +216,59 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
 
         if (cardRevealGroup != null) cardRevealGroup.SetActive(false);
         if (versusGroup != null) versusGroup.SetActive(true);
-
         transform.SetAsLastSibling();
-        if (keepInFront != null)
-        {
-            foreach (Transform front in keepInFront)
-
-                if (front != null && front.parent == transform.parent) front.SetAsLastSibling();
-            
-        }
         string attackerName = GameManager.Instance != null ? GameManager.Instance.GetPlayerName(attackerId) : "Player 1";
         string victimName = GameManager.Instance != null ? GameManager.Instance.GetPlayerName(victimId) : "Player 2";
 
         if (versusAttackerText != null) versusAttackerText.text = attackerName;
         if (versusVictimText != null) versusVictimText.text = victimName;
+        _currentAttackerId = attackerId;
+        _currentVictimId = victimId;
         if (versusActionText != null) versusActionText.text = actionText;
+        if (versusCardImage != null)
+        {
+            if (!string.IsNullOrEmpty(cardId) && CardDatabase.Instance != null)
+            {
+                Sprite cardSprite = CardDatabase.Instance.GetCardSprite(cardId);
+                versusCardImage.sprite = cardSprite;
+                versusCardImage.gameObject.SetActive(cardSprite != null);
+            }
+            else
+            {
+                versusCardImage.gameObject.SetActive(false);
+            }
+        }
 
         if (GameManager.Instance != null && CardDatabase.Instance != null)
         {
             DetectiveCatType atkCat = GameManager.Instance.GetPlayerDetective(attackerId);
             DetectiveCatType vicCat = GameManager.Instance.GetPlayerDetective(victimId);
-
             Sprite atkSprite = CardDatabase.Instance.GetIslandProfileSprite(atkCat);
             Sprite vicSprite = CardDatabase.Instance.GetIslandProfileSprite(vicCat);
 
             if (attackerAvatar != null)
             {
                 attackerAvatar.sprite = atkSprite;
-                attackerAvatar.gameObject.SetActive(atkSprite != null);
+                attackerAvatar.color = Color.white;
             }
             if (victimAvatar != null)
             {
                 victimAvatar.sprite = vicSprite;
-                victimAvatar.gameObject.SetActive(vicSprite != null);
+                victimAvatar.color = Color.white;
             }
         }
+        if (versusTimerText != null) versusTimerText.gameObject.SetActive(showTimer);
 
-        //if (activeSpotlightRoutine != null) StopCoroutine(activeSpotlightRoutine);
-        activeSpotlightRoutine = StartCoroutine(VersusRoutine(duration));
+        activeSpotlightRoutine = StartCoroutine(VersusRoutine(10f, showTimer));
     }
 
-    private IEnumerator VersusRoutine(float duration)
+    private IEnumerator VersusRoutine(float duration, bool showTimer)
     {
         if (vignetteDimGroup != null)
         {
             vignetteDimGroup.gameObject.SetActive(true);
             vignetteDimGroup.alpha = 0.85f;
         }
-
-        //Transform ribbon = transform.Find("BannerRibbon");
-        //if (ribbon != null) ribbon.gameObject.SetActive(true);
 
         Vector2 atkStartPos = _attackerOriginalPos + new Vector2(-800f, 0f);
         Vector2 vicStartPos = _victimOriginalPos + new Vector2(800f, 0f);
@@ -287,21 +293,29 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
                 float textT = Mathf.Clamp01((elapsed - 0.15f) / (animTime - 0.15f));
                 actionTextSide.localScale = _actionOriginalScale * Mathf.SmoothStep(0f, 1f, textT);
             }
-
             yield return null;
         }
-
         if (attackerSide != null) attackerSide.anchoredPosition = _attackerOriginalPos;
         if (victimSide != null) victimSide.anchoredPosition = _victimOriginalPos;
         if (actionTextSide != null) actionTextSide.localScale = _actionOriginalScale;
-
         float waitElapsed = 0f;
-        while (waitElapsed < duration && !_skipRequested)
+        while (waitElapsed < duration)
         {
             waitElapsed += Time.deltaTime;
+
+            if (showTimer && versusTimerText != null)
+            {
+                float remaining = duration - waitElapsed;
+                versusTimerText.text = Mathf.CeilToInt(remaining).ToString();
+                versusTimerText.color = remaining <= 3f ? Color.red : Color.white;
+            }
             yield return null;
         }
-
+        HideSpotlight();
+    }
+    public void StopVersusTimerEarly()
+    {
+        if (activeSpotlightRoutine != null) StopCoroutine(activeSpotlightRoutine);
         HideSpotlight();
     }
 
@@ -314,5 +328,95 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         if (spotlightRoot != null) spotlightRoot.SetActive(false);
         gameObject.SetActive(false);
         activeSpotlightRoutine = null;
+    }
+
+
+    //addtl effects
+    public void PlayStealResultSequence(ulong thiefId, ulong victimId, string cardId)
+    {
+        gameObject.SetActive(true);
+        StartCoroutine(StealResultRoutine(thiefId, victimId, cardId));
+    }
+    private IEnumerator StealResultRoutine(ulong thiefId, ulong victimId, string cardId)
+    {
+        PlayVersusSpotlight(thiefId, victimId, "stole a card from", cardId, false);
+        yield return new WaitForSeconds(0.5f);
+
+        if (victimAvatar != null)
+        {
+            Vector2 originalPos = victimAvatar.rectTransform.anchoredPosition;
+            Color originalColor = victimAvatar.color;
+            victimAvatar.color = Color.red;
+
+            float shakeTime = 0.8f;
+            float elapsed = 0f;
+            while (elapsed < shakeTime)
+            {
+                elapsed += Time.deltaTime;
+                float x = Random.Range(-15f, 15f);
+                victimAvatar.rectTransform.anchoredPosition = originalPos + new Vector2(x, 0f);
+                yield return null;
+            }
+
+            victimAvatar.rectTransform.anchoredPosition = originalPos;
+            victimAvatar.color = originalColor;
+        }
+
+        if (CardFlightManager.Instance != null && attackerAvatar != null && victimAvatar != null)
+        {
+            Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(cardId) : null;
+            Vector3 startPos = victimAvatar.transform.position;
+            Vector3 endPos = attackerAvatar.transform.position;
+            CardFlightManager.Instance.FlyCard(startPos, endPos, sprite, null, 1.0f);
+        }
+
+        yield return new WaitForSeconds(1.8f);
+        HideSpotlight();
+    }
+    public void PlayHurtAnimation(ulong playerId)
+    {
+        gameObject.SetActive(true);
+        if (spotlightRoot != null) spotlightRoot.SetActive(true);
+        if (cardRevealGroup != null) cardRevealGroup.SetActive(false);
+        if (versusGroup != null) versusGroup.SetActive(true);
+        if (vignetteDimGroup != null) vignetteDimGroup.gameObject.SetActive(true);
+
+        if (GameManager.Instance != null && CardDatabase.Instance != null)
+        {
+            DetectiveCatType atkCat = GameManager.Instance.GetPlayerDetective(_currentAttackerId);
+            DetectiveCatType vicCat = GameManager.Instance.GetPlayerDetective(_currentVictimId);
+            if (attackerAvatar != null) attackerAvatar.sprite = CardDatabase.Instance.GetIslandProfileSprite(atkCat);
+            if (victimAvatar != null) victimAvatar.sprite = CardDatabase.Instance.GetIslandProfileSprite(vicCat);
+        }
+
+        StartCoroutine(HurtRoutine(playerId));
+    }
+
+    private IEnumerator HurtRoutine(ulong playerId)
+    {
+        Image targetAvatar = null;
+        if (playerId == _currentAttackerId) targetAvatar = attackerAvatar;
+        else if (playerId == _currentVictimId) targetAvatar = victimAvatar;
+
+        if (targetAvatar != null)
+        {
+            Vector2 originalPos = targetAvatar.rectTransform.anchoredPosition;
+            Color originalColor = targetAvatar.color;
+            targetAvatar.color = Color.red;
+
+            float shakeTime = 0.8f;
+            float elapsed = 0f;
+
+            while (elapsed < shakeTime)
+            {
+                elapsed += Time.deltaTime;
+                float x = Random.Range(-15f, 15f);
+                targetAvatar.rectTransform.anchoredPosition = originalPos + new Vector2(x, 0f);
+                yield return null;
+            }
+
+            targetAvatar.rectTransform.anchoredPosition = originalPos;
+            targetAvatar.color = originalColor;
+        }
     }
 }

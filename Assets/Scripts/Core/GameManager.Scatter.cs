@@ -83,6 +83,55 @@ public partial class GameManager
         if (pending.Executed) return;
         pending.Executed = true;
 
+        List<ulong> givers = new List<ulong>();
+        List<ulong> receivers = new List<ulong>();
+        List<NetworkCard> cards = new List<NetworkCard>();
+
+        foreach (var pick in pending.Picks)
+        {
+            ulong giver = pick.Key;
+            ulong receiver = GetLeftNeighbor(giver);
+            givers.Add(giver);
+            receivers.Add(receiver);
+            cards.Add(pick.Value);
+        }
+        PlayScatterAnimationClientRpc(givers.ToArray(), receivers.ToArray(), cards.ToArray());
+        StartCoroutine(FinishScatterAfterAnimation(pending));
+    }
+
+    [ClientRpc]
+    private void PlayScatterAnimationClientRpc(ulong[] givers, ulong[] receivers, NetworkCard[] cards)
+    {
+        if (CardFlightManager.Instance == null) return;
+
+        for (int i = 0; i < givers.Length; i++)
+        {
+            Vector3 startPos = new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
+            Vector3 endPos = new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
+
+            if (givers[i] == NetworkManager.Singleton.LocalClientId)
+                startPos = PlayerHandController.Instance != null ? PlayerHandController.Instance.GetHandCenterPosition() : startPos;
+            else
+            {
+                var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(givers[i]) : null;
+                if (island != null) startPos = island.transform.position;
+            }
+
+            if (receivers[i] == NetworkManager.Singleton.LocalClientId)
+                endPos = PlayerHandController.Instance != null ? PlayerHandController.Instance.GetHandCenterPosition() : endPos;
+            else
+            {
+                var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(receivers[i]) : null;
+                if (island != null) endPos = island.transform.position;
+            }
+            Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(cards[i].CardId) : null;
+            CardFlightManager.Instance.FlyCard(startPos, endPos, sprite, null, 1.5f);
+        }
+    }
+
+    private IEnumerator FinishScatterAfterAnimation(PendingScatter pending)
+    {
+        yield return new WaitForSeconds(1.8f);
         var receivedCard = new Dictionary<ulong, NetworkCard>();
         var receivedFrom = new Dictionary<ulong, ulong>();
 
@@ -90,7 +139,6 @@ public partial class GameManager
         {
             playerHands[pick.Key].Remove(pick.Value);
         }
-
         foreach (var pick in pending.Picks)
         {
             ulong giver = pick.Key;
@@ -100,10 +148,8 @@ public partial class GameManager
             receivedCard[receiver] = pick.Value;
             receivedFrom[receiver] = giver;
         }
-
         var affected = new HashSet<ulong>(pending.Picks.Keys);
         affected.UnionWith(receivedCard.Keys);
-
         foreach (ulong id in affected)
         {
             UpdateOpponentHandCountClientRpc(id, playerHands[id].Count);
@@ -114,11 +160,9 @@ public partial class GameManager
 
             ScatterResultClientRpc(gave, gave ? passed : default, got, got ? received : default, fromId, SingleTarget(id));
         }
-
         Debug.Log("<color=orange>[scatter] cards passed</color>");
         StartCoroutine(FinishScatterRoutine(pending));
     }
-
     private IEnumerator FinishScatterRoutine(PendingScatter pending)
     {
         yield return new WaitForSeconds(ScatterResultWait);

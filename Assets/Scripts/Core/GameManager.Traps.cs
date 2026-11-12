@@ -220,4 +220,53 @@ public partial class GameManager
             spotlight?.PlaySpotlight(cardId, playerId, message, glow, 2.5f);
         }
     }
+
+
+    private void TriggerStolenTrapNow(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone)
+    {
+        StartCoroutine(TrapSequenceRoutine(thiefId, victimId, stolenCard, onDone));
+    }
+
+    private IEnumerator TrapSequenceRoutine(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone)
+    {
+        string thiefName = GetPlayerName(thiefId);
+        string victimName = GetPlayerName(victimId);
+        bool thiefImmune = IsImmuneToTraps(thiefId);
+
+        if (!thiefImmune)
+        {
+            PlayHurtSequenceClientRpc(thiefId);
+            yield return new WaitForSeconds(1.2f);
+            StopVersusSpotlightClientRpc();
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        if (thiefImmune)
+        {
+            string reason = HasTrapImmunity(thiefId) ? "Nine Lives" : "Accusation Protection";
+            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP IMMUNITY: {stolenCard.CardId} ({reason})", thiefName, victimName);
+        }
+        else
+        {
+            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP TRIGGERED: {stolenCard.CardId}", thiefName, victimName);
+        }
+
+        yield return new WaitForSeconds(3.5f);
+
+        if (thiefImmune)
+        {
+            DeckManager.Instance.Discard(stolenCard);
+            onDone?.Invoke();
+            yield break;
+        }
+
+        bool finished = CardEffectRegistry.TriggerTrap(stolenCard.CardId, thiefId, victimId, stolenCard, onDone);
+        if (finished) onDone?.Invoke();
+    }
+
+    [ClientRpc]
+    private void PlayHurtSequenceClientRpc(ulong playerId)
+    {
+        CardSpotlightController.Instance?.PlayHurtAnimation(playerId);
+    }
 }

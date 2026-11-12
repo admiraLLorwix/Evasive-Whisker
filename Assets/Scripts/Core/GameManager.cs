@@ -675,34 +675,75 @@ public partial class GameManager : NetworkBehaviour
     [ClientRpc]
     private void SetPlayerActiveAbilityClientRpc(ulong playerId, string cardId)
     {
+        if (CardDatabase.Instance == null || CardFlightManager.Instance == null)
+        {
+            if (playerId == NetworkManager.Singleton.LocalClientId) ActiveAbilitySlotUI.Instance?.SetAbility(cardId);
+            else BoardLayoutManager.Instance?.GetOpponentIsland(playerId)?.SetActiveAbility(cardId);
+            return;
+        }
+        Sprite sprite = CardDatabase.Instance.GetCardSprite(cardId);
+        Vector3 startPos = new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
         if (playerId == NetworkManager.Singleton.LocalClientId)
         {
-            if (CardFlightManager.Instance != null && ActiveAbilitySlotUI.Instance != null)
+            if (ActiveAbilitySlotUI.Instance != null)
             {
-                Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(cardId) : null;
-
-                Vector3 startPos = CardSpotlightController.Instance != null
-                    ? ((RectTransform)CardSpotlightController.Instance.transform).position
-                    : new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
-
                 Vector3 targetPos = ActiveAbilitySlotUI.Instance.transform.position;
                 CardFlightManager.Instance.FlyCard(startPos, targetPos, sprite, () =>
                 {
                     ActiveAbilitySlotUI.Instance?.SetAbility(cardId);
                 });
             }
-            else
-            {
-                ActiveAbilitySlotUI.Instance?.SetAbility(cardId);
-            }
+            else ActiveAbilitySlotUI.Instance?.SetAbility(cardId);
         }
-        var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
-        if (island != null)
+        else
         {
-            island.SetActiveAbility(cardId);
+            var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(playerId) : null;
+            if (island != null)
+            {
+                Vector3 targetPos = island.transform.position;
+                CardFlightManager.Instance.FlyCard(startPos, targetPos, sprite, () =>
+                {
+                    island.SetActiveAbility(cardId);
+                });
+            }
+            else island?.SetActiveAbility(cardId);
         }
     }
 
+    [ClientRpc]
+    public void PlayTargetedAbilityFlightClientRpc(string cardId, string victimActiveAbilityId, ulong targetId, bool sendToDiscard)
+    {
+        StartCoroutine(PlayTargetedAbilityFlightRoutine(cardId, victimActiveAbilityId, targetId, sendToDiscard));
+    }
+    private IEnumerator PlayTargetedAbilityFlightRoutine(string cardId, string victimActiveAbilityId, ulong targetId, bool sendToDiscard)
+    {
+        if (CardFlightManager.Instance == null || CardDatabase.Instance == null) yield break;
+
+        Sprite sprite = CardDatabase.Instance.GetCardSprite(cardId);
+        Vector3 startPos = new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
+
+        var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(targetId) : null;
+        Vector3 targetPos = island != null ? island.transform.position : startPos;
+
+        bool isDone = false;
+        CardFlightManager.Instance.FlyCard(startPos, targetPos, sprite, () => isDone = true, 0.6f);
+        while (!isDone) yield return null;
+        yield return new WaitForSeconds(1f);
+        if (sendToDiscard)
+        {
+            Vector3 discardPos = DiscardPile2D.Instance != null ? DiscardPile2D.Instance.transform.position : targetPos;
+            isDone = false;
+            CardFlightManager.Instance.FlyCard(targetPos, discardPos, sprite, () => isDone = true, 0.6f);
+            if (!string.IsNullOrEmpty(victimActiveAbilityId))
+            {
+                Sprite activeSprite = CardDatabase.Instance.GetCardSprite(victimActiveAbilityId);
+                Vector3 activeStartPos = targetPos + new Vector3(50f, 0f, 0f);
+                CardFlightManager.Instance.FlyCard(activeStartPos, discardPos, activeSprite, null, 0.6f);
+            }
+
+            while (!isDone) yield return null;
+        }
+    }
 
     [Rpc(SendTo.Server)]
     public void SubmitPlayAbilityCardServerRpc(NetworkCard card, ulong targetId = NoTarget, RpcParams rpcParams = default)
@@ -729,7 +770,7 @@ public partial class GameManager : NetworkBehaviour
 
         string actorName = GetPlayerName(senderId);
         string actionMessage;
-        if (targetId != NoTarget && card.CardId != "BombasticCatEyes")
+        if (targetId != NoTarget)
         {
             string targetName = GetPlayerName(targetId);
             actionMessage = $"{actorName} played {card.CardId} on {targetName}!";
@@ -739,8 +780,7 @@ public partial class GameManager : NetworkBehaviour
             actionMessage = $"{actorName} played {card.CardId}!";
         }
 
-        float spotlightSeconds = (targetId != NoTarget && card.CardId != "BombasticCatEyes") ? ReactionWindowSeconds : 3.5f;
-
+        float spotlightSeconds = (targetId != NoTarget) ? 2f : 3.5f;
         BroadcastAbilitySpotlightClientRpc(card.CardId.ToString(), senderId, actionMessage, spotlightSeconds);
 
         StartCoroutine(ResolveAbilityAfterSpotlightRoutine(senderId, targetId, card));
@@ -754,9 +794,20 @@ public partial class GameManager : NetworkBehaviour
 
     private IEnumerator ResolveAbilityAfterSpotlightRoutine(ulong senderId, ulong targetId, NetworkCard card)
     {
-        if (targetId == NoTarget || card.CardId == "BombasticCatEyes")
+        if (targetId == NoTarget)
         {
             yield return new WaitForSeconds(3.2f);
+            RunAbilityEffect(senderId, targetId, card);
+            yield break;
+        }
+
+        bool isUncounterable = (card.CardId == "Declaw" || card.CardId == "CatInstinct");
+
+        if (isUncounterable)
+        {
+            PlayVersusSpotlightClientRpc(senderId, targetId, $"{GetPlayerName(senderId)} played {card.CardId} on {GetPlayerName(targetId)}", card.CardId, false);
+            yield return new WaitForSeconds(2.5f);
+            StopVersusSpotlightClientRpc();
             RunAbilityEffect(senderId, targetId, card);
             yield break;
         }
@@ -766,12 +817,12 @@ public partial class GameManager : NetworkBehaviour
             Attacker = senderId,
             Defender = targetId,
             ActionTags = AbilityReactionTags(card.CardId),
-            Description = $"{GetPlayerName(senderId)} played {card.CardId} on you",
+            Description = $"{GetPlayerName(senderId)} played {card.CardId} on {GetPlayerName(targetId)}",
+            CardId = card.CardId,
             OnProceed = () => RunAbilityEffect(senderId, targetId, card),
             OnCancelled = endTurn => CancelAbility(senderId, card, endTurn)
         });
     }
-
     private void RunAbilityEffect(ulong senderId, ulong targetId, NetworkCard card)
     {
         bool finished = CardEffectRegistry.TriggerAbility(card.CardId, senderId, targetId, card, () => FinishAbilityResolution(senderId));
@@ -866,6 +917,11 @@ public partial class GameManager : NetworkBehaviour
         }
     }
     [ClientRpc]
+    private void PlayStealResultSequenceClientRpc(ulong thiefId, ulong victimId, string cardId)
+    {
+        CardSpotlightController.Instance?.PlayStealResultSequence(thiefId, victimId, cardId);
+    }
+    [ClientRpc]
     private void CloseThiefStealUIClientRpc(ClientRpcParams clientRpcParams = default)
     {
         if (StealManager.Instance != null)
@@ -877,58 +933,100 @@ public partial class GameManager : NetworkBehaviour
             TurnActionUI.Instance.HideAllActions();
         }
     }
-    public void ExecuteSteal(ulong thiefId, ulong victimId, int cardIndex)
+    public void BeginStealSequence(ulong thiefId, ulong victimId)
     {
         if (!IsServer) return;
 
-        string error = ValidateSteal(thiefId, victimId, cardIndex);
+        string error = ValidateSteal(thiefId, victimId, 0);
         if (error != null)
         {
             ReleaseStealTargetLock(thiefId);
             RejectAction(thiefId, error);
             return;
         }
-        LogActionClientRpc($"{GetPlayerName(thiefId)} is stealing from {GetPlayerName(victimId)}.");
-        PlayVersusSpotlightClientRpc(thiefId, victimId, "is stealing from");
-        CancelDecisionTimer();
-        CurrentState.Value = GameState.PlayerTurn_Resolving;
 
         LockShuffle(thiefId);
         LockShuffle(victimId);
-
         CloseThiefStealUIClientRpc(SingleTarget(thiefId));
-        //NetworkCard stolenCard = playerHands[victimId][cardIndex];
-        ////playerHands[victimId].RemoveAt(cardIndex);
 
-        //string thiefName = GetPlayerName(thiefId); string victimName = GetPlayerName(victimId);
+        StartReactionWindow(new ReactionRequest
+        {
+            Attacker = thiefId,
+            Defender = victimId,
+            ActionTags = StealReactionTags,
+            Description = $"{GetPlayerName(thiefId)} is stealing from {GetPlayerName(victimId)}",
+            CardId = "",
+            OnProceed = () => OpenStealModalForThief(thiefId, victimId),
+            OnCancelled = endTurn => CancelSteal(thiefId, endTurn)
+        });
+    }
+    private void OpenStealModalForThief(ulong thiefId, ulong victimId)
+    {
+        CurrentState.Value = GameState.PlayerTurn_Resolving;
+        StealManager.Instance.ServerOpenStealModal(thiefId, victimId);
 
-        //ClientRpcParams thiefOnlyParams = new ClientRpcParams
-        //{
-        //    Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { thiefId } }
-        //};
-        //CloseThiefStealUIClientRpc(thiefOnlyParams);
+        if (playerHands.TryGetValue(victimId, out var victimHand))
+        {
+            ShowVictimHandClientRpc(victimHand.ToArray(), SingleTarget(victimId));
+        }
+    }
+    [ClientRpc]
+    private void ShowVictimHandClientRpc(NetworkCard[] cards, ClientRpcParams clientRpcParams = default)
+    {
+        PlayerHandController.Instance?.SetHandVisibility(false);
+        HandRevealUI.Instance?.Show("Someone is stealing from you!", cards);
+    }
 
-        //StartReactionWindow(new ReactionRequest
-        //{
-        //    Attacker = thiefId,
-        //    Defender = victimId,
-        //    ActionTags = StealReactionTags,
-        //    Description = $"{thiefName} is stealing from you",
-        //    Reveal = new ReactionReveal
-        //    {
-        //        Card = stolenCard,
-        //        AttackerWindowMsg = $"Waiting for {victimName} to react...",
-        //        DefenderWindowMsg = $"{thiefName} is stealing {stolenCard.CardId} from you!",
-        //        SpectatorWindowMsg = $"{thiefName} is stealing a card from {victimName}!",
-        //        AttackerResultMsg = $"You stole {stolenCard.CardId} from {victimName}!",
-        //        DefenderResultMsg = $"{thiefName} stole {stolenCard.CardId} from you!",
-        //        SpectatorResultMsg = $"{thiefName} stole a card from {victimName}!"
-        //    },
+    public void ExecuteSteal(ulong thiefId, ulong victimId, int cardIndex)
+    {
+        if (!IsServer) return;
 
-        //    OnProceed = () => ProceedSteal(thiefId, victimId, cardIndex, stolenCard),
-        //    OnCancelled = endTurn => CancelSteal(thiefId, endTurn)
-        //});
-        StartCoroutine(DelayStealReaction(thiefId, victimId, cardIndex));
+        if (!playerHands.TryGetValue(victimId, out var victimHand) || cardIndex < 0 || cardIndex >= victimHand.Count)
+        {
+            RejectAction(thiefId, "Invalid card");
+            return;
+        }
+
+        CurrentState.Value = GameState.PlayerTurn_Resolving;
+        CloseVictimHandClientRpc(SingleTarget(victimId));
+
+        NetworkCard stolenCard = victimHand[cardIndex];
+        LogActionClientRpc($"{GetPlayerName(thiefId)} stole {stolenCard.CardId} from {GetPlayerName(victimId)}.");
+
+        ShowStealSpotlightClientRpc(stolenCard.CardId, thiefId, $"Stole {stolenCard.CardId}!", false, 5f, SingleTarget(thiefId));
+        ShowStealSpotlightClientRpc(stolenCard.CardId, victimId, $"{GetPlayerName(thiefId)} stole {stolenCard.CardId}!", false, 5f, SingleTarget(victimId));
+
+        StartCoroutine(ResolveStealResultRoutine(thiefId, victimId, cardIndex, stolenCard));
+    }
+
+    [ClientRpc]
+    private void CloseVictimHandClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        PlayerHandController.Instance?.SetHandVisibility(true);
+        HandRevealUI.Instance?.Hide();
+    }
+    private IEnumerator ResolveStealResultRoutine(ulong thiefId, ulong victimId, int cardIndex, NetworkCard stolenCard)
+    {
+        yield return new WaitForSeconds(5.2f);
+        PlayStealResultSequenceClientRpc(thiefId, victimId, stolenCard.CardId);
+
+        yield return new WaitForSeconds(5.5f);
+
+        List<NetworkCard> victimHand = playerHands[victimId];
+        if (cardIndex >= 0 && cardIndex < victimHand.Count && victimHand[cardIndex].Equals(stolenCard)) victimHand.RemoveAt(cardIndex);
+        else victimHand.Remove(stolenCard);
+
+        RemoveStolenCardClientRpc(stolenCard, SingleTarget(victimId));
+        UpdateOpponentHandCountClientRpc(victimId, victimHand.Count);
+
+        if (stolenCard.Type != CardType.Trap)
+        {
+            CompleteSteal(thiefId, stolenCard);
+        }
+        else
+        {
+            TriggerStolenTrap(thiefId, victimId, stolenCard, () => FinishTrapResolution(thiefId));
+        }
     }
     private void ProceedSteal(ulong thiefId, ulong victimId, int cardIndex, NetworkCard stolenCard)
     {
@@ -969,9 +1067,9 @@ public partial class GameManager : NetworkBehaviour
         CardSpotlightController.Instance?.PlaySpotlight(cardId, thiefId, message, glow, 3.0f);
     }
     [ClientRpc]
-    private void PlayVersusSpotlightClientRpc(ulong attackerId, ulong victimId, string actionText)
+    private void PlayVersusSpotlightClientRpc(ulong attackerId, ulong victimId, string actionText, string cardId, bool showTimer)
     {
-        CardSpotlightController.Instance?.PlayVersusSpotlight(attackerId, victimId, actionText, 2.5f);
+        CardSpotlightController.Instance?.PlayVersusSpotlight(attackerId, victimId, actionText, cardId, showTimer);
     }
 
     [ClientRpc]

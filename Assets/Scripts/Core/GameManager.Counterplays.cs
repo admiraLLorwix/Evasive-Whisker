@@ -49,28 +49,6 @@ public partial class GameManager
 
         return false;
     }
-    private void TriggerStolenTrapNow(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone)
-
-    {
-        string thiefName = GetPlayerName(thiefId);
-        string victimName = GetPlayerName(victimId);
-
-        bool thiefImmune = IsImmuneToTraps(thiefId);
-
-        if (thiefImmune)
-        {
-            string reason = HasTrapImmunity(thiefId) ? "Nine Lives" : "Accusation Protection";
-            Debug.Log($"<color=green>[immunity] {thiefName} was immune to traps ({reason}), {stolenCard.CardId} will be discarded</color>");
-            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP IMMUNITY: {stolenCard.CardId} ({reason})", thiefName, victimName);
-        }
-        else
-        {
-            Debug.Log($"<color=red>[trap] Thief {thiefName} triggered {stolenCard.CardId} from {victimName}</color>");
-            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP TRIGGERED: {stolenCard.CardId}", thiefName, victimName);
-        }
-
-        StartCoroutine(ResolveTrapAfterSpotlightRoutine(thiefId, victimId, stolenCard, thiefImmune, onDone));
-    }
     private class PendingCounterSteal
     {
         public ulong Defender;
@@ -86,7 +64,7 @@ public partial class GameManager
 
         if (IsGuessImmune(q.Attacker))
         {
-            SendNotice(q.Defender, $"<color=red>{GuessImmuneMessage(q.Attacker)} - Eye For An Eye fizzles</color>");
+            SendNotice(q.Defender, $"<color=red>{GuessImmuneMessage(q.Attacker)} - Eye For An Eye</color>");
             onFinished?.Invoke();
             return;
         }
@@ -102,8 +80,15 @@ public partial class GameManager
         pendingCounterSteal = pending;
         LockShuffle(q.Attacker);
         LockShuffle(q.Defender);
+
         Debug.Log($"<color=red>[eye for an eye] {defenderName} steals back from {thiefName}</color>");
         SendNotice(q.Attacker, $"<color=red>Eye For An Eye! {defenderName} is stealing a card back</color>");
+
+        if (playerHands.TryGetValue(q.Attacker, out var attackerHand))
+        {
+            ShowVictimHandClientRpc(attackerHand.ToArray(), SingleTarget(q.Attacker));
+        }
+
         OpenCounterStealModalClientRpc(q.Attacker, thiefName, GetPlayerDetective(q.Attacker), thiefHand.Count, SingleTarget(q.Defender));
         ShowDecisionTimerClientRpc(q.Defender, defenderName, CounterStealPickSeconds);
         StartCoroutine(CounterStealTimeoutRoutine(pending));
@@ -133,7 +118,7 @@ public partial class GameManager
 
         RemoveStolenCardClientRpc(card, SingleTarget(pending.Thief));
         UpdateOpponentHandCountClientRpc(pending.Thief, thiefHand.Count);
-
+        CloseVictimHandClientRpc(SingleTarget(pending.Thief));
         StartCoroutine(CounterStealResultRoutine(pending, card));
     }
     private IEnumerator CounterStealResultRoutine(PendingCounterSteal pending, NetworkCard card)

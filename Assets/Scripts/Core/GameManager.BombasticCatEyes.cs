@@ -6,9 +6,8 @@ using EvasiveWhisker.Cards;
 
 public partial class GameManager
 {
-    private const float BombasticPickSeconds = DecisionSeconds; //prev; 15f
+    private const float BombasticPickSeconds = DecisionSeconds;
     private const float BombasticRevealSeconds = 2f;
-    private const float BombasticRevealWait = 2.3f;
 
     private class PendingBombastic
     {
@@ -18,10 +17,9 @@ public partial class GameManager
         public System.Action OnFinished;
         public List<int> Picked = new List<int>();
         public int PicksTotal;
-        public int Stage;
         public bool AwaitingPick;
-        public bool Reflected; // for copy cat
-        public bool FromCat;   //nido
+        public bool Reflected;
+        public bool FromCat;
     }
 
     private PendingBombastic pendingBombastic;
@@ -30,16 +28,13 @@ public partial class GameManager
     {
         if (!IsServer) return;
 
-
         if (!playerHands.TryGetValue(targetId, out var targetHand) || targetHand.Count == 0)
         {
-            Debug.Log("[bombastic] target has no cards, fizzling");
             SendNotice(askerId, $"<color=red>{GetPlayerName(targetId)} has no cards to peek at</color>");
             if (!reflected && !fromCat) DeckManager.Instance.Discard(card);
             onFinished?.Invoke();
             return;
         }
-
         var pending = new PendingBombastic
         {
             Asker = askerId,
@@ -51,34 +46,43 @@ public partial class GameManager
             PicksTotal = Mathf.Min(maxPicks, targetHand.Count)
         };
         pendingBombastic = pending;
-
-        Debug.Log($"<color=blue>[bombastic] {GetPlayerName(askerId)} peeks at {GetPlayerName(targetId)} ({pending.PicksTotal} pick(s))</color>");
         OpenNextBombasticPick(pending);
     }
 
     private void OpenNextBombasticPick(PendingBombastic pending)
     {
-        pending.Stage++;
         pending.AwaitingPick = true;
-
         List<int> remaining = new List<int>();
-        int handCount = playerHands[pending.Target].Count;
-        for (int i = 0; i < handCount; i++)
-        {
+        for (int i = 0; i < playerHands[pending.Target].Count; i++)
             if (!pending.Picked.Contains(i)) remaining.Add(i);
+
+        int picksNeeded = pending.PicksTotal;
+
+        if (picksNeeded == 1)
+        {
+            OpenSinglePeekModalClientRpc(pending.Target, GetPlayerName(pending.Target), GetPlayerDetective(pending.Target), remaining.ToArray(), SingleTarget(pending.Asker));
+        }
+        else
+        {
+            OpenMultiPeekModalClientRpc(pending.Target, GetPlayerName(pending.Target), GetPlayerDetective(pending.Target), remaining.ToArray(), SingleTarget(pending.Asker));
         }
 
-        OpenPeekModalClientRpc(
-            pending.Target,
-            GetPlayerName(pending.Target),
-            GetPlayerDetective(pending.Target),
-            remaining.ToArray(),
-            pending.Picked.Count + 1,
-            pending.PicksTotal,
-            SingleTarget(pending.Asker));
-        ShowDecisionTimerClientRpc(pending.Asker, GetPlayerName(pending.Asker), BombasticPickSeconds);
-        StartCoroutine(BombasticPickTimeoutRoutine(pending, pending.Stage));
+        StartCoroutine(BombasticPickTimeoutRoutine(pending));
     }
+
+    [ClientRpc]
+    private void OpenSinglePeekModalClientRpc(ulong victimId, string victimName, DetectiveCatType victimCat, int[] remainingVictimIndices, ClientRpcParams clientRpcParams = default)
+    {
+        StealManager.Instance?.ShowPeekModal(victimId, victimName, victimCat, remainingVictimIndices, 1, 1);
+    }
+
+    [ClientRpc]
+    private void OpenMultiPeekModalClientRpc(ulong victimId, string victimName, DetectiveCatType victimCat, int[] remainingVictimIndices, ClientRpcParams clientRpcParams = default)
+    {
+        StealManager.Instance?.ShowMultiPeekModal(victimId, victimName, victimCat, remainingVictimIndices,
+            (pickedIndices) => SubmitBombasticMultiPickServerRpc(pickedIndices));
+    }
+
 
     [Rpc(SendTo.Server)]
     public void SubmitBombasticPickServerRpc(int victimCardIndex, RpcParams rpcParams = default)
@@ -88,90 +92,59 @@ public partial class GameManager
 
         if (pending == null || !pending.AwaitingPick || senderId != pending.Asker) return;
         if (!playerHands.TryGetValue(pending.Target, out var hand)) return;
-        if (victimCardIndex < 0 || victimCardIndex >= hand.Count || pending.Picked.Contains(victimCardIndex)) return;
-        RevealBombasticPick(pending, victimCardIndex);
+        if (victimCardIndex < 0 || victimCardIndex >= hand.Count) return;
+
+        pending.AwaitingPick = false;
+        ResolveBombasticMultiPick(pending, new int[] { victimCardIndex });
     }
 
-    private void RevealBombasticPick(PendingBombastic pending, int victimCardIndex)
-    {
-        pending.AwaitingPick = false;
-        pending.Picked.Add(victimCardIndex);
 
-        NetworkCard seen = playerHands[pending.Target][victimCardIndex];
-        string cardId = seen.CardId;
+
+    [Rpc(SendTo.Server)]
+    public void SubmitBombasticMultiPickServerRpc(int[] victimCardIndices, RpcParams rpcParams = default)
+    {
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        PendingBombastic pending = pendingBombastic;
+        if (pending == null || !pending.AwaitingPick || senderId != pending.Asker) return;
+        if (victimCardIndices == null || victimCardIndices.Length != 2) return;
+        pending.AwaitingPick = false;
+        ResolveBombasticMultiPick(pending, victimCardIndices);
+    }
+
+    private void ResolveBombasticMultiPick(PendingBombastic pending, int[] pickedIndices)
+    {
         string askerName = GetPlayerName(pending.Asker);
         string targetName = GetPlayerName(pending.Target);
-
-        Debug.Log($"<color=blue>[bombastic] {askerName} picked {targetName}'s card #{victimCardIndex} ({cardId}), open react window</color>");
-        ClosePeekModalClientRpc(SingleTarget(pending.Asker));
-        //ShowPeekRevealClientRpc(cardId, $"You peeked at {targetName}'s {cardId}", SingleTarget(pending.Asker));
-        //ShowPeekRevealClientRpc(cardId, $"{askerName} peeked at your {cardId}!", SingleTarget(pending.Target));
-        HideDecisionTimerClientRpc();
-        if (pending.Reflected)
+        List<NetworkCard> seenCards = new List<NetworkCard>();
+        foreach (int idx in pickedIndices)
         {
-            StartCoroutine(ReflectedBombasticRevealRoutine(pending, seen));
-            return;
-        }
-
-        StartReactionWindow(new ReactionRequest
-        {
-            Attacker = pending.Asker,
-            Defender = pending.Target,
-            ActionTags = pending.FromCat ? NidoReactionTags : AbilityReactionTags(pending.Card.CardId),
-            Description = $"{askerName} is peeking at your {cardId}",
-            Reveal = new ReactionReveal
+            if (idx >= 0 && idx < playerHands[pending.Target].Count)
             {
-                Card = seen,
-                AttackerWindowMsg = $"Waiting for {targetName} to react...",
-                DefenderWindowMsg = $"{askerName} is peeking at your {cardId}!",
-                SpectatorWindowMsg = $"{askerName} is peeking at a card from {targetName}!",
-                AttackerResultMsg = $"You peeked at {targetName}'s {cardId}",
-                DefenderResultMsg = $"{askerName} peeked at your {cardId}!",
-                SpectatorResultMsg = $"{askerName} peeked at a card from {targetName}!"
-            },
-            OnProceed = () => ContinueBombastic(pending),
-            OnCancelled = endTurn => CancelBombastic(pending, endTurn)
-        });
-    }
-    //replaced from IEnumerator BombasticAfterRevealRoutine
-    private void ContinueBombastic(PendingBombastic pending)
-    {
-        //yield return new WaitForSeconds(BombasticRevealWait);
-
-        if (pending.Picked.Count < pending.PicksTotal)
-        {
-            OpenNextBombasticPick(pending);
-            //yield break;
-            return;
+                pending.Picked.Add(idx);
+                seenCards.Add(playerHands[pending.Target][idx]);
+            }
         }
-
+        if (seenCards.Count == 0) { CancelBombastic(pending, false); return; }
+        ShowMultiPeekRevealClientRpc(seenCards.ToArray(), askerName, targetName, SingleTarget(pending.Asker));
+        ShowMultiPeekRevealClientRpc(seenCards.ToArray(), askerName, targetName, SingleTarget(pending.Target));
         if (!pending.Reflected && !pending.FromCat) DeckManager.Instance.Discard(pending.Card);
         if (pendingBombastic == pending) pendingBombastic = null;
-        pending.OnFinished?.Invoke();
+        StartCoroutine(DelayAndFinishBombastic(pending.OnFinished));
     }
-    private IEnumerator ReflectedBombasticRevealRoutine(PendingBombastic pending, NetworkCard seen)
+
+    [ClientRpc]
+    private void ShowMultiPeekRevealClientRpc(NetworkCard[] cards, string askerName, string targetName, ClientRpcParams clientRpcParams = default)
     {
-        string askerName = GetPlayerName(pending.Asker);
-        string targetName = GetPlayerName(pending.Target);
-        string cardId = seen.CardId;
-
-        var view = new ReactionRequest
-        {
-            Attacker = pending.Asker,
-            Defender = pending.Target,
-            Reveal = new ReactionReveal
-            {
-                Card = seen,
-                AttackerResultMsg = $"You peeked at {targetName}'s {cardId}",
-                DefenderResultMsg = $"{askerName} peeked at your {cardId}!",
-                SpectatorResultMsg = $"{askerName} peeked at a card from {targetName}!"
-            }
-        };
-        BroadcastReactionSpotlights(view, true, ReactionResultSeconds);
-        yield return new WaitForSeconds(ReactionResultSeconds);
-
-        ContinueBombastic(pending);
+        HandRevealUI.Instance?.ShowTimed("Peeked Cards", cards, 3f);
     }
+
+    private IEnumerator DelayAndFinishBombastic(System.Action onFinished)
+    {
+        yield return new WaitForSeconds(3.2f);
+        onFinished?.Invoke();
+    }
+
+
 
     private void CancelBombastic(PendingBombastic pending, bool endAttackerTurn)
     {
@@ -186,50 +159,29 @@ public partial class GameManager
 
         CancelAbility(pending.Asker, pending.Card, endAttackerTurn);
     }
-    private IEnumerator BombasticPickTimeoutRoutine(PendingBombastic pending, int stage)
+    private IEnumerator BombasticPickTimeoutRoutine(PendingBombastic pending)
     {
         yield return new WaitForSeconds(BombasticPickSeconds);
 
-        if (pending.Stage != stage || !pending.AwaitingPick) yield break;
+        if (!pending.AwaitingPick) yield break;
         if (!playerHands.TryGetValue(pending.Target, out var hand)) yield break;
 
         List<int> remaining = new List<int>();
         for (int i = 0; i < hand.Count; i++)
-        {
             if (!pending.Picked.Contains(i)) remaining.Add(i);
-        }
+
         if (remaining.Count == 0) yield break;
 
-        Debug.LogWarning("[bombastic] asker timed out - peeking at a random card");
-        RevealBombasticPick(pending, remaining[Random.Range(0, remaining.Count)]);
-    }
-    [ClientRpc]
-    private void OpenPeekModalClientRpc(ulong victimId, string victimName, DetectiveCatType victimCat,
-                                        int[] remainingVictimIndices, int pickNumber, int pickTotal,
-                                        ClientRpcParams clientRpcParams = default)
-    {
-        StealManager.Instance?.ShowPeekModal(victimId, victimName, victimCat, remainingVictimIndices, pickNumber, pickTotal);
-    }
+        int[] autoPicks = new int[Mathf.Min(pending.PicksTotal, remaining.Count)];
+        for (int i = 0; i < autoPicks.Length; i++) autoPicks[i] = remaining[i];
 
+        Debug.LogWarning("[bombastic] asker timed out - peeking at random cards");
+        pending.AwaitingPick = false;
+        ResolveBombasticMultiPick(pending, autoPicks);
+    }
     [ClientRpc]
     private void ClosePeekModalClientRpc(ClientRpcParams clientRpcParams = default)
     {
         StealManager.Instance?.CloseStealModal();
-    }
-
-    [ClientRpc]
-    private void ShowPeekRevealClientRpc(string cardId, ulong playerId, string message, ClientRpcParams clientRpcParams = default)
-    {
-        Color glow = new Color(0.75f, 0.35f, 1f, 1f);
-
-        if (CardSpotlightController.Instance != null)
-        {
-            CardSpotlightController.Instance.PlaySpotlight(cardId, playerId, message, glow, BombasticRevealSeconds);
-        }
-        else
-        {
-            var spotlight = FindAnyObjectByType<CardSpotlightController>(FindObjectsInactive.Include);
-            spotlight?.PlaySpotlight(cardId, playerId, message, glow, BombasticRevealSeconds);
-        }
     }
 }

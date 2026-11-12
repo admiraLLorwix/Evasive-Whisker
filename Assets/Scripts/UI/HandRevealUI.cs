@@ -4,8 +4,7 @@ using UnityEngine.UI;
 using TMPro;
 using EvasiveWhisker.Cards;
 using System.Collections;
-//used for robin paw and correct guess on custodian
-//adjusted for discard pile vieweing and inspector bebang
+
 public class HandRevealUI : MonoBehaviour
 {
     public static HandRevealUI Instance { get; private set; }
@@ -14,7 +13,7 @@ public class HandRevealUI : MonoBehaviour
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private RectTransform cardContainer;
     [SerializeField] private Button closeButton;
-    [SerializeField] private Vector2 cardSize = new Vector2(130f, 190f);
+    [SerializeField] private Vector2 cardSize = new Vector2(70f, 98f);
     [SerializeField] private float cardGap = 18f;
 
     private readonly List<GameObject> spawnedCards = new List<GameObject>();
@@ -25,21 +24,15 @@ public class HandRevealUI : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-
         if (panel != null) panel.SetActive(false);
         if (closeButton != null) closeButton.onClick.AddListener(OnCloseClicked);
     }
 
-    //wrap and shrink to fit
     public void ShowPicker(string title, NetworkCard[] cards, System.Action<int> onPick, System.Action onCancel)
     {
         if (panel == null || cardContainer == null) return;
 
-        if (autoHideRoutine != null)
-        {
-            StopCoroutine(autoHideRoutine);
-            autoHideRoutine = null;
-        }
+        if (autoHideRoutine != null) { StopCoroutine(autoHideRoutine); autoHideRoutine = null; }
         ClearCards();
         pickCallback = onPick;
         cancelCallback = onCancel;
@@ -72,10 +65,9 @@ public class HandRevealUI : MonoBehaviour
             float x = (col - (inRow - 1) * 0.5f) * (cw + cardGap);
             float y = ((rows - 1) * 0.5f - row) * (ch + cardGap);
 
-            GameObject obj = CreateCard(cards[i], x);
+            GameObject obj = CreateCard(cards[i], new Vector2(x, y), 0f);
             var rt = (RectTransform)obj.transform;
             rt.sizeDelta = new Vector2(cw, ch);
-            rt.anchoredPosition = new Vector2(x, y);
 
             var image = obj.GetComponent<Image>();
             image.raycastTarget = true;
@@ -104,6 +96,7 @@ public class HandRevealUI : MonoBehaviour
         Hide();
         cancel?.Invoke();
     }
+
     public void ShowTimed(string title, NetworkCard[] cards, float seconds)
     {
         Show(title, cards);
@@ -116,33 +109,40 @@ public class HandRevealUI : MonoBehaviour
         autoHideRoutine = null;
         Hide();
     }
+
     public void Show(string title, NetworkCard[] cards)
     {
         if (panel == null || cardContainer == null) return;
         pickCallback = null;
         cancelCallback = null;
 
-        if (autoHideRoutine != null)
-        {
-            StopCoroutine(autoHideRoutine);
-            autoHideRoutine = null;
-        }
+        if (autoHideRoutine != null) { StopCoroutine(autoHideRoutine); autoHideRoutine = null; }
         ClearCards();
         if (titleText != null) titleText.text = title;
 
         int count = cards != null ? cards.Length : 0;
+        if (count == 0) return;
 
-        float availableWidth = cardContainer.rect.width;
-        float step = cardSize.x + cardGap;
-        if (count > 1 && availableWidth > cardSize.x)
-        {
-            step = Mathf.Min(step, (availableWidth - cardSize.x) / (count - 1));
-        }
+        float maxTiltAngle = 12f;
+        float arcDropAmount = 20f;
+        float cardSpacing = 100f;
+        if (count > 1) cardSpacing = Mathf.Min(100f, (cardContainer.rect.width - 80f) / (count - 1));
 
         for (int i = 0; i < count; i++)
         {
-            float x = (i - (count - 1) * 0.5f) * step;
-            spawnedCards.Add(CreateCard(cards[i], x));
+            float t = (count <= 1) ? 0f : ((float)i / (count - 1) * 2f) - 1f;
+            float x = t * ((count - 1) * cardSpacing * 0.5f);
+            float y = -(t * t) * arcDropAmount;
+            float zRot = -t * maxTiltAngle;
+
+            GameObject obj = CreateCard(cards[i], new Vector2(x, y), zRot);
+            obj.transform.SetAsLastSibling();
+
+            var fanVisual = obj.GetComponent<StealCardButton>();
+            if (fanVisual == null) fanVisual = obj.AddComponent<StealCardButton>();
+            fanVisual.SetArcPosition(new Vector2(x, y), Quaternion.Euler(0, 0, zRot));
+
+            spawnedCards.Add(obj);
         }
 
         panel.SetActive(true);
@@ -153,16 +153,12 @@ public class HandRevealUI : MonoBehaviour
     {
         pickCallback = null;
         cancelCallback = null;
-        if (autoHideRoutine != null)
-        {
-            StopCoroutine(autoHideRoutine);
-            autoHideRoutine = null;
-        }
+        if (autoHideRoutine != null) { StopCoroutine(autoHideRoutine); autoHideRoutine = null; }
         ClearCards();
         if (panel != null) panel.SetActive(false);
     }
 
-    private GameObject CreateCard(NetworkCard netCard, float x)
+    private GameObject CreateCard(NetworkCard netCard, Vector2 pos, float rot)
     {
         var obj = new GameObject($"RevealCard_{netCard.CardId}", typeof(RectTransform), typeof(Image));
         obj.transform.SetParent(cardContainer, false);
@@ -171,21 +167,19 @@ public class HandRevealUI : MonoBehaviour
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.pivot = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = cardSize;
-        rt.anchoredPosition = new Vector2(x, 0f);
+        rt.anchoredPosition = pos;
+        rt.localRotation = Quaternion.Euler(0, 0, rot);
 
         var image = obj.GetComponent<Image>();
-        image.raycastTarget = false;
+        image.raycastTarget = true;
 
         Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(netCard.CardId) : null;
-
         if (sprite == null)
         {
             Card so = netCard.GetScriptableObject();
             if (so != null && so.frontfaceFrame != null)
             {
-                sprite = Sprite.Create(so.frontfaceFrame,
-                    new Rect(0, 0, so.frontfaceFrame.width, so.frontfaceFrame.height),
-                    new Vector2(0.5f, 0.5f));
+                sprite = Sprite.Create(so.frontfaceFrame, new Rect(0, 0, so.frontfaceFrame.width, so.frontfaceFrame.height), new Vector2(0.5f, 0.5f));
             }
         }
 
@@ -197,7 +191,6 @@ public class HandRevealUI : MonoBehaviour
         else
         {
             image.color = (netCard.Type == CardType.WhiskerBlower) ? Color.yellow : Color.cyan;
-            Debug.LogWarning($"[HandReveal] missing sprite: '{netCard.CardId}'");
         }
 
         return obj;

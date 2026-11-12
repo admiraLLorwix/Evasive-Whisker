@@ -231,8 +231,6 @@ public partial class GameManager
         string thiefName = GetPlayerName(thiefId);
         string victimName = GetPlayerName(victimId);
 
-        if (!redirected) PlayVersusSpotlightClientRpc(thiefId, victimId, "is attempting to steal from");
-
         ReactionRequest request = null;
         request = new ReactionRequest
         {

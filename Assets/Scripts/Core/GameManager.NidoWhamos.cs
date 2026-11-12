@@ -50,11 +50,9 @@ public partial class GameManager
         CurrentState.Value = GameState.PlayerTurn_Resolving;
         LockShuffle(targetId);
         MarkCatUsed(askerId);
+        GameManager.Instance.PlayTargetedAbilityFlightClientRpc("DetectiveNido", "", targetId, false);
 
-        string askerName = GetPlayerName(askerId);
-        string targetName = GetPlayerName(targetId);
-        BroadcastCatSpotlightClientRpc(DetectiveCatType.DetectiveNido, askerId, $"{askerName} uses Detective Nido on {targetName}!", CatSpotlightSeconds);
-        yield return new WaitForSeconds(CatSpotlightSeconds);
+        yield return new WaitForSeconds(1.5f);
 
         BeginBombastic(askerId, targetId, default, () => AfterAction(askerId, TurnActionKind.Ability),
             reflected: false, maxPicks: 1, fromCat: true);

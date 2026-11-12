@@ -17,13 +17,13 @@ public class CardFlightManager : MonoBehaviour
         Instance = this;
         mainCanvas = GetComponentInParent<Canvas>();
     }
-
-    public void FlyCard(Vector3 startScreenPos, Vector3 targetScreenPos, Sprite cardSprite, System.Action onComplete = null)
+    public void FlyCard(Vector3 startScreenPos, Vector3 targetScreenPos, Sprite cardSprite, System.Action onComplete = null, float customDuration = -1f)
     {
-        StartCoroutine(FlightRoutine(startScreenPos, targetScreenPos, cardSprite, onComplete));
+        float duration = customDuration > 0 ? customDuration : flightDuration;
+        StartCoroutine(FlightRoutine(startScreenPos, targetScreenPos, cardSprite, onComplete, duration));
     }
 
-    private IEnumerator FlightRoutine(Vector3 start, Vector3 target, Sprite sprite, System.Action onComplete)
+    private IEnumerator FlightRoutine(Vector3 start, Vector3 target, Sprite sprite, System.Action onComplete, float duration)
     {
         if (mainCanvas == null) yield break;
 
@@ -45,10 +45,10 @@ public class CardFlightManager : MonoBehaviour
         img.raycastTarget = false;
 
         float elapsed = 0f;
-        while (elapsed < flightDuration)
+        while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / flightDuration);
+            float t = Mathf.Clamp01(elapsed / duration);
             float curveT = flightCurve.Evaluate(t);
 
             Vector3 currentPos = Vector3.Lerp(start, target, curveT);

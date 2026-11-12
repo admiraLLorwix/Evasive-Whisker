@@ -45,6 +45,7 @@ public partial class GameManager
         string targetName = GetPlayerName(targetId);
         Debug.Log($"<color=cyan>[cat instinct] {askerName} asks {targetName} if they hold the WhiskerBlower</color>");
 
+        GameManager.Instance.PlayTargetedAbilityFlightClientRpc(card.CardId, "", targetId, true);
         OpenCatInstinctPromptClientRpc(askerName, CatInstinctAnswerSeconds, SingleTarget(targetId));
         SendNotice(askerId, $"<color=blue>Waiting for {targetName} to answer...</color>");
 

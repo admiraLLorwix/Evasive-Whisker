@@ -27,6 +27,8 @@ public class StealManager : NetworkBehaviour
     private bool isAccusingCustodian = false;
     private bool isIslandPick = false;
     private HashSet<ulong> islandPickEligible = new HashSet<ulong>();
+    private List<int> multiPickedIndices = new List<int>();
+    private System.Action<int[]> onMultiPickConfirmed;
     private void Awake()
     {
         Instance = this;
@@ -156,8 +158,9 @@ public class StealManager : NetworkBehaviour
         ulong thiefId = rpcParams.Receive.SenderClientId;
 
         if (!GameManager.Instance.TryBeginStealTargeting(thiefId, victimId)) return;
-        ServerOpenStealModal(thiefId, victimId);
+        GameManager.Instance.BeginStealSequence(thiefId, victimId);
     }
+
     public void ServerOpenStealModal(ulong thiefId, ulong victimId)
     {
         int victimCardCount = GameManager.Instance.GetPlayerHandCount(victimId);
@@ -314,5 +317,105 @@ public class StealManager : NetworkBehaviour
     {
         ulong thiefId = rpcParams.Receive.SenderClientId;
         GameManager.Instance.ExecuteSteal(thiefId, victimId, cardIndex);
+    }
+
+    public void ShowMultiPeekModal(ulong victimId, string victimName, DetectiveCatType victimCat, int[] victimIndices, System.Action<int[]> onConfirm)
+    {
+        currentStealTargetId = victimId;
+        IsSelectingTarget = false;
+        multiPickedIndices.Clear();
+        onMultiPickConfirmed = onConfirm;
+
+        OpenMultiFanModal(victimId, victimName, victimCat,
+            $"Peeking at <color=red>{victimName}</color>'s cards (Pick 2)",
+            new List<int>(victimIndices));
+    }
+
+    private void OpenMultiFanModal(ulong victimId, string victimName, DetectiveCatType victimCat, string title, List<int> victimIndices)
+    {
+        if (stealModal == null)
+        {
+            Debug.LogError("[sm] !stealmodal");
+            return;
+        }
+
+        stealModal.SetActive(true);
+        stealModal.transform.SetAsLastSibling();
+
+        if (victimNameText != null) victimNameText.text = title;
+        if (stealCancelButton != null) stealCancelButton.gameObject.SetActive(false);
+
+        if (victimAvatarImage != null && CardDatabase.Instance != null)
+        {
+            Sprite catSprite = CardDatabase.Instance.GetIslandProfileSprite(victimCat);
+            if (catSprite != null)
+            {
+                victimAvatarImage.sprite = catSprite;
+                victimAvatarImage.gameObject.SetActive(true);
+            }
+        }
+
+        if (cardFanContainer == null || stealCardPrefab == null) return;
+
+        foreach (Transform child in cardFanContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        int cardCount = victimIndices.Count;
+        for (int thiefSlotIndex = 0; thiefSlotIndex < cardCount; thiefSlotIndex++)
+        {
+            int actualVictimIndex = victimIndices[(cardCount - 1) - thiefSlotIndex];
+
+            GameObject cardObj = Instantiate(stealCardPrefab, cardFanContainer);
+            Button btn = cardObj.GetComponentInChildren<Button>();
+
+            RectTransform rt = cardObj.GetComponent<RectTransform>();
+            if (rt != null) rt.sizeDelta = new Vector2(130, 190);
+
+            float t = (cardCount <= 1) ? 0f : ((float)thiefSlotIndex / (cardCount - 1) * 2f) - 1f;
+            float xPos = t * (cardSpacingX * (cardCount * 0.45f));
+            float yPos = -(t * t) * arcDropAmount;
+            float zRot = -t * maxTiltAngle;
+
+            var fanVisual = cardObj.GetComponent<StealCardButton>();
+            if (fanVisual == null) fanVisual = cardObj.AddComponent<StealCardButton>();
+            fanVisual.SetArcPosition(new Vector2(xPos, yPos), Quaternion.Euler(0, 0, zRot));
+
+            int selectedIndex = actualVictimIndex;
+            if (btn != null)
+            {
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => OnMultiPeekCardSelected(selectedIndex, cardObj));
+            }
+        }
+    }
+
+    private void OnMultiPeekCardSelected(int index, GameObject cardObj)
+    {
+        Outline outline = cardObj.GetComponent<Outline>();
+        if (outline == null) outline = cardObj.AddComponent<Outline>();
+
+        if (multiPickedIndices.Contains(index))
+        {
+            multiPickedIndices.Remove(index);
+            outline.enabled = false;
+            cardObj.transform.localScale = Vector3.one;
+        }
+        else
+        {
+            if (multiPickedIndices.Count >= 2) return;
+            multiPickedIndices.Add(index);
+            outline.enabled = true;
+            outline.effectColor = Color.yellow;
+            outline.effectDistance = new Vector2(5f, -5f);
+            cardObj.transform.localScale = Vector3.one * 1.1f;
+        }
+
+        if (multiPickedIndices.Count == 2)
+        {
+            CloseStealModal();
+            onMultiPickConfirmed?.Invoke(multiPickedIndices.ToArray());
+        }
     }
 }

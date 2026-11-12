@@ -7,7 +7,7 @@ using EvasiveWhisker.Cards;
 
 public partial class GameManager
 {
-    public const float ReactionWindowSeconds = 4f;
+    public const float ReactionWindowSeconds = 10f;
     public const float ReactionResultSeconds = 3f;
     private const float CounterplayResultWait = 3f;
     private static readonly string[] StealReactionTags = { "Steal" };
@@ -31,6 +31,7 @@ public partial class GameManager
         public ulong Defender;
         public string[] ActionTags;
         public string Description;
+        public string CardId;
         public System.Action OnProceed;
         public System.Action<bool> OnCancelled;
     }
@@ -58,10 +59,14 @@ public partial class GameManager
     private IEnumerator ReactionWindowRoutine(PendingReaction pending)
     {
         ReactionRequest req = pending.Request;
-        if (req.Reveal != null) BroadcastReactionSpotlights(req, false, ReactionWindowSeconds);
+
+        string cardId = req.Reveal != null ? req.Reveal.Card.CardId : "";
+        PlayVersusSpotlightClientRpc(req.Attacker, req.Defender, req.Description, req.CardId, true);
+
         NetworkCard[] legalCards = GetLegalCounterCards(req.Defender, req.ActionTags);
         bool catLegal = TryGetLegalCatReaction(req, out DetectiveCatType legalCat);
         bool prompted = legalCards.Length > 0 || catLegal;
+
         if (prompted)
         {
             string catName = catLegal ? DetectiveCatRules.DisplayName(legalCat) : "";
@@ -76,7 +81,9 @@ public partial class GameManager
 
         if (pendingReaction == pending) pendingReaction = null;
         if (prompted) CloseReactionPromptClientRpc(SingleTarget(req.Defender));
-        
+
+        StopVersusSpotlightClientRpc();
+
         if (pending.CatPlayed)
         {
             yield return StartCoroutine(HandleCatReaction(pending));
@@ -117,7 +124,6 @@ public partial class GameManager
             yield break;
         }
 
-        // countered but not cancelled (e.g. a counter with a side effect): the action still resolves
         if (req.Reveal != null)
         {
             BroadcastReactionSpotlights(req, true, ReactionResultSeconds);
@@ -126,6 +132,11 @@ public partial class GameManager
         req.OnProceed?.Invoke();
     }
 
+    [ClientRpc]
+    private void StopVersusSpotlightClientRpc()
+    {
+        CardSpotlightController.Instance?.StopVersusTimerEarly();
+    }
     private void BroadcastReactionSpotlights(ReactionRequest req, bool result, float seconds)
     {
         ReactionReveal r = req.Reveal;
