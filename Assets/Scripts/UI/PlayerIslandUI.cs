@@ -223,7 +223,8 @@ public class PlayerIslandUI : MonoBehaviour
                     float t = (count <= 1) ? 0f : ((float)i / (count - 1) * 2f) - 1f;
 
                     float xPos = t * (miniCardSpacingX * (count * 0.45f));
-                    float yPos = -(t * t) * miniArcDropY;
+                    //float yPos = -(t * t) * miniArcDropY;
+                    float yPos = (t * t) * miniArcDropY;
                     float zRot = -t * miniMaxTiltZ;
 
                     rt.anchoredPosition = new Vector2(xPos, yPos);

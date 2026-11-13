@@ -95,15 +95,17 @@ public partial class GameManager
             receivers.Add(receiver);
             cards.Add(pick.Value);
         }
-        PlayScatterAnimationClientRpc(givers.ToArray(), receivers.ToArray(), cards.ToArray());
+        PlayScatterAnimationClientRpc(givers.ToArray(), receivers.ToArray());
         StartCoroutine(FinishScatterAfterAnimation(pending));
     }
 
     [ClientRpc]
-    private void PlayScatterAnimationClientRpc(ulong[] givers, ulong[] receivers, NetworkCard[] cards)
+    private void PlayScatterAnimationClientRpc(ulong[] givers, ulong[] receivers)
     {
         if (CardFlightManager.Instance == null) return;
 
+        Sprite sprite = CardSpotlightController.Instance != null ? CardSpotlightController.Instance.defaultCardBackSprite : null;
+        if (sprite == null) return;
         for (int i = 0; i < givers.Length; i++)
         {
             Vector3 startPos = new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
@@ -124,7 +126,7 @@ public partial class GameManager
                 var island = BoardLayoutManager.Instance != null ? BoardLayoutManager.Instance.GetOpponentIsland(receivers[i]) : null;
                 if (island != null) endPos = island.transform.position;
             }
-            Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(cards[i].CardId) : null;
+
             CardFlightManager.Instance.FlyCard(startPos, endPos, sprite, null, 1.5f);
         }
     }

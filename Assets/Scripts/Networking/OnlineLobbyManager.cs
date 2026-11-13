@@ -117,7 +117,8 @@ public class OnlineLobbyManager : MonoBehaviour
                 Player = GetPlayerDataObject(),
                 Data = new Dictionary<string, DataObject>
                 {
-                    { "RelayCode", new DataObject(DataObject.VisibilityOptions.Public, RelayJoinCode) }
+                    { "RelayCode", new DataObject(DataObject.VisibilityOptions.Public, RelayJoinCode) },
+                    { "BotCount", new DataObject(DataObject.VisibilityOptions.Public, "0") }
                 }
             };
 
@@ -609,5 +610,28 @@ public class OnlineLobbyManager : MonoBehaviour
         CurrentLobby = null;
         OnLobbyLeft?.Invoke();
         UIManager.Instance?.ShowPlayScreen();
+    }
+
+    public async Task UpdateLobbyBotCountAsync(int count)
+    {
+        if (CurrentLobby == null || !IsHost()) return;
+
+        try
+        {
+            UpdateLobbyOptions options = new UpdateLobbyOptions
+            {
+                Data = new Dictionary<string, DataObject>
+                {
+                    { "BotCount", new DataObject(DataObject.VisibilityOptions.Public, count.ToString()) }
+                }
+            };
+
+            CurrentLobby = await LobbyService.Instance.UpdateLobbyAsync(CurrentLobby.Id, options);
+            OnLobbyUpdated?.Invoke(CurrentLobby);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[lobby] failed to update bot count {e.Message}");
+        }
     }
 }

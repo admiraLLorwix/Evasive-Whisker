@@ -35,7 +35,9 @@ public class LobbyPanelController : MonoBehaviour
     //testing only
     [Header("match settings")]
     [SerializeField] private int minPlayersToStart = 3;
-
+    //bots
+    [SerializeField] private Button addBotButton;
+    private int currentBotCount = 0;
     private bool isLocalPlayerReady = false;
 
     private void Start()
@@ -43,7 +45,7 @@ public class LobbyPanelController : MonoBehaviour
         readyButton.onClick.AddListener(OnReadyButtonClicked);
         startMatchButton.onClick.AddListener(OnStartMatchClicked);
         leaveButton.onClick.AddListener(OnLeaveButtonClicked);
-
+        if (addBotButton != null) addBotButton.onClick.AddListener(OnAddBotClicked);
         if (lockLobbyButton != null) lockLobbyButton.onClick.AddListener(OnLockLobbyClicked);
 
         if (OnlineLobbyManager.Instance != null)
@@ -58,7 +60,6 @@ public class LobbyPanelController : MonoBehaviour
             }
         }
     }
-
     private void OnDestroy()
     {
         if (OnlineLobbyManager.Instance != null)
@@ -111,7 +112,9 @@ public class LobbyPanelController : MonoBehaviour
         bool allPlayersReady = true;
         int connectedCount = lobby.Players.Count;
         bool isHostPlayer = OnlineLobbyManager.Instance.IsHost();
-
+        int botCount = 0;
+        if (lobby.Data != null && lobby.Data.ContainsKey("BotCount"))
+            int.TryParse(lobby.Data["BotCount"].Value, out botCount);
         foreach (Player player in lobby.Players)
         {
             GameObject entry = Instantiate(playerEntryPrefab, playerListContainer);
@@ -151,6 +154,24 @@ public class LobbyPanelController : MonoBehaviour
             }
         }
 
+        for (int i = 0; i < botCount; i++)
+        {
+            GameObject entry = Instantiate(playerEntryPrefab, playerListContainer);
+            TMP_Text playerNameText = entry.transform.Find("PlayerNameText")?.GetComponent<TMP_Text>();
+            Image statusImage = entry.transform.Find("StatusImage")?.GetComponent<Image>();
+            Button kickButton = entry.transform.Find("KickButton")?.GetComponent<Button>();
+
+            if (playerNameText != null) playerNameText.text = $"Bot {i + 1}";
+            if (statusImage != null) statusImage.sprite = playerReadySprite;
+
+            if (kickButton != null)
+            {
+                kickButton.gameObject.SetActive(isHostPlayer);
+                kickButton.onClick.RemoveAllListeners();
+                kickButton.onClick.AddListener(() => OnRemoveBotClicked(botCount));
+            }
+        }
+        connectedCount += botCount;
         //bool isHostPlayer = OnlineLobbyManager.Instance.IsHost();
 
         if (startMatchButton != null)
@@ -159,10 +180,10 @@ public class LobbyPanelController : MonoBehaviour
             startMatchButton.interactable = isHostPlayer && (connectedCount >= minPlayersToStart) && allPlayersReady;
         }
 
-        if (startMatchButton != null)
+        if (addBotButton != null)
         {
-            startMatchButton.gameObject.SetActive(isHostPlayer);
-            startMatchButton.interactable = isHostPlayer && (connectedCount >= minPlayersToStart) && allPlayersReady;
+            addBotButton.gameObject.SetActive(isHostPlayer);
+            addBotButton.interactable = connectedCount < lobby.MaxPlayers;
         }
 
         if (lockLobbyButton != null)
@@ -207,12 +228,15 @@ public class LobbyPanelController : MonoBehaviour
         //}
     }
 
-    private async void OnStartMatchClicked()
+    private void OnStartMatchClicked()
     {
         if (OnlineLobbyManager.Instance != null && OnlineLobbyManager.Instance.IsHost())
         {
+            var lobby = OnlineLobbyManager.Instance.CurrentLobby;
+            MatchContext.BotCount = 0;
+            if (lobby.Data != null && lobby.Data.ContainsKey("BotCount"))
+                int.TryParse(lobby.Data["BotCount"].Value, out MatchContext.BotCount);
             LoadingScreenManager.Instance?.Show("Loading Match");
-            await OnlineLobbyManager.Instance.ToggleLobbyLockAsync(true);
             NetworkManager.Singleton.SceneManager.LoadScene("Game", UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }
@@ -227,6 +251,31 @@ public class LobbyPanelController : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowPlayScreen();
+        }
+    }
+
+    private async void OnAddBotClicked()
+    {
+        if (OnlineLobbyManager.Instance == null || !OnlineLobbyManager.Instance.IsHost()) return;
+
+        var lobby = OnlineLobbyManager.Instance.CurrentLobby;
+        if (lobby == null) return;
+
+        int currentBots = 0;
+        if (lobby.Data != null && lobby.Data.ContainsKey("BotCount"))
+            int.TryParse(lobby.Data["BotCount"].Value, out currentBots);
+
+        if (currentBots + lobby.Players.Count >= lobby.MaxPlayers) return;
+
+        await OnlineLobbyManager.Instance.UpdateLobbyBotCountAsync(currentBots + 1);
+    }
+
+    private async void OnRemoveBotClicked(int currentBots)
+    {
+        if (OnlineLobbyManager.Instance == null || !OnlineLobbyManager.Instance.IsHost()) return;
+        if (currentBots > 0)
+        {
+            await OnlineLobbyManager.Instance.UpdateLobbyBotCountAsync(currentBots - 1);
         }
     }
 

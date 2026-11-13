@@ -1,16 +1,18 @@
-using System.Collections;
-using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 using EvasiveWhisker.Cards;
+using System.Collections;
+using TMPro;
+using Unity.Netcode;
+using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
 {
     public static CardSpotlightController Instance { get; private set; }
 
     [SerializeField] private GameObject spotlightRoot; [SerializeField] private GameObject cardRevealGroup;
-    [SerializeField] private Image spotlightCardImage; [SerializeField] private Sprite defaultCardBackSprite;
+    [SerializeField] private Image spotlightCardImage; //[SerializeField] private Sprite defaultCardBackSprite;
+    public Sprite defaultCardBackSprite;
     //[SerializeField] private TMP_Text actionTitleText;
     [SerializeField] private Outline cardGlowOutline;
     //optional but better if set
@@ -426,8 +428,14 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
     public void PlayStealResultSequence(ulong thiefId, ulong victimId, string cardId)
     {
         gameObject.SetActive(true);
-        StartCoroutine(StealResultRoutine(thiefId, victimId, cardId));
+
+        bool isInvolved = NetworkManager.Singleton.LocalClientId == thiefId || NetworkManager.Singleton.LocalClientId == victimId;
+
+        string displayCardId = isInvolved ? cardId : "";
+
+        StartCoroutine(StealResultRoutine(thiefId, victimId, displayCardId));
     }
+
     private IEnumerator StealResultRoutine(ulong thiefId, ulong victimId, string cardId)
     {
         PlayVersusSpotlight(thiefId, victimId, "stole a card from", cardId, false);
@@ -455,7 +463,13 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
 
         if (CardFlightManager.Instance != null && attackerAvatar != null && victimAvatar != null)
         {
-            Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(cardId) : null;
+            Sprite sprite = null;
+            if (!string.IsNullOrEmpty(cardId) && CardDatabase.Instance != null)
+                sprite = CardDatabase.Instance.GetCardSprite(cardId);
+
+            if (sprite == null && CardSpotlightController.Instance != null)
+                sprite = CardSpotlightController.Instance.defaultCardBackSprite;
+
             Vector3 startPos = victimAvatar.transform.position;
             Vector3 endPos = attackerAvatar.transform.position;
             CardFlightManager.Instance.FlyCard(startPos, endPos, sprite, null, 1.0f);
@@ -464,6 +478,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         yield return new WaitForSeconds(1.8f);
         HideSpotlight();
     }
+
     public void PlayHurtAnimation(ulong playerId)
     {
         gameObject.SetActive(true);

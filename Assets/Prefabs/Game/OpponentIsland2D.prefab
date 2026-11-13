@@ -918,7 +918,7 @@ MonoBehaviour:
   guessImmunityBadge: {fileID: 2808703572577487728}
   miniCardSpacingX: 26
   miniMaxTiltZ: 9
-  miniArcDropY: 4
+  miniArcDropY: 25
 --- !u!225 &8405784518872711342
 CanvasGroup:
   m_ObjectHideFlags: 0

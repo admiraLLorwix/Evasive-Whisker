@@ -69,7 +69,11 @@ public partial class GameManager
 
         bool actuallyHolds = TargetHoldsWhiskerBlower(pending.Target);
         bool lying = saysYes != actuallyHolds;
-
+        if (IsBot(pending.Asker) && saysYes)
+        {
+            RecordBotMemory(pending.Asker, pending.Target);
+            Debug.Log($"<color=orange>[bot] {GetPlayerName(pending.Asker)} memorized {GetPlayerName(pending.Target)}</color>");
+        }
         Debug.Log($"<color=cyan>[cat instinct] {GetPlayerName(pending.Target)} said {(saysYes ? "YES" : "NO")} " +
                   $"(holds={actuallyHolds}) -> {(lying ? "LYING" : "truthful")}</color>");
 

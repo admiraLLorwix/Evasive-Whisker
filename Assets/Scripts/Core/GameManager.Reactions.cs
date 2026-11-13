@@ -54,6 +54,10 @@ public partial class GameManager
         var pending = new PendingReaction { Request = request };
         pendingReaction = pending;
         StartCoroutine(ReactionWindowRoutine(pending));
+        if (IsBot(request.Defender))
+        {
+            StartCoroutine(BotReactionRoutine(pending));
+        }
     }
 
     private IEnumerator ReactionWindowRoutine(PendingReaction pending)

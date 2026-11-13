@@ -224,7 +224,13 @@ public partial class GameManager : NetworkBehaviour
         {
             turnOrder.Add(client.ClientId);
         }
-
+        for (int i = 0; i < MatchContext.BotCount; i++)
+        {
+            ulong botId = (ulong)(1000 + i);
+            turnOrder.Add(botId);
+            playerNamesMap[botId] = $"Bot {i + 1}";
+            InitializeBotMemory(botId);
+        }
         draftOrder = new List<ulong>(turnOrder);
         draftOrder.Reverse();
 
@@ -294,8 +300,13 @@ public partial class GameManager : NetworkBehaviour
         {
             ulong choosingPlayerId = draftOrder[ActiveDraftIndex.Value];
 
-            string chooserName = GetPlayerName(choosingPlayerId);
+            if (IsBot(choosingPlayerId))
+            {
+                StartCoroutine(BotDraftRoutine(choosingPlayerId));
+                return;
+            }
 
+            string chooserName = GetPlayerName(choosingPlayerId);
             NotifyPlayerToPickCatClientRpc(choosingPlayerId, chooserName, availableCatPool.ToArray());
             StartDraftTimer(choosingPlayerId);
         }
@@ -384,6 +395,7 @@ public partial class GameManager : NetworkBehaviour
         foreach (var pair in playerHands)
         {
             ulong clientId = pair.Key;
+            if (IsBot(clientId)) continue;
             NetworkCard[] cards = pair.Value.ToArray();
 
             ClientRpcParams clientParams = new ClientRpcParams
@@ -444,6 +456,11 @@ public partial class GameManager : NetworkBehaviour
 
         UpdateTurnUIClientRpc(playerId, playerName, CurrentRound.Value);
         Debug.Log($"[turn] {playerName}");
+        if (IsBot(playerId))
+        {
+            StartCoroutine(BotTurnRoutine(playerId));
+            return;
+        }
         StartDrawTimer(playerId);
     }
 
@@ -729,7 +746,7 @@ public partial class GameManager : NetworkBehaviour
         var island = BoardLayoutManager.Instance.GetOpponentIsland(drawerId);
         if (island == null) return;
 
-        Sprite sprite = CardDatabase.Instance.GetCardSprite(cardId);
+        Sprite sprite = CardSpotlightController.Instance != null ? CardSpotlightController.Instance.defaultCardBackSprite : null;
         if (sprite == null) return;
 
         Vector3 startPos = new Vector3(Screen.width / 2f, Screen.height / 2f, 0);
@@ -994,7 +1011,8 @@ public partial class GameManager : NetworkBehaviour
 
         if (playerHands.TryGetValue(victimId, out var victimHand))
         {
-            ShowVictimHandClientRpc(victimHand.ToArray(), SingleTarget(victimId));
+            if (!IsBot(victimId))
+                ShowVictimHandClientRpc(victimHand.ToArray(), SingleTarget(victimId));
         }
         StartDecisionTimer(thiefId, () => AutoStealCard(thiefId, victimId), TimeoutCardSelection);
     }
