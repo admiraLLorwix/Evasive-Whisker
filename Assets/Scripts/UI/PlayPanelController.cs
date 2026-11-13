@@ -102,6 +102,7 @@ public class PlayPanelController : MonoBehaviour
     {
         hostLobbyButton.interactable = false;
 
+        LoadingScreenManager.Instance?.Show("Creating Lobby");
         string roomName = string.IsNullOrEmpty(lobbyNameInput.text)
             ? $"{OnlineLobbyManager.Instance.LocalPlayerName}'s Room"
             : lobbyNameInput.text;
@@ -113,6 +114,7 @@ public class PlayPanelController : MonoBehaviour
         {
             UIManager.Instance.ShowLobbyScreen();
         }
+        LoadingScreenManager.Instance?.Hide();
         hostLobbyButton.interactable = true;
     }
 
@@ -123,6 +125,7 @@ public class PlayPanelController : MonoBehaviour
 
         joinByCodeButton.interactable = false;
 
+        LoadingScreenManager.Instance?.Show("Creating Lobby");
         bool success = 
         await OnlineLobbyManager.Instance.JoinLobbyByCodeAsync(code);
 
@@ -131,6 +134,7 @@ public class PlayPanelController : MonoBehaviour
         {
             UIManager.Instance.ShowLobbyScreen();
         }
+        LoadingScreenManager.Instance?.Hide();
         joinByCodeButton.interactable = true;
     }
 

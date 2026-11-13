@@ -211,6 +211,7 @@ public class LobbyPanelController : MonoBehaviour
     {
         if (OnlineLobbyManager.Instance != null && OnlineLobbyManager.Instance.IsHost())
         {
+            LoadingScreenManager.Instance?.Show("Loading Match");
             await OnlineLobbyManager.Instance.ToggleLobbyLockAsync(true);
             NetworkManager.Singleton.SceneManager.LoadScene("Game", UnityEngine.SceneManagement.LoadSceneMode.Single);
         }

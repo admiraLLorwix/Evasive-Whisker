@@ -79,6 +79,7 @@ public class GameOverUI : MonoBehaviour
         SetBusy(true);
         Debug.Log("[go] return to lobby");
 
+        LoadingScreenManager.Instance?.Show("Returning to Lobby");
         try
         {
             if (NetworkManager.Singleton != null &&
@@ -98,12 +99,16 @@ public class GameOverUI : MonoBehaviour
                 throw new Exception("OnlineLobbyManager unavailable.");
 
             await OnlineLobbyManager.Instance.ReturnToLobbyAsync();
+
             UIManager.Instance?.ShowLobbyScreen();
+
+            LoadingScreenManager.Instance?.Hide();
         }
         catch (Exception e)
         {
             Debug.LogError($"[go] Return-to-Lobby failed: {e.Message}");
 
+            LoadingScreenManager.Instance?.Hide();
             _isShown = false;
             ShowMatchEnded(e.Message);
         }

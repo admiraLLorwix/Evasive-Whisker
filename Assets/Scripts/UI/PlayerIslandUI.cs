@@ -13,11 +13,16 @@ public class PlayerIslandUI : MonoBehaviour
     [SerializeField] private Image detectiveProfileImage;
     [SerializeField] private Image activeAbilityCardSlot;
 
+    [SerializeField] private Image glowImage;
+    [SerializeField] private Color activeTurnColor = new Color(1f, 0.85f, 0.2f, 1f);
+    [SerializeField] private Color targetableColor = new Color(1f, 0.2f, 0.1f, 1f);
+    [SerializeField] private float minAlpha = 0.1f;
+    [SerializeField] private float maxAlpha = 0.6f;
+
     [SerializeField] private Transform handCardsContainer;
     [SerializeField] private GameObject cardBackPrefab;
     [SerializeField] private TMP_Text cardCountText;
-    [SerializeField] private GameObject guessImmunityBadge; //need new asset for badge
-    //[SerializeField] private Image highlightBorderImage;
+    [SerializeField] private GameObject guessImmunityBadge;
     [SerializeField] private float miniCardSpacingX = 42f; [SerializeField] private float miniMaxTiltZ = 9f;
     [SerializeField] private float miniArcDropY = 4f;
     public string PlayerName { get; private set; }
@@ -28,30 +33,28 @@ public class PlayerIslandUI : MonoBehaviour
     public int CurrentCardCount { get; private set; } = 3;
     public bool IsGuessImmune { get; private set; } = false;
     private List<GameObject> spawnedCardBacks = new List<GameObject>();
-    //adtl for handreshuffle
+
     private List<Vector2> restPositions = new List<Vector2>();
     private List<Quaternion> restRotations = new List<Quaternion>();
     private Coroutine shuffleRoutine;
-    private Outline islandOutline;
-    private Coroutine highlightRoutine;
-    private Vector3 _originalScale;
+
+    private Coroutine glowRoutine;
     private bool _isTargetable = false;
     private bool _isActiveTurn = false;
+
     public void Initialize(ulong clientId, string playerName, Sprite islandSprite)
     {
         OwnerClientId = clientId;
         PlayerName = playerName;
-        _originalScale = transform.localScale;
-
-        if (islandBackgroundImage != null)
-        {
-            islandOutline = islandBackgroundImage.GetComponent<Outline>();
-            if (islandOutline != null) islandOutline.enabled = false;
-        }
-
 
         if (opponentNameText != null) opponentNameText.text = playerName;
         if (islandBackgroundImage != null && islandSprite != null) islandBackgroundImage.sprite = islandSprite;
+
+        if (glowImage != null)
+        {
+            glowImage.color = new Color(glowImage.color.r, glowImage.color.g, glowImage.color.b, 0f);
+            glowImage.raycastTarget = false;
+        }
 
         Button btn = GetComponent<Button>();
         if (btn == null) btn = gameObject.AddComponent<Button>();
@@ -66,19 +69,16 @@ public class PlayerIslandUI : MonoBehaviour
                 TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>{PlayerName} is protected after a failed accusation</color>", 2.5f);
                 return;
             }
-            //shouldn't open infomodal
             if (TargetingManager.Instance != null && TargetingManager.Instance.IsTargeting)
             {
                 TargetingManager.Instance.OnOpponentTargetChosen(OwnerClientId);
                 return;
             }
-            //shouldn't open infomodal
             if (StealManager.Instance != null && StealManager.Instance.IsSelectingTarget)
             {
                 StealManager.Instance.OnOpponentIslandClicked(OwnerClientId);
                 return;
             }
-            //only case to open
             if (OpponentInfoModal.Instance != null)
             {
                 OpponentInfoModal.Instance.ShowOpponentInfoModal(OwnerClientId, PlayerName, ChosenCat, CurrentCardCount, ActiveAbilityCardId);
@@ -104,53 +104,43 @@ public class PlayerIslandUI : MonoBehaviour
 
     private void UpdateVisualState()
     {
-        if (highlightRoutine != null)
+        if (glowRoutine != null)
         {
-            StopCoroutine(highlightRoutine);
-            highlightRoutine = null;
+            StopCoroutine(glowRoutine);
+            glowRoutine = null;
         }
 
         if (_isTargetable)
         {
-            if (islandOutline != null) islandOutline.enabled = true;
-            highlightRoutine = StartCoroutine(PulseOutlineRoutine(new Color(1f, 0.3f, 0.2f, 1f), true));
+            glowRoutine = StartCoroutine(PulseGlowRoutine(targetableColor));
         }
         else if (_isActiveTurn)
         {
-            if (islandOutline != null) islandOutline.enabled = true;
-            highlightRoutine = StartCoroutine(PulseOutlineRoutine(new Color(1f, 0.85f, 0.2f, 1f), false));
+            glowRoutine = StartCoroutine(PulseGlowRoutine(activeTurnColor));
         }
         else
         {
-            transform.localScale = _originalScale;
-            if (islandOutline != null) islandOutline.enabled = false;
+            if (glowImage != null)
+            {
+                glowImage.color = new Color(glowImage.color.r, glowImage.color.g, glowImage.color.b, 0f);
+            }
         }
     }
 
-    private IEnumerator PulseOutlineRoutine(Color baseColor, bool pulseScale)
+    private IEnumerator PulseGlowRoutine(Color baseColor)
     {
-        //Color baseColor = new Color(1f, 0.3f, 0.2f, 1f);
+        if (glowImage == null) yield break;
+
         while (true)
         {
-            float lerp = (Mathf.Sin(Time.time * 6f) + 1f) / 2f;
+            float lerp = (Mathf.Sin(Time.time * 4f) + 1f) / 2f;
+            float currentAlpha = Mathf.Lerp(minAlpha, maxAlpha, lerp);
 
-            if (pulseScale)
-            {
-                float scaleMultiplier = Mathf.Lerp(1f, 1.05f, lerp);
-                transform.localScale = _originalScale * scaleMultiplier;
-            }
-
-            if (islandOutline != null)
-            {
-                Color c = baseColor;
-                c.a = Mathf.Lerp(0.4f, 1f, lerp);
-                islandOutline.effectColor = c;
-            }
+            glowImage.color = new Color(baseColor.r, baseColor.g, baseColor.b, currentAlpha);
             yield return null;
         }
     }
 
-    //for wrong accusation
     public void SetGuessImmune(bool immune)
     {
         IsGuessImmune = immune;
@@ -218,7 +208,7 @@ public class PlayerIslandUI : MonoBehaviour
         if (handCardsContainer != null && cardBackPrefab != null)
         {
             foreach (var card in spawnedCardBacks) if (card != null) Destroy(card);
-            spawnedCardBacks.Clear(); 
+            spawnedCardBacks.Clear();
             restPositions.Clear(); restRotations.Clear();
 
             for (int i = 0; i < count; i++)
@@ -249,7 +239,7 @@ public class PlayerIslandUI : MonoBehaviour
             }
         }
     }
-    //animation reference from rrepo#10
+
     public void PlayShuffleAnimation()
     {
         if (!isActiveAndEnabled) return;
@@ -342,21 +332,10 @@ public class PlayerIslandUI : MonoBehaviour
         SnapCardBacksToRest();
         shuffleRoutine = null;
     }
+
     public void SetIslandGlow(bool enable, Color glowColor = default)
     {
         if (enable) SetTargetable(true);
         else SetTargetable(false);
     }
-
-    //private System.Collections.IEnumerator PulseOutlineRoutine(Outline outline)
-    //{
-    //    Color baseColor = new Color(1f, 0.6f, 0f, 1f);
-    //    while (true)
-    //    {
-    //        float lerp = (Mathf.Sin(Time.time * 6f) + 1f) / 2f;
-    //        baseColor.a = Mathf.Lerp(0.2f, 1f, lerp);
-    //        outline.effectColor = baseColor;
-    //        yield return null;
-    //    }
-    //}
 }

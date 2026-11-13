@@ -243,6 +243,11 @@ public partial class GameManager : NetworkBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
+        if (LoadingScreenManager.Instance != null)
+        {
+            LoadingScreenManager.Instance.Hide();
+        }
+
         CurrentState.Value = GameState.DraftingDetectiveCats;
         ActiveDraftIndex.Value = 0;
         PromptNextDraftPlayer();
