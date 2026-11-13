@@ -77,5 +77,16 @@ namespace EvasiveWhisker.Cards
             var visual = detectiveCatVisuals.Find(v => v.catType == catType);
             return visual != null ? visual.localHandCardSprite : null;
         }
+        public CardType? GetCardType(string cardId)
+        {
+            if (cardLookup.TryGetValue(cardId, out Card card))
+                return card.cardType;
+
+            var entry = cardArtList.Find(c => c.cardID == cardId);
+            if (entry != null)
+                return entry.cardType;
+
+            return null;
+        }
     }
 }

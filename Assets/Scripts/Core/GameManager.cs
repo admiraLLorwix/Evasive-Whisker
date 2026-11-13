@@ -491,6 +491,7 @@ public partial class GameManager : NetworkBehaviour
         CancelDecisionTimer();
         NetworkCard? drawn = DeckManager.Instance.DrawCard();
         LogActionClientRpc($"{GetPlayerName(senderId)} drew a card.");
+        UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
         if (drawn.HasValue)
         {
             NetworkCard drawnCard = drawn.Value;
@@ -1370,6 +1371,7 @@ public partial class GameManager : NetworkBehaviour
             {
                 DeckManager.Instance.ReshuffleMilestone();
                 BroadcastReshuffleAlertClientRpc(CurrentRound.Value);
+                UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
             }
         }
 

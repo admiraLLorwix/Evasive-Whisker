@@ -88,7 +88,11 @@ public class DeckManager : MonoBehaviour
 
     public NetworkCard? DrawCard()
     {
-        if (drawDeck.Count == 0) return null;
+        if (drawDeck.Count == 0)
+        {
+            ReshuffleMilestone();
+            if (drawDeck.Count == 0) return null;
+        }
         DrawDeckClick.Instance?.UpdateRemainingCount(drawDeck.Count);
         NetworkCard card = drawDeck[0];
         drawDeck.RemoveAt(0);

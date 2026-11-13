@@ -16,16 +16,29 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
     //optional but better if set
     //necessary lang para di matakpan player hand
     [SerializeField] private Transform[] keepInFront;
-    [SerializeField] private Image versusCardImage; [SerializeField] private TMP_Text versusTimerText;
+    [SerializeField] private CanvasGroup vignetteDimGroup;
+    [SerializeField] private Image vignetteImage;
+
+
+    //vignette
+    [SerializeField] private Color abilityColor = new Color(0.2f, 0.6f, 1f, 1f);
+    [SerializeField] private Color trapColor = new Color(0.6f, 0.4f, 0.2f, 1f);
+    [SerializeField] private Color custodyColor = new Color(0.2f, 1f, 0.4f, 1f);
+    [SerializeField] private Color whiskerblowerColor = new Color(1f, 0.85f, 0.2f, 1f);
+    [SerializeField] private Color counterplayColor = new Color(1f, 0.5f, 0f, 1f);
+    [SerializeField] private Color defaultColor = new Color(0f, 0f, 0f, 1f);
+
+
+
+    [SerializeField] private Image versusCardImage;
+    [SerializeField] private TMP_Text versusTimerText;
     [SerializeField] private GameObject versusGroup;
     [SerializeField] private RectTransform attackerSide; [SerializeField] private Image attackerAvatar; [SerializeField] private TMP_Text versusAttackerText;
     [SerializeField] private RectTransform victimSide; [SerializeField] private Image victimAvatar; [SerializeField] private TMP_Text versusVictimText;
     [SerializeField] private RectTransform actionTextSide; [SerializeField] private TMP_Text versusActionText;
-    [SerializeField] private CanvasGroup vignetteDimGroup;
     [SerializeField] private RectTransform canvasRoot;
     [SerializeField] private float shakeDuration = 0.15f;
     [SerializeField] private float shakeMagnitude = 8f;
-
     [SerializeField] private CanvasGroup headerBannerGroup;
     [SerializeField] private Image headerAvatar;
     [SerializeField] private TMP_Text headerPlayerName;
@@ -46,12 +59,47 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         if (attackerSide != null) _attackerOriginalPos = attackerSide.anchoredPosition;
         if (victimSide != null) _victimOriginalPos = victimSide.anchoredPosition;
         if (actionTextSide != null) _actionOriginalScale = actionTextSide.localScale;
+
         CanvasGroup group = GetComponent<CanvasGroup>();
         if (group == null) group = gameObject.AddComponent<CanvasGroup>();
         group.blocksRaycasts = true;
         group.interactable = true;
 
         if (spotlightRoot != null) spotlightRoot.SetActive(false);
+
+        if (vignetteImage != null)
+        {
+            RectTransform rt = vignetteImage.rectTransform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.sizeDelta = Vector2.zero;
+            rt.anchoredPosition = Vector2.zero;
+
+            GenerateVignetteTexture();
+        }
+    }
+
+    private void GenerateVignetteTexture()
+    {
+        int size = 256;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        Color[] pixels = new Color[size * size];
+        Vector2 center = new Vector2(size / 2f, size / 2f);
+        float maxDistance = size * 0.7f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x, y), center);
+                float alpha = Mathf.Clamp01(dist / maxDistance);
+                alpha = Mathf.SmoothStep(0f, 1f, alpha);
+                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply();
+        vignetteImage.sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -75,6 +123,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         if (cardRevealGroup != null) cardRevealGroup.SetActive(true);
         if (versusGroup != null) versusGroup.SetActive(false);
         UpdateHeaderBanner(playerId, actionMessage);
+        UpdateVignetteColor(cardId);
 
         transform.SetAsLastSibling();
         if (keepInFront != null)
@@ -85,6 +134,48 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
 
         activeSpotlightRoutine = StartCoroutine(CardRevealRoutine(cardId, actionMessage, glowColor, duration, showBackface, overrideSprite));
     }
+
+    private void UpdateVignetteColor(string cardId)
+    {
+        Debug.Log($"<color=yellow>[sl] upd vig: {cardId}</color>");
+
+        if (vignetteImage == null)
+        {
+            Debug.LogError("[sl] !vigimg");
+            return;
+        }
+
+        Color targetColor = defaultColor;
+
+        if (!string.IsNullOrEmpty(cardId) && CardDatabase.Instance != null)
+        {
+            CardType? type = CardDatabase.Instance.GetCardType(cardId);
+
+            if (type.HasValue) { 
+                switch (type.Value)
+                {
+                    case CardType.Ability: targetColor = abilityColor; break;
+                    case CardType.Trap: targetColor = trapColor; break;
+                    case CardType.Custody: targetColor = custodyColor; break;
+                    case CardType.WhiskerBlower: targetColor = whiskerblowerColor; break;
+                    case CardType.Counterplay: targetColor = counterplayColor; break;
+                    default: targetColor = defaultColor; break;
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[sl] no card id {cardId}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[sl] cardid null");
+        }
+
+        vignetteImage.color = targetColor;
+        Debug.Log($"<color=cyan>[sl] vigcol - {targetColor}</color>");
+    }
+
     private void UpdateHeaderBanner(ulong playerId, string actionMessage)
     {
         if (headerBannerGroup != null)
@@ -258,7 +349,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
             }
         }
         if (versusTimerText != null) versusTimerText.gameObject.SetActive(showTimer);
-
+        if (vignetteImage != null) vignetteImage.color = defaultColor;
         activeSpotlightRoutine = StartCoroutine(VersusRoutine(10f, showTimer));
     }
 
@@ -380,6 +471,7 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
         if (cardRevealGroup != null) cardRevealGroup.SetActive(false);
         if (versusGroup != null) versusGroup.SetActive(true);
         if (vignetteDimGroup != null) vignetteDimGroup.gameObject.SetActive(true);
+        if (vignetteImage != null) vignetteImage.color = defaultColor;
 
         if (GameManager.Instance != null && CardDatabase.Instance != null)
         {

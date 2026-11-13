@@ -13125,6 +13125,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: LoadingScreenCanvas
       objectReference: {fileID: 0}
+    - target: {fileID: 5901527904422434595, guid: af3cf185ece10a0439350d94d4f29e47, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 300
+      objectReference: {fileID: 0}
     - target: {fileID: 6626576755739337597, guid: af3cf185ece10a0439350d94d4f29e47, type: 3}
       propertyPath: m_Pivot.x
       value: 0
