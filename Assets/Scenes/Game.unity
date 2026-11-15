@@ -8177,7 +8177,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.50594604, g: 1, b: 0.3443396, a: 0.8}
+  m_Color: {r: 0.25000006, g: 1, b: 0, a: 0.90588236}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -8705,9 +8705,9 @@ RectTransform:
   - {fileID: 2129757213}
   m_Father: {fileID: 166385659}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 1, y: 1}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -10}
+  m_AnchorMin: {x: 0.5, y: 1}
+  m_AnchorMax: {x: 0.5, y: 1}
+  m_AnchoredPosition: {x: 960, y: -10}
   m_SizeDelta: {x: 450, y: 270}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &942720027
@@ -8750,7 +8750,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 3f854baa6a4f2b64787a924b0da6fcfb, type: 3}
+  m_Sprite: {fileID: 21300000, guid: b856210ea92f49849b15f1be8b6b7629, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -9013,7 +9013,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e26d7576f5d7c884795c75d8035c02be, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 7e6fb3bd9a14e3141a3cede482d4eaae, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -9198,7 +9198,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -352.30066, y: 100}
+  m_AnchoredPosition: {x: 61, y: 106}
   m_SizeDelta: {x: 105.3987, y: 110}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &980994091
@@ -9556,7 +9556,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 142.90858, y: 100}
+  m_AnchoredPosition: {x: 61, y: 25}
   m_SizeDelta: {x: 814.1152, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1024296342
@@ -9613,7 +9613,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -20703,9 +20703,9 @@ RectTransform:
   - {fileID: 956714211}
   m_Father: {fileID: 338167230}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 80, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
+  m_AnchoredPosition: {x: -880, y: 0}
   m_SizeDelta: {x: 400, y: 200}
   m_Pivot: {x: 0, y: 0}
 --- !u!223 &2102229636
