@@ -138,6 +138,10 @@ public partial class GameManager
 
         ReceiveShuffledHandClientRpc(hand.ToArray(), SingleTarget(playerId));
         PushShuffleState(playerId);
+
+        // para hindi ulet nang ulet and sawnd effects
+        PlayShuffleSuccessSFXClientRpc(SingleTarget(playerId));
+
         PlayHandShuffleAnimationClientRpc(playerId);
 
         Debug.Log($"<color=cyan>[shuffle] {GetPlayerName(playerId)} shuffled ({shuffleCharges[playerId]} left)</color>");
@@ -181,6 +185,12 @@ public partial class GameManager
     private void ShuffleRejectedClientRpc(string message, ClientRpcParams clientRpcParams = default)
     {
         ShuffleHandUI.Instance?.ShowBlocked(message);
+    }
+
+    [ClientRpc]
+    private void PlayShuffleSuccessSFXClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        ShuffleHandUI.Instance?.OnShuffleSuccess();
     }
 
     [ClientRpc]

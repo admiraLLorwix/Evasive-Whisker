@@ -18,6 +18,10 @@ public class ShuffleHandUI : MonoBehaviour
     [SerializeField] private float shakeStrength = 9f;
     [SerializeField] private float reasonDuration = 2f;
 
+    [Header("Shuffle Sound Effect")]
+    [SerializeField] private GameObject shuffleSuccessSFX;
+
+
     private int charges = 0;
     private bool locked = false;
     private bool stateReceived = false;
@@ -200,4 +204,25 @@ public class ShuffleHandUI : MonoBehaviour
         shakeRoutine = null;
         reasonRoutine = null;
     }
+
+    public void OnShuffleSuccess()
+    {
+        if (shuffleSuccessSFX == null)
+        {
+            Debug.LogWarning("[shuffle][ui] Shuffle success SFX is not assigned.");
+            return;
+        }
+
+        AudioSource audioSource = shuffleSuccessSFX.GetComponent<AudioSource>();
+
+        if (audioSource != null)
+        {
+            audioSource.Play();
+        }
+        else
+        {
+            Debug.LogWarning("[shuffle][ui] Assigned SFX GameObject has no AudioSource.");
+        }
+    }
 }
+
