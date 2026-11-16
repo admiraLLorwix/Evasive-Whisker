@@ -222,22 +222,26 @@ public partial class GameManager
     }
 
 
-    private void TriggerStolenTrapNow(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone)
+    private void TriggerStolenTrapNow(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone, bool skipHurtAnimation = false)
     {
-        StartCoroutine(TrapSequenceRoutine(thiefId, victimId, stolenCard, onDone));
+        StartCoroutine(TrapSequenceRoutine(thiefId, victimId, stolenCard, onDone, skipHurtAnimation));
     }
 
-    private IEnumerator TrapSequenceRoutine(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone)
+    private IEnumerator TrapSequenceRoutine(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone, bool skipHurtAnimation = false)
     {
         string thiefName = GetPlayerName(thiefId);
         string victimName = GetPlayerName(victimId);
         bool thiefImmune = IsImmuneToTraps(thiefId);
 
-        if (!thiefImmune)
+        if (!thiefImmune && !skipHurtAnimation)
         {
             PlayHurtSequenceClientRpc(thiefId);
             yield return new WaitForSeconds(1.2f);
             StopVersusSpotlightClientRpc();
+            yield return new WaitForSeconds(0.5f);
+        }
+        else if (skipHurtAnimation)
+        {
             yield return new WaitForSeconds(0.5f);
         }
 

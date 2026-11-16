@@ -59,7 +59,7 @@ public partial class GameManager
     }
 
     //whamos
-    private void TriggerStolenTrap(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone)
+    private void TriggerStolenTrap(ulong thiefId, ulong victimId, NetworkCard stolenCard, System.Action onDone, bool skipHurtAnimation = false)
     {
         if (!IsImmuneToTraps(thiefId) && IsCatAvailable(thiefId, DetectiveCatType.BombSquadWhamos, CurrentRound.Value))
         {
@@ -69,7 +69,7 @@ public partial class GameManager
                 Kind = CatPickKind.WhamosDisarm,
                 Offered = new[] { stolenCard },
                 OnPicked = _ => StartCoroutine(WhamosDisarmRoutine(thiefId, stolenCard, onDone)),
-                OnCancelled = () => TriggerStolenTrapNow(thiefId, victimId, stolenCard, onDone)
+                OnCancelled = () => TriggerStolenTrapNow(thiefId, victimId, stolenCard, onDone, skipHurtAnimation)
             };
             pendingCatPick = pick;
 
@@ -79,7 +79,7 @@ public partial class GameManager
             return;
         }
 
-        TriggerStolenTrapNow(thiefId, victimId, stolenCard, onDone);
+        TriggerStolenTrapNow(thiefId, victimId, stolenCard, onDone, skipHurtAnimation);
     }
 
     private IEnumerator WhamosDisarmRoutine(ulong thiefId, NetworkCard trap, System.Action onDone)

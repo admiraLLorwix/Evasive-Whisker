@@ -425,18 +425,17 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
 
 
     //addtl effects
-    public void PlayStealResultSequence(ulong thiefId, ulong victimId, string cardId)
+    public void PlayStealResultSequence(ulong thiefId, ulong victimId, string cardId, bool isTrap)
     {
         gameObject.SetActive(true);
 
         bool isInvolved = NetworkManager.Singleton.LocalClientId == thiefId || NetworkManager.Singleton.LocalClientId == victimId;
-
         string displayCardId = isInvolved ? cardId : "";
 
-        StartCoroutine(StealResultRoutine(thiefId, victimId, displayCardId));
+        StartCoroutine(StealResultRoutine(thiefId, victimId, displayCardId, isTrap));
     }
 
-    private IEnumerator StealResultRoutine(ulong thiefId, ulong victimId, string cardId)
+    private IEnumerator StealResultRoutine(ulong thiefId, ulong victimId, string cardId, bool isTrap)
     {
         PlayVersusSpotlight(thiefId, victimId, "stole a card from", cardId, false);
         yield return new WaitForSeconds(0.5f);
@@ -475,7 +474,34 @@ public class CardSpotlightController : MonoBehaviour, IPointerClickHandler
             CardFlightManager.Instance.FlyCard(startPos, endPos, sprite, null, 1.0f);
         }
 
-        yield return new WaitForSeconds(1.8f);
+        if (isTrap && attackerAvatar != null)
+        {
+            yield return new WaitForSeconds(1.2f);
+
+            Vector2 originalPos = attackerAvatar.rectTransform.anchoredPosition;
+            Color originalColor = attackerAvatar.color;
+            attackerAvatar.color = Color.red;
+
+            float shakeTime = 0.8f;
+            float elapsed = 0f;
+            while (elapsed < shakeTime)
+            {
+                elapsed += Time.deltaTime;
+                float x = Random.Range(-15f, 15f);
+                attackerAvatar.rectTransform.anchoredPosition = originalPos + new Vector2(x, 0f);
+                yield return null;
+            }
+
+            attackerAvatar.rectTransform.anchoredPosition = originalPos;
+            attackerAvatar.color = originalColor;
+
+            yield return new WaitForSeconds(0.5f);
+        }
+        else
+        {
+            yield return new WaitForSeconds(1.8f);
+        }
+
         HideSpotlight();
     }
 

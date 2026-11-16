@@ -961,9 +961,9 @@ public partial class GameManager : NetworkBehaviour
         }
     }
     [ClientRpc]
-    private void PlayStealResultSequenceClientRpc(ulong thiefId, ulong victimId, string cardId)
+    private void PlayStealResultSequenceClientRpc(ulong thiefId, ulong victimId, string cardId, bool isTrap)
     {
-        CardSpotlightController.Instance?.PlayStealResultSequence(thiefId, victimId, cardId);
+        CardSpotlightController.Instance?.PlayStealResultSequence(thiefId, victimId, cardId, isTrap);
     }
     [ClientRpc]
     private void CloseThiefStealUIClientRpc(ClientRpcParams clientRpcParams = default)
@@ -1054,7 +1054,7 @@ public partial class GameManager : NetworkBehaviour
     }
     private IEnumerator ResolveStealResultRoutine(ulong thiefId, ulong victimId, int cardIndex, NetworkCard stolenCard)
     {
-        yield return new WaitForSeconds(5.2f); 
+        yield return new WaitForSeconds(5.2f);
 
         List<NetworkCard> victimHand = playerHands[victimId];
         if (cardIndex >= 0 && cardIndex < victimHand.Count && victimHand[cardIndex].Equals(stolenCard)) victimHand.RemoveAt(cardIndex);
@@ -1063,15 +1063,18 @@ public partial class GameManager : NetworkBehaviour
         RemoveStolenCardClientRpc(stolenCard, SingleTarget(victimId));
         UpdateOpponentHandCountClientRpc(victimId, victimHand.Count);
 
-        PlayStealResultSequenceClientRpc(thiefId, victimId, stolenCard.CardId);
-        yield return new WaitForSeconds(5.0f);
-        if (stolenCard.Type != CardType.Trap)
+        bool isTrap = stolenCard.Type == CardType.Trap;
+        PlayStealResultSequenceClientRpc(thiefId, victimId, stolenCard.CardId, isTrap);
+
+        yield return new WaitForSeconds(isTrap ? 4.2f : 3.5f);
+
+        if (!isTrap)
         {
             CompleteSteal(thiefId, stolenCard);
         }
         else
         {
-            TriggerStolenTrap(thiefId, victimId, stolenCard, () => FinishTrapResolution(thiefId));
+            TriggerStolenTrap(thiefId, victimId, stolenCard, () => FinishTrapResolution(thiefId), skipHurtAnimation: true);
         }
     }
     private void ProceedSteal(ulong thiefId, ulong victimId, int cardIndex, NetworkCard stolenCard)
