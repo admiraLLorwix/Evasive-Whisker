@@ -70,6 +70,9 @@ public partial class GameManager : NetworkBehaviour
     private TurnActionKind? firstActionKind = null;
     public const ulong NoTarget = ulong.MaxValue;
 
+    [Header("Draw Deck SFX")]
+    [SerializeField] private GameObject drawCardSFX;
+
 
     private void Awake()
     {
@@ -507,6 +510,12 @@ public partial class GameManager : NetworkBehaviour
     {
         CancelDecisionTimer();
         NetworkCard? drawn = DeckManager.Instance.DrawCard();
+
+        if (drawn.HasValue)
+        {
+            PlayDrawCardSFX();
+        }
+
         LogActionClientRpc($"{GetPlayerName(senderId)} drew a card.");
         UpdateDrawDeckCountClientRpc(DeckManager.Instance.RemainingDrawCount);
         if (drawn.HasValue)
@@ -1575,4 +1584,25 @@ public partial class GameManager : NetworkBehaviour
         CancelDecisionTimer();
         AnnounceWinnerClientRpc(winnerId, reason);
     }
+
+    private void PlayDrawCardSFX()
+    {
+        if (drawCardSFX == null)
+        {
+            Debug.LogWarning("[GameManager] Draw Card SFX is not assigned.");
+            return;
+        }
+
+        AudioSource audioSource = drawCardSFX.GetComponent<AudioSource>();
+
+        if (audioSource != null)
+        {
+            audioSource.Play();
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] Draw Card SFX GameObject has no AudioSource component.");
+        }
+    }
 }
+

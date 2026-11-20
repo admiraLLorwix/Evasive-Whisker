@@ -6505,7 +6505,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: 52e1aa77ca92aee4d918642fed49a5b3, type: 3}
+  m_Resource: {fileID: 8300000, guid: 59b6cf3d2338ee74fa09b3a0b91da835, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 0.69
   m_Pitch: 1
@@ -13398,6 +13398,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1837578693612385777, guid: af3cf185ece10a0439350d94d4f29e47, type: 3}
+      propertyPath: m_TargetCamera
+      value: 
+      objectReference: {fileID: 377407412}
     - target: {fileID: 4017023771401167267, guid: af3cf185ece10a0439350d94d4f29e47, type: 3}
       propertyPath: m_Name
       value: LoadingScreenCanvas
