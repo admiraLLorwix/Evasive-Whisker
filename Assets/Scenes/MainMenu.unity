@@ -1086,13 +1086,25 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 1569156201880640115, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 21300000, guid: b4a8752f07e771141b060eb4f34f3cb4, type: 3}
     - target: {fileID: 1638367007062852602, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
       propertyPath: m_AdditionalShaderChannelsFlag
       value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 1753567801832818771, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 1753567801832818771, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 1753567801832818771, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -93
+      objectReference: {fileID: 0}
+    - target: {fileID: 1753567801832818771, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -110
       objectReference: {fileID: 0}
     - target: {fileID: 2603330161531603224, guid: cf36cf979f352ff4f947587434a85bf1, type: 3}
       propertyPath: m_Color.a
