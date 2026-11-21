@@ -55,7 +55,7 @@ public partial class GameManager
         yield return new WaitForSeconds(1.5f);
 
         BeginBombastic(askerId, targetId, default, () => AfterAction(askerId, TurnActionKind.Ability),
-            reflected: false, maxPicks: 1, fromCat: true);
+            reflected: false, maxPicks: 2, fromCat: true); //simply change maxPicks from 1 to 2
     }
 
     //whamos

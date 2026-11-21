@@ -70,6 +70,7 @@ public partial class GameManager
     [ClientRpc]
     private void HostLeavingClientRpc()
     {
+        if (IsServer) return;
         _matchEnded = true;
         GameOverUI.Instance?.ShowMatchEnded("The host left the match");
     }
@@ -77,6 +78,7 @@ public partial class GameManager
     [ClientRpc]
     private void WhiskerBlowerLeftClientRpc(ulong formerHolderId)
     {
+        if (NetworkManager.Singleton.LocalClientId == formerHolderId) return;
         _matchEnded = true;
         string name = GetPlayerName(formerHolderId);
         GameOverUI.Instance?.ShowMatchEnded($"{name} (the WhiskerBlower holder) left the match");
