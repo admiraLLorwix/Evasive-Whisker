@@ -27,6 +27,12 @@ public class CardFlightManager : MonoBehaviour
     {
         if (mainCanvas == null) yield break;
 
+        if (sprite == null)
+        {
+            onComplete?.Invoke();
+            yield break;
+        }
+
         GameObject dummy = new GameObject("FlyingCardDummy", typeof(RectTransform), typeof(Image), typeof(Canvas));
         dummy.transform.SetParent(mainCanvas.transform, false);
 

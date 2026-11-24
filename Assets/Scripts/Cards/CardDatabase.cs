@@ -63,7 +63,13 @@ namespace EvasiveWhisker.Cards
         public Sprite GetCardSprite(string cardId)
         {
             var entry = cardArtList.Find(c => c.cardID == cardId);
-            return entry != null ? entry.cardSprite : null;
+            if (entry != null && entry.cardSprite != null)
+                return entry.cardSprite;
+
+            if (System.Enum.TryParse<DetectiveCatType>(cardId, out var catType))
+                return GetLocalHandCardSprite(catType);
+
+            return null;
         }
 
         public Sprite GetIslandProfileSprite(DetectiveCatType catType)
