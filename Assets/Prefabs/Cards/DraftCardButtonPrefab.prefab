@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5371490867744741258}
   - component: {fileID: 7548807208563132571}
   - component: {fileID: 2357784298452699529}
+  - component: {fileID: 2455010953554116491}
   m_Layer: 0
   m_Name: DraftCardButtonPrefab
   m_TagString: Untagged
@@ -133,6 +134,20 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+--- !u!114 &2455010953554116491
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558986351143620998}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0dfab503d73ffca458bbc4fb1572d21a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SFXController
+  sfxObject: {fileID: 8089006531840674191}
+  playMode: 3
 --- !u!1 &8089006531840674191
 GameObject:
   m_ObjectHideFlags: 0
