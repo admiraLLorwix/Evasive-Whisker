@@ -23,11 +23,11 @@ public class UIButtonAnimation : MonoBehaviour, IPointerEnterHandler, IPointerEx
         defaultScale = rectTransform.localScale;
         targetScale = defaultScale;
 
-        if (clickAudioSource == null)
-        {
-            var clickObj = GameObject.Find("Click");
-            if (clickObj != null) clickAudioSource = clickObj.GetComponent<AudioSource>();
-        }
+        //if (clickAudioSource == null)
+        //{
+        //    var clickObj = GameObject.Find("Click");
+        //    if (clickObj != null) clickAudioSource = clickObj.GetComponent<AudioSource>();
+        //}
     }
 
     private void OnEnable()
