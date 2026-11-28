@@ -45,9 +45,33 @@ public partial class GameManager
         foreach (ulong id in pending.Required)
         {
             OpenScatterPickClientRpc(GetPlayerName(GetLeftNeighbor(id)), SingleTarget(id));
+
+            if (IsBot(id))
+            {
+                StartCoroutine(BotScatterPickRoutine(pending, id));
+            }
         }
 
         StartCoroutine(ScatterTimeoutRoutine(pending));
+    }
+
+    private IEnumerator BotScatterPickRoutine(PendingScatter pending, ulong botId)
+    {
+        yield return new WaitForSeconds(5f);
+
+        if (pending.Executed || pending.Picks.ContainsKey(botId)) yield break;
+
+        if (playerHands.TryGetValue(botId, out var hand) && hand.Count > 0)
+        {
+            List<NetworkCard> safeChoices = hand.FindAll(c => c.Type != CardType.WhiskerBlower);
+            List<NetworkCard> pool = safeChoices.Count > 0 ? safeChoices : hand;
+            NetworkCard chosen = pool[Random.Range(0, pool.Count)];
+
+            pending.Picks[botId] = chosen;
+            Debug.Log($"[scatter] Bot {botId} auto-picked {chosen.CardId}");
+
+            if (pending.Picks.Count >= pending.Required.Count) ExecuteScatter(pending);
+        }
     }
 
     private ulong GetLeftNeighbor(ulong playerId)

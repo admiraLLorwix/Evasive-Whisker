@@ -6,20 +6,21 @@ using EvasiveWhisker.Cards;
 
 public partial class GameManager
 {
-    public const float TimeoutDraw = 5f;
-    public const float TimeoutActionMenu = 5f;
+    public const float TimeoutDraw = 10f;
     public const float TimeoutTargetSelection = 10f;
     public const float TimeoutCardSelection = 10f;
-    public const float TimeoutDiscard = 5f;
-    
-    public const float DecisionSeconds = 10f; 
+    public const float TimeoutDiscard = 10f;
+    public const float DecisionSeconds = 10f;
+    private float ActionPhaseSeconds => MatchContext.ActionPhaseSeconds > 0 ? MatchContext.ActionPhaseSeconds : 60f;
+    private float ResolutionPhaseSeconds => MatchContext.ResolutionPhaseSeconds > 0 ? MatchContext.ResolutionPhaseSeconds : 60f;
+
 
     public enum DecisionStep { ChooseAction = 1, PickAbility = 2, StealOpponent = 3, AccuseTarget = 4, AbilityTarget = 5 }
 
     private int decisionTimerToken;
     private Coroutine decisionTimerRoutine;
 
-    private void StartDecisionTimer(ulong playerId, System.Action onTimeout, float seconds = DecisionSeconds)
+    private void StartDecisionTimer(ulong playerId, System.Action onTimeout, float seconds)
     {
         CancelDecisionTimer(false);
         int token = ++decisionTimerToken;
@@ -52,7 +53,7 @@ public partial class GameManager
 
     private void StartDraftTimer(ulong chooserId) => StartDecisionTimer(chooserId, () => AutoPickCat(chooserId), 10f);
     private void StartDrawTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoDraw(playerId), TimeoutDraw);
-    private void StartActionTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoChooseAction(playerId), TimeoutActionMenu);
+    private void StartActionTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoChooseAction(playerId), ActionPhaseSeconds);
     private void BeginDiscardTimer(ulong playerId) => StartDecisionTimer(playerId, () => AutoDiscard(playerId), TimeoutDiscard);
 
     [Rpc(SendTo.Server)]
@@ -69,8 +70,8 @@ public partial class GameManager
             case DecisionStep.ChooseAction: 
                 StartActionTimer(sender); 
                 break;
-            case DecisionStep.PickAbility: 
-                StartDecisionTimer(sender, () => AutoPlayAbility(sender), TimeoutCardSelection); 
+            case DecisionStep.PickAbility:
+                StartDecisionTimer(sender, () => AutoPlayAbility(sender), TimeoutTargetSelection);
                 break;
             case DecisionStep.StealOpponent: 
                 StartDecisionTimer(sender, () => AutoStealOpponent(sender), TimeoutTargetSelection); 
@@ -218,9 +219,6 @@ public partial class GameManager
     {
         ForceCloseTurnUIClientRpc(SingleTarget(playerId));
         ProcessPlayAbility(playerId, card, targetId);
-
-        if (CurrentState.Value == GameState.PlayerTurn_Resolving)
-            RemoveCardsFromHandClientRpc(new[] { card }, SingleTarget(playerId));
     }
 
     private void AutoStealOpponent(ulong playerId)
@@ -287,6 +285,7 @@ public partial class GameManager
         PlayerHandController.Instance?.HideDiscardConfirm();
         TargetingManager.Instance?.ForceStop();
         StealManager.Instance?.CancelSelection();
+        OpponentInfoModal.Instance?.Hide();
     }
 
     [ClientRpc]

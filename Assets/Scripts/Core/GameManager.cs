@@ -637,17 +637,6 @@ public partial class GameManager : NetworkBehaviour
         }
     }
 
-    [ClientRpc]
-    private void NotifyActionPhaseClientRpc(ulong activePlayerId, bool abilityOnly, bool allowSkip)
-    {
-        bool isMe = NetworkManager.Singleton.LocalClientId == activePlayerId;
-        if (isMe && TurnActionUI.Instance != null)
-        {
-            TurnActionUI.Instance.ShowActionPhaseModal(abilityOnly, allowSkip);
-        }
-    }
-
-
     [Rpc(SendTo.Server)]
     public void SubmitDiscardServerRpc(NetworkCard cardToDiscard, RpcParams rpcParams = default)
     {
@@ -1001,7 +990,7 @@ public partial class GameManager : NetworkBehaviour
         LockShuffle(thiefId);
         LockShuffle(victimId);
         CloseThiefStealUIClientRpc(SingleTarget(thiefId));
-
+        CurrentState.Value = GameState.PlayerTurn_Resolving;
         StartReactionWindow(new ReactionRequest
         {
             Attacker = thiefId,
@@ -1016,6 +1005,13 @@ public partial class GameManager : NetworkBehaviour
     private void OpenStealModalForThief(ulong thiefId, ulong victimId)
     {
         CurrentState.Value = GameState.PlayerTurn_Resolving;
+
+        if (IsBot(thiefId))
+        {
+            StartCoroutine(BotStealCardRoutine(thiefId, victimId));
+            return;
+        }
+
         StealManager.Instance.ServerOpenStealModal(thiefId, victimId);
 
         if (playerHands.TryGetValue(victimId, out var victimHand))
@@ -1023,8 +1019,18 @@ public partial class GameManager : NetworkBehaviour
             if (!IsBot(victimId))
                 ShowVictimHandClientRpc(victimHand.ToArray(), SingleTarget(victimId));
         }
-        StartDecisionTimer(thiefId, () => AutoStealCard(thiefId, victimId), TimeoutCardSelection);
+        StartDecisionTimer(thiefId, () => AutoStealCard(thiefId, victimId), ResolutionPhaseSeconds);
     }
+
+    private IEnumerator BotStealCardRoutine(ulong thiefId, ulong victimId)
+    {
+        yield return new WaitForSeconds(5f);
+        if (CurrentState.Value == GameState.PlayerTurn_Resolving)
+        {
+            AutoStealCard(thiefId, victimId);
+        }
+    }
+
     [ClientRpc]
     private void ShowVictimHandClientRpc(NetworkCard[] cards, ClientRpcParams clientRpcParams = default)
     {
@@ -1235,10 +1241,15 @@ public partial class GameManager : NetworkBehaviour
     {
         CurrentState.Value = GameState.PlayerTurn_Action;
 
-        bool abilityOnly = firstActionKind.HasValue && firstActionKind.Value != TurnActionKind.Ability;
-        bool allowSkip = firstActionKind.HasValue;
-        NotifyActionPhaseClientRpc(playerId, abilityOnly, allowSkip);
+        bool allowEndTurn = firstActionKind.HasValue;
+        bool canAccuse = true;
+        NotifyActionPhaseClientRpc(playerId, canAccuse, allowEndTurn);
         StartActionTimer(playerId);
+
+        if (IsBot(playerId))
+        {
+            StartCoroutine(BotActionRoutine(playerId));
+        }
     }
     //private bool HandHasPlayableAbility(ulong playerId)
     //{
@@ -1346,7 +1357,24 @@ public partial class GameManager : NetworkBehaviour
             SendNotice(playerId, $"<color=red>{message}</color>");
 
         if (playerId == ActiveTurnPlayerId.Value && CurrentState.Value == GameState.PlayerTurn_Action)
-            PromptActionPhase(playerId);
+        {
+            if (IsBot(playerId))
+            {
+                var stealTarget = GetEligibleOpponents(playerId, true).OrderBy(x => Random.value).FirstOrDefault();
+                if (stealTarget != NoTarget)
+                {
+                    BeginStealSequence(playerId, stealTarget);
+                }
+                else
+                {
+                    EndTurnSequence(playerId);
+                }
+            }
+            else
+            {
+                PromptActionPhase(playerId);
+            }
+        }
     }
 
     [ClientRpc]
@@ -1406,6 +1434,16 @@ public partial class GameManager : NetworkBehaviour
         }
 
         StartPlayerTurn(turnOrder[nextIndex]);
+    }
+
+    [ClientRpc]
+    private void NotifyActionPhaseClientRpc(ulong activePlayerId, bool canAccuse, bool allowEndTurn)
+    {
+        bool isMe = NetworkManager.Singleton.LocalClientId == activePlayerId;
+        if (TurnActionUI.Instance != null)
+        {
+            TurnActionUI.Instance.ShowActionPhase(isMe, canAccuse, allowEndTurn);
+        }
     }
 
     [ClientRpc]

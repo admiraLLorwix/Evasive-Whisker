@@ -139,6 +139,8 @@ public class CardDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, I
                     return;
                 }
 
+                TurnActionUI.Instance?.OnCardDraggedUp();
+
                 if (CardEffectRegistry.RequiresTarget(playedId))
                 {
                     ReturnToHand();

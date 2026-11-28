@@ -144,7 +144,7 @@ public partial class GameManager
         pendingCatPick = pick;
 
         OpenShadowFannedPickClientRpc("Sleight of Paw Shadow: choose a card to give up instead", pick.Offered, SingleTarget(defender));
-        StartDecisionTimer(defender, () => AutoCatPick(pick));
+        StartDecisionTimer(defender, () => AutoCatPick(pick), DecisionSeconds);
 
         while (!finished) yield return null;
 
@@ -183,7 +183,7 @@ public partial class GameManager
             pendingIslandPick = pick;
 
             BeginIslandPickClientRpc(targets.ToArray(), "Decoy Mokang: choose who takes the hit", false, SingleTarget(defender));
-            StartDecisionTimer(defender, () => TimeoutIslandPick(pick));
+            StartDecisionTimer(defender, () => TimeoutIslandPick(pick), DecisionSeconds);
 
             while (!finished) yield return null;
             EndIslandPickClientRpc(SingleTarget(defender));

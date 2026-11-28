@@ -166,7 +166,8 @@ public partial class GameManager
 
     private IEnumerator TrapGiveTimeoutRoutine(PendingTrapGive pending)
     {
-        yield return new WaitForSeconds(TrapGivePickSeconds);
+        float waitTime = IsBot(pending.Thief) ? 5f : TrapGivePickSeconds;
+        yield return new WaitForSeconds(waitTime);
 
         if (pending.Done) yield break;
         if (!playerHands.TryGetValue(pending.Thief, out var hand) || hand.Count == 0) yield break;

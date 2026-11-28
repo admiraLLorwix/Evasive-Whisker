@@ -73,7 +73,7 @@ public partial class GameManager
         ReleaseStealTargetLock(thiefId);
         pendingStealVictim = victimId;
         LockShuffle(victimId);
-        StartDecisionTimer(thiefId, () => AutoStealCard(thiefId, victimId));
+        StartDecisionTimer(thiefId, () => AutoStealCard(thiefId, victimId), TimeoutTargetSelection);
         return true;
     }
     public void ReleaseStealTargetLock(ulong thiefId)

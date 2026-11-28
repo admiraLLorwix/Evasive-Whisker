@@ -96,7 +96,8 @@ public partial class GameManager
 
     private IEnumerator CatInstinctTimeoutRoutine(PendingCatInstinct pending)
     {
-        yield return new WaitForSeconds(CatInstinctAnswerSeconds);
+        float waitTime = IsBot(pending.Target) ? 5f : CatInstinctAnswerSeconds;
+        yield return new WaitForSeconds(waitTime);
 
         if (pending.Answered) yield break;
 

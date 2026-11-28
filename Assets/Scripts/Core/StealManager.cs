@@ -21,10 +21,11 @@ public class StealManager : NetworkBehaviour
     [SerializeField] private float maxTiltAngle = 10f;
     [SerializeField] private float arcDropAmount = 14f;
     [SerializeField] private GameObject globalDimPanel;
-
+    public bool IsIslandPick => isIslandPick;
     private ulong currentStealTargetId;
     public bool IsSelectingTarget { get; set; } = false;
     private bool isAccusingCustodian = false;
+    public bool IsAccusingCustodian => isAccusingCustodian;
     private bool isIslandPick = false;
     private HashSet<ulong> islandPickEligible = new HashSet<ulong>();
     private List<int> multiPickedIndices = new List<int>();
@@ -61,6 +62,7 @@ public class StealManager : NetworkBehaviour
     {
         if (!isIslandPick) return;
         isIslandPick = false;
+        isAccusingCustodian = false;
         IsSelectingTarget = false;
         islandPickEligible.Clear();
         HighlightOpponentIslands(false);
@@ -70,6 +72,7 @@ public class StealManager : NetworkBehaviour
     public void CancelSelection()
     {
         isIslandPick = false;
+        isAccusingCustodian = false;
         IsSelectingTarget = false;
         UIFocusManager.Instance?.ClearFocus();
         HighlightOpponentIslands(false);
@@ -122,6 +125,10 @@ public class StealManager : NetworkBehaviour
             }
         }
     }
+    public void RequestStealFromModal(ulong targetId)
+    {
+        RequestVictimHandForStealServerRpc(targetId);
+    }
 
     public void OnOpponentIslandClicked(ulong targetId)
     {
@@ -146,6 +153,8 @@ public class StealManager : NetworkBehaviour
         if (isAccusingCustodian)
         {
             GameManager.Instance.SubmitCustodyGuessServerRpc(targetId);
+            isAccusingCustodian = false;
+            TurnActionUI.Instance?.HideCancelButton();
             return;
         }
 
@@ -417,5 +426,9 @@ public class StealManager : NetworkBehaviour
             CloseStealModal();
             onMultiPickConfirmed?.Invoke(multiPickedIndices.ToArray());
         }
+    }
+    public void SetActionPhaseHighlights(bool enable)
+    {
+        HighlightOpponentIslands(enable, new Color(1f, 0.2f, 0.2f, 1f));
     }
 }

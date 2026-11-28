@@ -109,7 +109,8 @@ public partial class GameManager
 
         Debug.Log($"<color=cyan>[cat] {GetPlayerName(playerId)} activates {kind} ({offered.Length} cards offered)</color>");
         OpenCatPickClientRpc(title, offered, SingleTarget(playerId));
-        StartDecisionTimer(playerId, () => AutoCatPick(pending));
+        float waitTime = IsBot(playerId) ? 5f : DecisionSeconds;
+        StartDecisionTimer(playerId, () => AutoCatPick(pending), waitTime);
     }
 
     [Rpc(SendTo.Server)]

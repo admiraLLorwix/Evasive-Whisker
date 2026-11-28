@@ -8,28 +8,17 @@ public class TurnActionUI : MonoBehaviour
 
     [Header("hud")]
     [SerializeField] private TMP_Text instructionText;
-    //[SerializeField] private TMP_Text roundText;
-    //[SerializeField] private TMP_Text turnText;
 
-    [Header("action btns")]
-    [SerializeField] private GameObject actionChoiceModal;
-    [SerializeField] private Button playAbilityChoiceCard;
-    [SerializeField] private Button stealChoiceCard;
-    [SerializeField] private Button guessCustodianChoiceCard;
+    [Header("hud buttons")]
+    [SerializeField] private Button accuseButton;
     [SerializeField] private Button cancelActionButton;
-
     [SerializeField] private Button endTurnButton;
-    [SerializeField] private GameObject globalDimPanel;
-    private bool lastAbilityOnly = false;
-    private bool lastAllowSkip = false;
 
     private void Awake()
     {
         Instance = this;
 
-        if (playAbilityChoiceCard != null) playAbilityChoiceCard.onClick.AddListener(OnPlayAbilitySelected);
-        if (stealChoiceCard != null) stealChoiceCard.onClick.AddListener(OnStealSelected);
-        if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.onClick.AddListener(OnGuessCustodianSelected);
+        if (accuseButton != null) accuseButton.onClick.AddListener(OnAccuseClicked);
 
         if (cancelActionButton != null) cancelActionButton.onClick.AddListener(OnCancelClicked);
         if (endTurnButton != null) endTurnButton.onClick.AddListener(OnEndTurnClicked);   // [M2a]
@@ -57,18 +46,17 @@ public class TurnActionUI : MonoBehaviour
     public void ShowDrawPrompt(bool isMyTurn, string activePlayerName)
     {
         HideAllActionPanels();
+        DrawDeckClick.Instance?.SetGlow(isMyTurn);
 
         if (isMyTurn)
         {
-            if (instructionText != null) instructionText.text = "Click the Draw Deck on the Center Island to draw a card";
+            SetInstructionText("Click the Draw Deck on the Center Island to draw a card");
             UIFocusManager.Instance?.FocusOn(FocusTarget.DrawDeck);
-            DrawDeckClick.Instance?.SetGlow(true);
         }
         else
         {
-            if (instructionText != null) instructionText.text = $"Waiting for {activePlayerName} to draw...";
+            SetInstructionText($"Waiting for {activePlayerName} to draw...");
             UIFocusManager.Instance?.ClearFocus();
-            DrawDeckClick.Instance?.SetGlow(false); 
         }
     }
 
@@ -78,89 +66,38 @@ public class TurnActionUI : MonoBehaviour
         DrawDeckClick.Instance?.SetGlow(false);
         UIFocusManager.Instance?.FocusOn(FocusTarget.Hand);
 
-        if (instructionText != null)
-            instructionText.text = $"<color=red>HAND LIMIT EXCEEDED ({currentCount}/{maxLimit}) DRAG A CARD UP TO DISCARD IT</color>";
+        SetInstructionText($"<color=red>HAND LIMIT EXCEEDED ({currentCount}/{maxLimit}) DRAG A CARD UP TO DISCARD IT</color>");
     }
 
-    public void ShowActionPhaseModal(bool abilityOnly = false, bool allowSkip = false)
+    public void ShowActionPhase(bool isMyTurn, bool canAccuse, bool allowEndTurn)
     {
-        lastAbilityOnly = abilityOnly;
-        lastAllowSkip = allowSkip;
-
         DrawDeckClick.Instance?.SetGlow(false);
 
-        if (instructionText != null)
+        if (!isMyTurn)
         {
-            instructionText.text = abilityOnly ? "Second action: you can only play an Ability now"
-                                 : allowSkip ? "Second action: choose again, or end your turn"
-                                 : "Choose your action for this turn";
+            HideAllActionPanels();
+            SetInstructionText("Waiting for opponents...");
+            return;
         }
-
-        if (actionChoiceModal != null) actionChoiceModal.SetActive(true);
-        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
-        if (endTurnButton != null) endTurnButton.gameObject.SetActive(allowSkip);
-
-        int custodyCount = PlayerHandController.Instance != null ? PlayerHandController.Instance.GetCustodyCardCount() : 0;
-        bool hasAbilities = PlayerHandController.Instance != null && PlayerHandController.Instance.HasPlayableAbilityCards();
-        if (playAbilityChoiceCard != null) playAbilityChoiceCard.interactable = hasAbilities;
-        if (stealChoiceCard != null) stealChoiceCard.interactable = !abilityOnly;
-        if (guessCustodianChoiceCard != null) guessCustodianChoiceCard.interactable = (custodyCount >= 3) && !abilityOnly;
-    }
-    private void ReportStep(GameManager.DecisionStep step) =>
-    GameManager.Instance?.ReportDecisionStepServerRpc((int)step, "");
-
-    private void OnPlayAbilitySelected()
-    {
-        ReportStep(GameManager.DecisionStep.PickAbility);
-        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
-        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
-        if (instructionText != null) instructionText.text = "Drag an Ability Card or Detective Cat up to play it";
+        SetInstructionText("Drag an Ability Card up to play, or click an opponent to view them");
 
         PlayerHandController.Instance?.SetAbilityCardsPlayable(true);
-    }
+        UIFocusManager.Instance?.ClearFocus();
 
-    private void OnStealSelected()
+        StealManager.Instance?.SetActionPhaseHighlights(true);
+
+        if (accuseButton != null) accuseButton.gameObject.SetActive(canAccuse);
+        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
+        if (endTurnButton != null) endTurnButton.gameObject.SetActive(allowEndTurn);
+    }
+    public void ShowActionPrompt()
     {
-        ReportStep(GameManager.DecisionStep.StealOpponent);
-        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
-        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
-        if (instructionText != null) instructionText.text = "Click an Opponent's Island to steal from";
-
-        StealManager.Instance?.EnableOpponentSelection();
+        bool canAccuse = GameManager.Instance != null && PlayerHandController.Instance.GetCustodyCardCount() >= 3;
+        ShowActionPhase(true, canAccuse, false);
     }
 
-    private void OnGuessCustodianSelected()
-    {
-        ReportStep(GameManager.DecisionStep.AccuseTarget);
-        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
-        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
-        if (instructionText != null) instructionText.text = "Click the Opponent you accuse of holding the WhiskerBlower";
-
-        StealManager.Instance?.EnableCustodianAccusationSelection();
-    }
-
-    private void OnCancelClicked()
-    {
-        if (TargetingManager.Instance != null && TargetingManager.Instance.IsTargeting)
-        {
-            TargetingManager.Instance.CancelTargeting();
-        }
-
-        PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
-        StealManager.Instance?.CancelSelection();
-        ShowActionPrompt();
-        ReportStep(GameManager.DecisionStep.ChooseAction);
-    }
-
-    private void OnEndTurnClicked()
-    {
-        HideAllActionPanels();
-        PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
-        GameManager.Instance?.SubmitEndTurnServerRpc();
-    }
     public void ShowCancelButton()
     {
-        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
     }
 
@@ -169,14 +106,63 @@ public class TurnActionUI : MonoBehaviour
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
     }
 
+
+
+    private void OnAccuseClicked()
+    {
+        if (PlayerHandController.Instance != null && PlayerHandController.Instance.GetCustodyCardCount() < 3)
+        {
+            ShowTemporaryNotification("<color=red>You need 3 Custody cards to accuse someone!</color>", 3f);
+            return;
+        }
+        ReportStep(GameManager.DecisionStep.AccuseTarget);
+        if (accuseButton != null) accuseButton.gameObject.SetActive(false);
+        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
+        SetInstructionText("Click the Opponent you accuse of holding the WhiskerBlower");
+        PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
+
+        StealManager.Instance?.EnableCustodianAccusationSelection();
+    }
+
+    public void OnCardDraggedUp()
+    {
+        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(true);
+        if (accuseButton != null) accuseButton.gameObject.SetActive(false);
+    }
+
+    private void OnCancelClicked()
+    {
+        TargetingManager.Instance?.CancelTargeting();
+
+        StealManager.Instance?.CancelSelection();
+
+        if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
+        if (accuseButton != null) accuseButton.gameObject.SetActive(GameManager.Instance != null && PlayerHandController.Instance.GetCustodyCardCount() >= 3);
+
+        SetInstructionText("Drag an Ability Card up to play, or click an opponent to view them");
+        PlayerHandController.Instance?.SetAbilityCardsPlayable(true);
+        UIFocusManager.Instance?.FocusOn(FocusTarget.Hand);
+
+        //ReportStep(GameManager.DecisionStep.ChooseAction);
+    }
+
+    private void OnEndTurnClicked()
+    {
+        HideAllActionPanels();
+        PlayerHandController.Instance?.SetAbilityCardsPlayable(false);
+        GameManager.Instance?.SubmitEndTurnServerRpc();
+    }
+    private void ReportStep(GameManager.DecisionStep step) =>
+    GameManager.Instance?.ReportDecisionStepServerRpc((int)step, "");
+
     public void HideAllActionPanels()
     {
-        if (actionChoiceModal != null) actionChoiceModal.SetActive(false);
+        if (accuseButton != null) accuseButton.gameObject.SetActive(false);
         if (cancelActionButton != null) cancelActionButton.gameObject.SetActive(false);
         if (endTurnButton != null) endTurnButton.gameObject.SetActive(false);
+        StealManager.Instance?.SetActionPhaseHighlights(false);
         UIFocusManager.Instance?.ClearFocus();
     }
 
-    public void ShowActionPrompt() => ShowActionPhaseModal(lastAbilityOnly, lastAllowSkip);
     public void HideAllActions() => HideAllActionPanels();
 }

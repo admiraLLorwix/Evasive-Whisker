@@ -77,6 +77,7 @@ public class DetectiveCatUI : MonoBehaviour
 
     private void OnProfileCardClicked()
     {
+        Debug.Log("[dcat ui] profile card clicked");
         if (OpponentInfoModal.Instance != null && GameManager.Instance != null)
         {
             ulong myId = NetworkManager.Singleton.LocalClientId;

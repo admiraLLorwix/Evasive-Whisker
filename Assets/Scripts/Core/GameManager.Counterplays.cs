@@ -89,9 +89,25 @@ public partial class GameManager
             ShowVictimHandClientRpc(attackerHand.ToArray(), SingleTarget(q.Attacker));
         }
 
+        if (IsBot(q.Defender))
+        {
+            StartCoroutine(BotCounterStealRoutine(pending, q.Attacker));
+            return;
+        }
+
         OpenCounterStealModalClientRpc(q.Attacker, thiefName, GetPlayerDetective(q.Attacker), thiefHand.Count, SingleTarget(q.Defender));
         ShowDecisionTimerClientRpc(q.Defender, defenderName, CounterStealPickSeconds);
         StartCoroutine(CounterStealTimeoutRoutine(pending));
+    }
+
+    private IEnumerator BotCounterStealRoutine(PendingCounterSteal pending, ulong attackerId)
+    {
+        yield return new WaitForSeconds(5f);
+        if (pending.Done) yield break;
+        if (!playerHands.TryGetValue(attackerId, out var hand) || hand.Count == 0) yield break;
+
+        Debug.Log("[bot] countersteal pick - stealing a random card");
+        ExecuteCounterSteal(pending, Random.Range(0, hand.Count));
     }
 
     [Rpc(SendTo.Server)]
@@ -162,7 +178,8 @@ public partial class GameManager
 
     private IEnumerator CounterStealTimeoutRoutine(PendingCounterSteal pending)
     {
-        yield return new WaitForSeconds(CounterStealPickSeconds);
+        float waitTime = IsBot(pending.Defender) ? 5f : CounterStealPickSeconds;
+        yield return new WaitForSeconds(waitTime);
 
         if (pending.Done) yield break;
         if (!playerHands.TryGetValue(pending.Thief, out var hand) || hand.Count == 0) yield break;

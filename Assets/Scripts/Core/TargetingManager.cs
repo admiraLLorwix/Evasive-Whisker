@@ -27,7 +27,7 @@ public class TargetingManager : MonoBehaviour
         TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>Click an opponent's island to target with {card.CardId}</color>", 8f);
 
         HighlightIslands(true);
-        GameManager.Instance?.ReportDecisionStepServerRpc((int)GameManager.DecisionStep.AbilityTarget, card.CardId);
+        //GameManager.Instance?.ReportDecisionStepServerRpc((int)GameManager.DecisionStep.AbilityTarget, card.CardId);
     }
 
     public void OnOpponentTargetChosen(ulong targetId)

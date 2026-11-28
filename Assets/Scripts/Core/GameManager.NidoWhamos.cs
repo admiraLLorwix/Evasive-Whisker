@@ -32,7 +32,7 @@ public partial class GameManager
         pendingIslandPick = pick;
 
         BeginIslandPickClientRpc(targets.ToArray(), "Detective Nido: choose a player to inspect", true, SingleTarget(playerId));
-        StartDecisionTimer(playerId, () => TimeoutNidoPick(pick));
+        StartDecisionTimer(playerId, () => TimeoutNidoPick(pick), DecisionSeconds);
     }
 
     private void TimeoutNidoPick(PendingIslandPick pick)
@@ -75,7 +75,7 @@ public partial class GameManager
 
             OpenCatPickClientRpc($"BombSquad Whamos: click the {stolenCard.CardId} to disarm it",
                 pick.Offered, SingleTarget(thiefId));
-            StartDecisionTimer(thiefId, () => AutoCatPick(pick));
+            StartDecisionTimer(thiefId, () => AutoCatPick(pick), DecisionSeconds);
             return;
         }
 

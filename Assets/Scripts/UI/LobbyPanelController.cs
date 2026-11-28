@@ -233,9 +233,21 @@ public class LobbyPanelController : MonoBehaviour
         if (OnlineLobbyManager.Instance != null && OnlineLobbyManager.Instance.IsHost())
         {
             var lobby = OnlineLobbyManager.Instance.CurrentLobby;
+
             MatchContext.BotCount = 0;
             if (lobby.Data != null && lobby.Data.ContainsKey("BotCount"))
                 int.TryParse(lobby.Data["BotCount"].Value, out MatchContext.BotCount);
+
+            MatchContext.ActionPhaseSeconds = 60f;
+            MatchContext.ResolutionPhaseSeconds = 60f;
+            if (lobby.Data != null)
+            {
+                if (lobby.Data.TryGetValue("ActionTime", out var aData) && int.TryParse(aData.Value, out int aTime))
+                    MatchContext.ActionPhaseSeconds = aTime;
+
+                if (lobby.Data.TryGetValue("ResolutionTime", out var rData) && int.TryParse(rData.Value, out int rTime))
+                    MatchContext.ResolutionPhaseSeconds = rTime;
+            }       
             LoadingScreenManager.Instance?.Show("Loading Match");
             NetworkManager.Singleton.SceneManager.LoadScene("Game", UnityEngine.SceneManagement.LoadSceneMode.Single);
         }

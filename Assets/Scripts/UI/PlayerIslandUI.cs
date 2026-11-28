@@ -62,19 +62,18 @@ public class PlayerIslandUI : MonoBehaviour
         btn.onClick.RemoveAllListeners();
         btn.onClick.AddListener(() =>
         {
-            bool selecting = (TargetingManager.Instance != null && TargetingManager.Instance.IsTargeting)
-                          || (StealManager.Instance != null && StealManager.Instance.IsSelectingTarget);
-            if (selecting && IsGuessImmune)
-            {
-                TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>{PlayerName} is protected after a failed accusation</color>", 2.5f);
-                return;
-            }
+            Debug.Log($"clicked island {OwnerClientId}");
             if (TargetingManager.Instance != null && TargetingManager.Instance.IsTargeting)
             {
                 TargetingManager.Instance.OnOpponentTargetChosen(OwnerClientId);
                 return;
             }
-            if (StealManager.Instance != null && StealManager.Instance.IsSelectingTarget)
+            if (StealManager.Instance != null && StealManager.Instance.IsAccusingCustodian)
+            {
+                StealManager.Instance.OnOpponentIslandClicked(OwnerClientId);
+                return;
+            }
+            if (StealManager.Instance != null && StealManager.Instance.IsIslandPick)
             {
                 StealManager.Instance.OnOpponentIslandClicked(OwnerClientId);
                 return;

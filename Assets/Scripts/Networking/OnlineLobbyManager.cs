@@ -634,4 +634,25 @@ public class OnlineLobbyManager : MonoBehaviour
             Debug.LogError($"[lobby] failed to update bot count {e.Message}");
         }
     }
+
+    public async Task UpdateLobbyTimerSettingsAsync(int actionTime, int resolutionTime)
+    {
+        if (CurrentLobby == null || !IsHost()) return;
+
+        try
+        {
+            UpdateLobbyOptions options = new UpdateLobbyOptions
+            {
+                Data = new Dictionary<string, DataObject>
+                {
+                    { "ActionTime", new DataObject(DataObject.VisibilityOptions.Public, actionTime.ToString()) },
+                    { "ResolutionTime", new DataObject(DataObject.VisibilityOptions.Public, resolutionTime.ToString()) }
+                }
+            };
+
+            CurrentLobby = await LobbyService.Instance.UpdateLobbyAsync(CurrentLobby.Id, options);
+            OnLobbyUpdated?.Invoke(CurrentLobby);
+        }
+        catch (System.Exception e) { Debug.LogError($"Failed to update timers: {e.Message}"); }
+    }
 }

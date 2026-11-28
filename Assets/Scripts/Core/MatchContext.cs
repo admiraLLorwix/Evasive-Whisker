@@ -5,6 +5,9 @@
     public static string PreviousLobbyCode;
     public static int PreviousMaxPlayers;
     public static int BotCount = 0;
+    public static float ActionPhaseSeconds = 60f;
+    public static float ResolutionPhaseSeconds = 60f;
+
     public static void Clear()
     {
         PreviousLobbyId = null;
@@ -12,5 +15,7 @@
         PreviousLobbyCode = null;
         PreviousMaxPlayers = 0;
         BotCount = 0;
+        ActionPhaseSeconds = 60f;
+        ResolutionPhaseSeconds = 60f;
     }
 }

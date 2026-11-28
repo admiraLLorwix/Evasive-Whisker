@@ -44,7 +44,7 @@ public partial class GameManager
 
     private IEnumerator BotDraftRoutine(ulong botId)
     {
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(1.2f);
         if (CurrentState.Value != GameState.DraftingDetectiveCats) yield break;
 
         DetectiveCatType randomCat = availableCatPool[Random.Range(0, availableCatPool.Count)];
@@ -53,12 +53,16 @@ public partial class GameManager
 
     private IEnumerator BotTurnRoutine(ulong botId)
     {
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(5f);
         if (CurrentState.Value == GameState.PlayerTurn_Draw)
         {
             AutoDraw(botId);
-            yield return new WaitForSeconds(1.5f);
         }
+    }
+
+    public IEnumerator BotActionRoutine(ulong botId)
+    {
+        yield return new WaitForSeconds(5f);
         if (CurrentState.Value == GameState.PlayerTurn_Action)
         {
             BotChooseAction(botId);
@@ -93,7 +97,8 @@ public partial class GameManager
             NetworkCard cardToPlay = playableCards[0];
 
             var zoomies = playableCards.FirstOrDefault(c => c.CardId == "Zoomies");
-            if (zoomies.CardId != null) cardToPlay = zoomies;
+            if (!string.IsNullOrEmpty(zoomies.CardId))
+                cardToPlay = zoomies;
 
             ulong targetId = NoTarget;
             if (CardEffectRegistry.RequiresTarget(cardToPlay.CardId))
