@@ -211,10 +211,10 @@ public partial class GameManager
     {
         Card = card,
         AttackerWindowMsg = $"Waiting for {victimName} to react...",
-        DefenderWindowMsg = $"{thiefName} is stealing {card.CardId} from you!",
+        DefenderWindowMsg = $"{thiefName} is stealing {FormatCardName(card.CardId)} from you!",
         SpectatorWindowMsg = $"{thiefName} is stealing a card from {victimName}!",
-        AttackerResultMsg = $"You stole {card.CardId} from {victimName}!",
-        DefenderResultMsg = $"{thiefName} stole {card.CardId} from you!",
+        AttackerResultMsg = $"You stole {FormatCardName(card.CardId)} from {victimName}!",
+        DefenderResultMsg = $"{thiefName} stole {FormatCardName(card.CardId)} from you!",
         SpectatorResultMsg = $"{thiefName} stole a card from {victimName}!"
     };
 
@@ -237,24 +237,21 @@ public partial class GameManager
             Attacker = thiefId,
             Defender = victimId,
             ActionTags = StealReactionTags,
-            Description = redirected ? $"{thiefName}'s steal was redirected to you" : $"{thiefName} is stealing from you",
+            SpotlightVerb = redirected ? "redirected a steal to" : "is stealing from",
+            InstructionText = redirected ? $"<color=red>{thiefName}</color>'s steal was redirected to you!" : $"<color=red>{thiefName}</color> is trying to steal a card from you!",
             Reveal = BuildStealReveal(thiefName, victimName, ctx.Card),
             Redirected = redirected,
             TargetIndex = cardIndex,
-
             OnSwapTarget = newIndex =>
             {
                 ctx.Index = newIndex;
                 ctx.Card = playerHands[ctx.Victim][newIndex];
                 request.Reveal = BuildStealReveal(thiefName, victimName, ctx.Card);
             },
-
             OnRedirect = newVictim => RedirectSteal(ctx, newVictim),
-
             OnProceed = () => ProceedSteal(ctx.Thief, ctx.Victim, ctx.Index, ctx.Card),
             OnCancelled = endTurn => CancelSteal(ctx.Thief, endTurn)
         };
-
         StartReactionWindow(request);
     }
 

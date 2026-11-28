@@ -294,7 +294,7 @@ public class PlayerHandController : MonoBehaviour
             discardConfirmModal.SetActive(true);
             if (confirmPromptText != null)
             {
-                confirmPromptText.text = $"Are you sure you want to discard <color=blue>{card.CardId}</color>?";
+                confirmPromptText.text = $"Are you sure you want to discard <color=blue>{GameManager.FormatCardName(card.CardId)}</color>?";
             }
         }
     }
@@ -366,7 +366,7 @@ public class PlayerHandController : MonoBehaviour
             discardConfirmModal.SetActive(true);
             if (confirmPromptText != null)
             {
-                confirmPromptText.text = $"Pass <color=blue>{card.CardId}</color> to <color=red>{scatterNeighborName}</color>?";
+                confirmPromptText.text = $"Pass <color=blue>{GameManager.FormatCardName(card.CardId)}</color> to <color=red>{scatterNeighborName}</color>?";
             }
         }
     }
@@ -511,7 +511,7 @@ public class PlayerHandController : MonoBehaviour
         var names = new List<string>();
         foreach (NetworkCard card in legalCards)
         {
-            if (reactionValidIds.Add(card.CardId)) names.Add(card.CardId);
+            if (reactionValidIds.Add(card.CardId)) names.Add(GameManager.FormatCardName(card.CardId));
         }
         if (!string.IsNullOrEmpty(catName)) names.Add(catName);
 
@@ -526,7 +526,7 @@ public class PlayerHandController : MonoBehaviour
         UIFocusManager.Instance?.FocusOn(FocusTarget.Hand);
 
         TurnActionUI.Instance?.ShowTemporaryNotification(
-            $"<color=red>{description}!</color> Drag <color=blue>{string.Join(" / ", names)}</color> up to respond", seconds);
+            $"{description}\nDrag <color=blue>{string.Join(" / ", names)}</color> up to respond", seconds);
     }
 
     public void EndReaction()

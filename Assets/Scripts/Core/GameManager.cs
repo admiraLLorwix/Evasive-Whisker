@@ -521,7 +521,7 @@ public partial class GameManager : NetworkBehaviour
         if (drawn.HasValue)
         {
             NetworkCard drawnCard = drawn.Value;
-            PresentDrawnCard(senderId, drawnCard, $"You drew {drawnCard.CardId}!", $"{GetPlayerName(senderId)} drew a card!", false);
+            PresentDrawnCard(senderId, drawnCard, $"You drew {FormatCardName(drawnCard.CardId)}!", $"{GetPlayerName(senderId)} drew a card!", false);
         }
         else
         {
@@ -801,7 +801,7 @@ public partial class GameManager : NetworkBehaviour
             RejectCardRequest(senderId, card, error);
             return;
         }
-        LogActionClientRpc($"{GetPlayerName(senderId)} played {card.CardId}.");
+        LogActionClientRpc($"{GetPlayerName(senderId)} played {FormatCardName(card.CardId)}.");
         CurrentState.Value = GameState.PlayerTurn_Resolving;
         CancelDecisionTimer();
         if (card.CardId == "Scatter") LockShuffleForEveryone();
@@ -815,11 +815,11 @@ public partial class GameManager : NetworkBehaviour
         if (targetId != NoTarget)
         {
             string targetName = GetPlayerName(targetId);
-            actionMessage = $"{actorName} played {card.CardId} on {targetName}!";
+            actionMessage = $"{actorName} played {FormatCardName(card.CardId)} on {targetName}!";
         }
         else
         {
-            actionMessage = $"{actorName} played {card.CardId}!";
+            actionMessage = $"{actorName} played {FormatCardName(card.CardId)}!";
         }
 
         float spotlightSeconds = (targetId != NoTarget) ? 2f : 3.5f;
@@ -847,7 +847,7 @@ public partial class GameManager : NetworkBehaviour
 
         if (isUncounterable)
         {
-            PlayVersusSpotlightClientRpc(senderId, targetId, $"played {card.CardId} on", card.CardId, false);
+            PlayVersusSpotlightClientRpc(senderId, targetId, $"played {FormatCardName(card.CardId)} on", card.CardId, false);
             yield return new WaitForSeconds(2.5f);
             StopVersusSpotlightClientRpc();
             RunAbilityEffect(senderId, targetId, card);
@@ -859,7 +859,8 @@ public partial class GameManager : NetworkBehaviour
             Attacker = senderId,
             Defender = targetId,
             ActionTags = AbilityReactionTags(card.CardId),
-            Description = $"played {card.CardId} on",
+            SpotlightVerb = $"played {FormatCardName(card.CardId)} on",
+            InstructionText = $"<color=red>{GetPlayerName(senderId)}</color> played {FormatCardName(card.CardId)} on you!",
             CardId = card.CardId,
             OnProceed = () => RunAbilityEffect(senderId, targetId, card),
             OnCancelled = endTurn => CancelAbility(senderId, card, endTurn)
@@ -996,7 +997,8 @@ public partial class GameManager : NetworkBehaviour
             Attacker = thiefId,
             Defender = victimId,
             ActionTags = StealReactionTags,
-            Description = $"is stealing from",
+            SpotlightVerb = "is stealing from",
+            InstructionText = $"<color=red>{GetPlayerName(thiefId)}</color> is trying to steal a card from you!",
             CardId = "",
             OnProceed = () => OpenStealModalForThief(thiefId, victimId),
             OnCancelled = endTurn => CancelSteal(thiefId, endTurn)
@@ -1053,10 +1055,9 @@ public partial class GameManager : NetworkBehaviour
         CloseVictimHandClientRpc(SingleTarget(victimId));
 
         NetworkCard stolenCard = victimHand[cardIndex];
-        LogActionClientRpc($"{GetPlayerName(thiefId)} stole {stolenCard.CardId} from {GetPlayerName(victimId)}.");
-
-        ShowStealSpotlightClientRpc(stolenCard.CardId, thiefId, $"Stole {stolenCard.CardId}!", false, 5f, SingleTarget(thiefId));
-        ShowStealSpotlightClientRpc(stolenCard.CardId, victimId, $"{GetPlayerName(thiefId)} stole {stolenCard.CardId}!", false, 5f, SingleTarget(victimId));
+        LogActionClientRpc($"{GetPlayerName(thiefId)} stole {FormatCardName(stolenCard.CardId)} from {GetPlayerName(victimId)}.");
+        ShowStealSpotlightClientRpc(stolenCard.CardId, thiefId, $"Stole {FormatCardName(stolenCard.CardId)}!", false, 5f, SingleTarget(thiefId));
+        ShowStealSpotlightClientRpc(stolenCard.CardId, victimId, $"{GetPlayerName(thiefId)} stole {FormatCardName(stolenCard.CardId)}!", false, 5f, SingleTarget(victimId));
 
         StartCoroutine(ResolveStealResultRoutine(thiefId, victimId, cardIndex, stolenCard));
     }
@@ -1283,7 +1284,7 @@ public partial class GameManager : NetworkBehaviour
         if (GetRemainingActions(senderId) <= 0) return "You have no actions left";
         if (card.Type != CardType.Ability) return "That card can't be played";
         if (!playerHands.TryGetValue(senderId, out var hand) || !hand.Contains(card)) return "That card isn't in your hand";
-        if (!CardEffectRegistry.HasAbility(cardId)) return $"{cardId} isn't implemented yet";
+        if (!CardEffectRegistry.HasAbility(cardId)) return $"{FormatCardName(cardId)} isn't implemented yet";
 
         if (CardEffectRegistry.OccupiesSlot(cardId) && GetPlayerActiveAbilityId(senderId) != null)
             return "Your Active Ability slot is full";
@@ -1641,6 +1642,20 @@ public partial class GameManager : NetworkBehaviour
         {
             Debug.LogWarning("[GameManager] Draw Card SFX GameObject has no AudioSource component.");
         }
+    }
+
+    //card name splitter
+    public static string FormatCardName(string cardId)
+    {
+        if (string.IsNullOrEmpty(cardId)) return "";
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < cardId.Length; i++)
+        {
+            if (i > 0 && char.IsUpper(cardId[i]))
+                sb.Append(' ');
+            sb.Append(cardId[i]);
+        }
+        return sb.ToString();
     }
 }
 

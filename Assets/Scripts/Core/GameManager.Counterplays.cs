@@ -149,8 +149,8 @@ public partial class GameManager
             Reveal = new ReactionReveal
             {
                 Card = card,
-                AttackerResultMsg = $"You stole {card.CardId} back from {thiefName}!",
-                DefenderResultMsg = $"{defenderName} stole {card.CardId} back from you!",
+                AttackerResultMsg = $"You stole {FormatCardName(card.CardId)} back from {thiefName}!",
+                DefenderResultMsg = $"{defenderName} stole {FormatCardName(card.CardId)} back from you!",
                 SpectatorResultMsg = $"{defenderName} stole a card back from {thiefName}!"
             }
         };

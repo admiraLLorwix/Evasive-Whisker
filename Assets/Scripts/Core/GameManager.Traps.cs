@@ -94,8 +94,8 @@ public partial class GameManager
 
         if (recipientId == thiefId || !playerHands.TryGetValue(thiefId, out var thiefHand) || thiefHand.Count == 0)
         {
-            Debug.Log($"[trap] {trapCard.CardId} fizzles: thief has no card to give");
-            SendNotice(thiefId, $"<color=red>{trapCard.CardId}: you have no cards to give</color>");
+            Debug.Log($"[trap] {FormatCardName(trapCard.CardId)} fizzles: thief has no card to give");
+            SendNotice(thiefId, $"<color=red>{FormatCardName(trapCard.CardId)}: you have no cards to give</color>");
             DeckManager.Instance.Discard(trapCard);
             onFinished?.Invoke();
             return;
@@ -112,7 +112,7 @@ public partial class GameManager
 
         Debug.Log($"<color=red>[trap] {trapCard.CardId}: {GetPlayerName(thiefId)} must give a card to {GetPlayerName(recipientId)}</color>");
 
-        OpenTrapGivePickClientRpc(trapCard.CardId, GetPlayerName(recipientId), SingleTarget(thiefId));
+        OpenTrapGivePickClientRpc(FormatCardName(trapCard.CardId), GetPlayerName(recipientId), SingleTarget(thiefId));
         ShowDecisionTimerClientRpc(thiefId, GetPlayerName(thiefId), TrapGivePickSeconds);
         StartCoroutine(TrapGiveTimeoutRoutine(pending));
     }
@@ -147,7 +147,7 @@ public partial class GameManager
         UpdateOpponentHandCountClientRpc(pending.Thief, playerHands[pending.Thief].Count);
         UpdateOpponentHandCountClientRpc(pending.Recipient, playerHands[pending.Recipient].Count);
 
-        Debug.Log($"<color=red>[trap] {GetPlayerName(pending.Thief)} gave {given.CardId} to {GetPlayerName(pending.Recipient)}</color>");
+        Debug.Log($"<color=red>[trap] {GetPlayerName(pending.Thief)} gave {FormatCardName(given.CardId)} to {GetPlayerName(pending.Recipient)}</color>");
 
         ScatterResultClientRpc(true, given, false, default, 0, SingleTarget(pending.Thief));
         ScatterResultClientRpc(false, default, true, given, pending.Thief, SingleTarget(pending.Recipient));
@@ -249,11 +249,11 @@ public partial class GameManager
         if (thiefImmune)
         {
             string reason = HasTrapImmunity(thiefId) ? "Nine Lives" : "Accusation Protection";
-            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP IMMUNITY: {stolenCard.CardId} ({reason})", thiefName, victimName);
+            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP IMMUNITY: {FormatCardName(stolenCard.CardId)} ({reason})", thiefName, victimName);
         }
         else
         {
-            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP TRIGGERED: {stolenCard.CardId}", thiefName, victimName);
+            BroadcastTrapSpotlightClientRpc(stolenCard.CardId.ToString(), thiefId, $"TRAP TRIGGERED: {FormatCardName(stolenCard.CardId)}", thiefName, victimName);
         }
 
         yield return new WaitForSeconds(3.5f);

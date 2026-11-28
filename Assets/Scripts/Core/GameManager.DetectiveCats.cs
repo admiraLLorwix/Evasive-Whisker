@@ -191,8 +191,8 @@ public partial class GameManager
             MarkCatUsed(playerId);
             RemoveFromDiscardPileClientRpc(chosen);
             PresentDrawnCard(playerId, chosen,
-                $"You took {chosen.CardId} from the discard pile!",
-                $"{playerName} took {chosen.CardId} from the discard pile!", true);
+                $"You took {FormatCardName(chosen.CardId)} from the discard pile!",
+                $"{playerName} took {FormatCardName(chosen.CardId)} from the discard pile!", true);
         }
         else
         {
@@ -206,7 +206,7 @@ public partial class GameManager
 
             MarkCatUsed(playerId);
             PresentDrawnCard(playerId, kept.Value,
-                $"You kept {kept.Value.CardId}!", $"{playerName} drew a card!", false);
+                $"You kept {FormatCardName(kept.Value.CardId)}!", $"{playerName} drew a card!", false);
         }
     }
 

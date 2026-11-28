@@ -240,7 +240,7 @@ public partial class GameManager
         if (!got) return;
 
         string fromName = GetPlayerName(fromId);
-        string message = $"{fromName} passed you {received.CardId}";
+        string message = $"{fromName} passed you {GameManager.FormatCardName(received.CardId)}";
         Color glow = new Color(1f, 0.6f, 0.2f, 1f);
 
         if (CardSpotlightController.Instance != null)

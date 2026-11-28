@@ -30,6 +30,8 @@ public partial class GameManager
         public ulong Attacker;
         public ulong Defender;
         public string[] ActionTags;
+        public string SpotlightVerb;
+        public string InstructionText;
         public string Description;
         public string CardId;
         public System.Action OnProceed;
@@ -65,7 +67,7 @@ public partial class GameManager
         ReactionRequest req = pending.Request;
 
         string cardId = req.Reveal != null ? req.Reveal.Card.CardId : "";
-        PlayVersusSpotlightClientRpc(req.Attacker, req.Defender, req.Description, req.CardId, true);
+        PlayVersusSpotlightClientRpc(req.Attacker, req.Defender, req.SpotlightVerb, req.CardId, true);
 
         NetworkCard[] legalCards = GetLegalCounterCards(req.Defender, req.ActionTags);
         bool catLegal = TryGetLegalCatReaction(req, out DetectiveCatType legalCat);
@@ -74,7 +76,7 @@ public partial class GameManager
         if (prompted)
         {
             string catName = catLegal ? DetectiveCatRules.DisplayName(legalCat) : "";
-            OpenReactionPromptClientRpc(req.Description, legalCards, ReactionWindowSeconds, catName, SingleTarget(req.Defender));
+            OpenReactionPromptClientRpc(req.InstructionText, legalCards, ReactionWindowSeconds, catName, SingleTarget(req.Defender));
         }
 
         float endTime = Time.time + ReactionWindowSeconds;

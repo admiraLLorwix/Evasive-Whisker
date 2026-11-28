@@ -24,7 +24,7 @@ public class TargetingManager : MonoBehaviour
         pendingCardObj = cardObj;
 
         UIFocusManager.Instance?.FocusOn(FocusTarget.Opponents);
-        TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>Click an opponent's island to target with {card.CardId}</color>", 8f);
+        TurnActionUI.Instance?.ShowTemporaryNotification($"<color=red>Click an opponent's island to target with {GameManager.FormatCardName(card.CardId)}</color>", 8f);
 
         HighlightIslands(true);
         //GameManager.Instance?.ReportDecisionStepServerRpc((int)GameManager.DecisionStep.AbilityTarget, card.CardId);
