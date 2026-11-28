@@ -108,9 +108,8 @@ public partial class GameManager
         pendingCatPick = pending;
 
         Debug.Log($"<color=cyan>[cat] {GetPlayerName(playerId)} activates {kind} ({offered.Length} cards offered)</color>");
-        OpenCatPickClientRpc(title, offered, SingleTarget(playerId));
-        float waitTime = IsBot(playerId) ? 5f : DecisionSeconds;
-        StartDecisionTimer(playerId, () => AutoCatPick(pending), waitTime);
+        OpenCatPickClientRpc(title, offered, kind == CatPickKind.Shimo, SingleTarget(playerId));
+        StartDecisionTimer(playerId, () => AutoCatPick(pending), DecisionSeconds);
     }
 
     [Rpc(SendTo.Server)]
@@ -211,13 +210,17 @@ public partial class GameManager
     }
 
     [ClientRpc]
-    private void OpenCatPickClientRpc(string title, NetworkCard[] cards, ClientRpcParams clientRpcParams = default)
+    private void OpenCatPickClientRpc(string title, NetworkCard[] cards, bool useGallery, ClientRpcParams clientRpcParams = default)
     {
-        if (HandRevealUI.Instance == null) return;
-
-        HandRevealUI.Instance.ShowPicker(title, cards,
-            index => Instance?.SubmitCatPickServerRpc(index),
-            () => Instance?.CancelCatPickServerRpc());
+        if (useGallery)
+        {
+            CardGalleryController.Instance?.ShowDynamicCards(cards, title, index => Instance?.SubmitCatPickServerRpc(index), true);
+        }
+        else
+        {
+            if (HandRevealUI.Instance == null) return;
+            HandRevealUI.Instance.ShowPicker(title, cards, index => Instance?.SubmitCatPickServerRpc(index), () => Instance?.CancelCatPickServerRpc());
+        }
     }
 
     [ClientRpc]

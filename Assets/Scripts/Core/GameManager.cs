@@ -892,6 +892,11 @@ public partial class GameManager : NetworkBehaviour
 
         ReceiveDrawnCardClientRpc(stolenCard, SingleTarget(thiefId));
 
+        if (IsBot(thiefId) && stolenCard.Type != CardType.Trap)
+        {
+            ServerForceShuffle(thiefId);
+        }
+
         AfterAction(thiefId, TurnActionKind.Steal);
     }
 

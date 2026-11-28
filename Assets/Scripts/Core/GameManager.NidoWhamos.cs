@@ -74,7 +74,7 @@ public partial class GameManager
             pendingCatPick = pick;
 
             OpenCatPickClientRpc($"BombSquad Whamos: click the {FormatCardName(stolenCard.CardId)} to disarm it",
-                pick.Offered, SingleTarget(thiefId));
+                pick.Offered, false, SingleTarget(thiefId));
             StartDecisionTimer(thiefId, () => AutoCatPick(pick), DecisionSeconds);
             return;
         }

@@ -128,4 +128,8 @@ public class DiscardPile2D : MonoBehaviour
 
         AddCardToDiscard(dummyCard);
     }
+    public NetworkCard[] GetDiscardPile()
+    {
+        return pileData.ToArray();
+    }
 }

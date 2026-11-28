@@ -203,4 +203,17 @@ public partial class GameManager
             : null;
         if (island != null) island.PlayShuffleAnimation();
     }
+
+    public void ServerForceShuffle(ulong playerId)
+    {
+        if (!playerHands.TryGetValue(playerId, out var hand) || hand.Count < 2) return;
+
+        ShuffleHandInPlace(hand);
+        if (!IsBot(playerId))
+        {
+            ReceiveShuffledHandClientRpc(hand.ToArray(), SingleTarget(playerId));
+        }
+        PlayHandShuffleAnimationClientRpc(playerId);
+        Debug.Log($"[shuffle] Server force-shuffled {GetPlayerName(playerId)}'s hand.");
+    }
 }

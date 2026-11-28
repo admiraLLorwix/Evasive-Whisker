@@ -4,9 +4,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
 using TMPro;
+using EvasiveWhisker.Cards;
 
 public class CardGalleryController : MonoBehaviour
 {
+    public static CardGalleryController Instance { get; private set; }
+
     [System.Serializable]
     public class CardEntry
     {
@@ -58,6 +61,13 @@ public class CardGalleryController : MonoBehaviour
     [SerializeField] private AudioClip cardClickSound;
     [SerializeField, Range(0f, 1f)] private float clickVolume = 0.7f;
 
+    [Header("for discard pile")]
+    [SerializeField] private Transform dynamicCardContainer;
+    [SerializeField] private GameObject dynamicCardPrefab;
+    [SerializeField] private Button largePreviewButton;
+    [SerializeField] private Button closeButton; [SerializeField] private Button backgroundCloseButton;
+
+
     private int _selectedIndex = -1;
 
     private Vector3[] _originalScales;
@@ -65,34 +75,167 @@ public class CardGalleryController : MonoBehaviour
     private UnityAction[] _buttonActions;
 
     private CanvasGroup _previewCanvasGroup;
-
+    private CanvasGroup _rootCanvasGroup;
     private Coroutine _selectionCoroutine;
     private Coroutine _previewCoroutine;
 
+    private List<NetworkCard> dynamicCards = new List<NetworkCard>();
+    private System.Action<int> onDynamicConfirm;
+    private int selectedDynamicIndex = -1;
+    private bool isShimoMode = false;
+
     private void Awake()
     {
+        Instance = this;
+
+        _rootCanvasGroup = GetComponent<CanvasGroup>();
+        if (_rootCanvasGroup == null) _rootCanvasGroup = gameObject.AddComponent<CanvasGroup>();
+        HidePanel();
+
         InitializeCards();
         InitializePreview();
 
-        if (audioSource == null)
-        {
-            audioSource = GetComponent<AudioSource>();
-
-            if (audioSource == null)
-                audioSource = gameObject.AddComponent<AudioSource>();
-        }
+        if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
 
         audioSource.playOnAwake = false;
+
+        if (largePreviewButton != null) largePreviewButton.onClick.AddListener(OnLargePreviewClicked);
+        if (closeButton != null) closeButton.onClick.AddListener(ClearDynamicMode);
+        if (backgroundCloseButton != null) backgroundCloseButton.onClick.AddListener(ClearDynamicMode);
     }
 
     private void Start()
     {
         if (showDefaultPreview && cards.Count > 0)
         {
-            SelectCard(
-                Mathf.Clamp(defaultCardIndex, 0, cards.Count - 1)
-            );
+            SelectCard(Mathf.Clamp(defaultCardIndex, 0, cards.Count - 1));
         }
+    }
+
+    public void ShowDynamicCards(NetworkCard[] cardsToShow, string panelTitle, System.Action<int> onConfirm = null, bool shimoMode = false)
+    {
+        isShimoMode = shimoMode;
+
+        foreach (var entry in cards)
+        {
+            if (entry.cardButton != null) entry.cardButton.gameObject.SetActive(false);
+        }
+
+        dynamicCards = new List<NetworkCard>(cardsToShow);
+        onDynamicConfirm = onConfirm;
+        selectedDynamicIndex = -1;
+
+        if (dynamicCardContainer != null)
+        {
+            foreach (Transform child in dynamicCardContainer) Destroy(child.gameObject);
+        }
+
+        for (int i = 0; i < dynamicCards.Count; i++)
+        {
+            int index = i;
+            GameObject btnObj = Instantiate(dynamicCardPrefab, dynamicCardContainer);
+            Image img = btnObj.GetComponentInChildren<Image>();
+            Button btn = btnObj.GetComponent<Button>();
+
+            Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(dynamicCards[i].CardId) : null;
+            if (img != null)
+            {
+                img.sprite = sprite;
+                img.color = sprite != null ? Color.white : Color.cyan;
+            }
+
+            if (btn != null)
+            {
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => SelectDynamicCard(index));
+            }
+        }
+
+        if (previewNameText != null) previewNameText.text = panelTitle;
+        if (previewDescriptionText != null)
+        {
+            if (isShimoMode)
+            {
+                previewDescriptionText.text = "";
+                TurnActionUI.Instance?.SetInstructionText("Click a card to view it. Click the large image on the right to confirm taking it.");
+            }
+            else
+            {
+                previewDescriptionText.text = "Click a card to view it.";
+            }
+        }
+
+        if (previewImageDisplay != null)
+        {
+            previewImageDisplay.sprite = null;
+            previewImageDisplay.color = new Color(1f, 1f, 1f, 1f);
+            previewImageDisplay.enabled = false;
+        }
+
+        if (_previewCoroutine != null) StopCoroutine(_previewCoroutine);
+        if (_previewCanvasGroup != null)
+        {
+            _previewCanvasGroup.alpha = 1f;
+            _previewCanvasGroup.blocksRaycasts = false;
+        }
+
+        ShowPanel();
+    }
+
+    private void SelectDynamicCard(int index)
+    {
+        selectedDynamicIndex = index;
+        Sprite sprite = CardDatabase.Instance != null ? CardDatabase.Instance.GetCardSprite(dynamicCards[index].CardId) : null;
+
+        if (_previewCoroutine != null) StopCoroutine(_previewCoroutine);
+
+        if (_previewCanvasGroup != null)
+        {
+            _previewCanvasGroup.alpha = 1f;
+            _previewCanvasGroup.blocksRaycasts = false;
+        }
+
+        if (previewImageDisplay != null)
+        {
+            previewImageDisplay.sprite = sprite;
+            previewImageDisplay.color = new Color(1f, 1f, 1f, 1f);
+            previewImageDisplay.enabled = sprite != null;
+        }
+
+        if (previewNameText != null) previewNameText.text = GameManager.FormatCardName(dynamicCards[index].CardId);
+        if (previewDescriptionText != null && !isShimoMode) previewDescriptionText.text = "Click the large image to confirm selection.";
+
+        PlayCardClickSound();
+    }
+
+    private void OnLargePreviewClicked()
+    {
+        if (onDynamicConfirm != null && selectedDynamicIndex >= 0)
+        {
+            var callback = onDynamicConfirm;
+            ClearDynamicMode();
+            callback.Invoke(selectedDynamicIndex);
+        }
+    }
+
+    public void ClearDynamicMode()
+    {
+        onDynamicConfirm = null;
+        selectedDynamicIndex = -1;
+        isShimoMode = false;
+
+        if (dynamicCardContainer != null)
+        {
+            foreach (Transform child in dynamicCardContainer) Destroy(child.gameObject);
+        }
+
+        foreach (var entry in cards)
+            if (entry.cardButton != null) entry.cardButton.gameObject.SetActive(true);
+
+        if (TurnActionUI.Instance != null && GameManager.Instance.CurrentState.Value == GameState.PlayerTurn_Action)
+            TurnActionUI.Instance.ShowActionPrompt();
+
+        HidePanel();
     }
 
     private void PlayCardClickSound()
@@ -117,14 +260,8 @@ public class CardGalleryController : MonoBehaviour
             if (cards[i].cardButton == null)
                 continue;
 
-            Transform cardTransform =
-                cards[i].cardButton.transform;
-
-            _originalScales[i] = cardTransform.localScale;
-
-            // Automatically create selection outline
-            Graphic targetGraphic =
-                cards[i].cardButton.targetGraphic;
+            _originalScales[i] = cards[i].cardButton.transform.localScale;
+            Graphic targetGraphic = cards[i].cardButton.targetGraphic;
 
             if (targetGraphic != null)
             {
@@ -184,7 +321,7 @@ public class CardGalleryController : MonoBehaviour
         if (_selectedIndex == index)
             return;
 
-        int previousIndex = _selectedIndex;
+        //int previousIndex = _selectedIndex;
 
         _selectedIndex = index;
 
@@ -257,17 +394,6 @@ public class CardGalleryController : MonoBehaviour
             yield return null;
         }
 
-        // Ensure exact final scale
-        for (int i = 0; i < cards.Count; i++)
-        {
-            if (cards[i].cardButton == null)
-                continue;
-
-            cards[i].cardButton.transform.localScale =
-                _originalScales[i] *
-                (i == _selectedIndex ? selectionScale : 1f);
-        }
-
         _selectionCoroutine = null;
     }
 
@@ -322,11 +448,7 @@ public class CardGalleryController : MonoBehaviour
         {
             elapsed += Time.deltaTime;
 
-            float t = Mathf.Clamp01(
-                elapsed / previewFadeDuration
-            );
-
-            float eased = Mathf.SmoothStep(0f, 1f, t);
+            float eased = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / previewFadeDuration));
 
             _previewCanvasGroup.alpha =
                 Mathf.Lerp(start, end, eased);
@@ -368,6 +490,25 @@ public class CardGalleryController : MonoBehaviour
                     _buttonActions[i]
                 );
             }
+        }
+    }
+    private void HidePanel()
+    {
+        if (_rootCanvasGroup != null)
+        {
+            _rootCanvasGroup.alpha = 0f;
+            _rootCanvasGroup.blocksRaycasts = false;
+            _rootCanvasGroup.interactable = false;
+        }
+    }
+
+    private void ShowPanel()
+    {
+        if (_rootCanvasGroup != null)
+        {
+            _rootCanvasGroup.alpha = 1f;
+            _rootCanvasGroup.blocksRaycasts = true;
+            _rootCanvasGroup.interactable = true;
         }
     }
 }
